@@ -2,7 +2,7 @@
 
 # 🏛️ TERRAPOLIS
 
-**Кастомний ігровий лаунчер та платформа керування збірками для проєктів команди HDT**
+**Кастомний ігровий лаунчер та платформа керування збірками для проєктів в майнкрафт**
 
 <p>
   <img src="https://img.shields.io/badge/Status-Beta_0.1.0-f59e0b?style=for-the-badge&logo=github&logoColor=white" alt="Status Beta" />
