@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minecraft Launcher</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg">
+  <span class="orb orb-a"></span>
+  <span class="orb orb-b"></span>
+  <span class="orb orb-c"></span>
+</div>
+
+<div class="island is-busy" id="island">
+  <span class="island-dot"></span>
+  <span class="island-text" id="statusText">Запуск…</span>
+</div>
+
+<main class="layout">
+  <section class="hero glass">
+    <div class="hero-badges">
+      <span class="badge" id="mcBadge">Minecraft —</span>
+      <span class="badge badge-accent" id="loaderBadge">—</span>
+    </div>
+    <h1 id="packName">Збірка</h1>
+    <p class="hero-sub" id="packVersion">Завантаження інформації…</p>
+  </section>
+
+  <section class="panel glass">
+    <div class="field">
+      <label for="nickname">Нікнейм</label>
+      <input id="nickname" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Steve_2024">
+      <span class="hint" id="nickHint">3–16 символів: латиниця, цифри, _</span>
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <label for="ram">Оперативна пам'ять</label>
+        <span class="ram-value" id="ramValue">4 ГБ</span>
+      </div>
+      <input id="ram" type="range" min="1024" max="8192" step="256" value="4096">
+      <span class="hint" id="ramHint">&nbsp;</span>
+    </div>
+
+    <div class="progress">
+      <div class="progress-row">
+        <span class="progress-stage" id="progressStage">Очікування</span>
+        <span class="progress-percent" id="progressPercent">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-file" id="progressFile">&nbsp;</span>
+    </div>
+
+    <button class="play" id="play" disabled>
+      <span id="playLabel">Зачекайте…</span>
+    </button>
+  </section>
+</main>
+
+<footer class="version">
+  <span class="version-dot"></span>
+  <span id="launcherVersion">Лаунчер v—</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

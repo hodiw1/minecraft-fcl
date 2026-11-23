@@ -1,0 +1,42 @@
+name: Release launcher
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check tag matches Cargo version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart('v', 'V')
+          $line = Select-String -Path "src-tauri/Cargo.toml" -Pattern '^version\s*=\s*"(.+)"' | Select-Object -First 1
+          $version = $line.Matches[0].Groups[1].Value
+          if ($tag -ne $version) {
+            Write-Error "Тег ($tag) не збігається з версією в src-tauri/Cargo.toml ($version)"
+            exit 1
+          }
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build launcher
+        run: cargo build --release -p launcher
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/release/launcher.exe
+          generate_release_notes: true
