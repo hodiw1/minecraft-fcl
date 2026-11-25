@@ -274,6 +274,9 @@ pub async fn install_libraries(
         }
     }
 
+    if missing.is_empty() {
+        status(app, tr("Бібліотеки гри на місці", "Game libraries are in place"));
+    }
     if !missing.is_empty() {
         status(
             app,
@@ -405,6 +408,9 @@ pub async fn install_assets(
     })
     .await?;
 
+    if missing.is_empty() {
+        status(app, tr("Ресурси гри на місці", "Game assets are in place"));
+    }
     if !missing.is_empty() {
         status(
             app,

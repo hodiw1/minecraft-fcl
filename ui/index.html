@@ -3,15 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Minecraft Launcher</title>
+<title>Terrapolis</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="bg" aria-hidden="true">
-  <span class="orb orb-a"></span>
-  <span class="orb orb-b"></span>
-  <span class="orb orb-c"></span>
-</div>
+<div class="bg" aria-hidden="true"></div>
 
 <!-- Завантаження -->
 <div class="boot" id="boot">
@@ -23,7 +19,7 @@
 <section class="onboarding" id="onboarding" hidden>
   <div class="ob-card glass">
     <div class="ob-top">
-      <span class="brand brand-lg">
+      <span class="brand brand-lg avatar">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>
       </span>
       <div class="seg seg-sm" id="obLang" role="radiogroup" aria-label="Language">
@@ -41,12 +37,12 @@
       </div>
       <div class="field">
         <label for="obCode" data-i18n="ob.code">Або введи код проєкту</label>
-        <input id="obCode" type="text" spellcheck="false" maxlength="120" data-i18n-ph="ob.codePh" placeholder="Наприклад: FNAF-2026">
+        <input id="obCode" type="text" spellcheck="false" maxlength="120" data-i18n-ph="ob.codePh" placeholder="Введіть код проєкту">
         <span class="hint" data-i18n="ob.codeHint">Лише для прихованих проєктів — код дає адміністратор.</span>
       </div>
       <div class="field" id="obNickField">
         <label for="obNick" data-i18n="ob.nick">Твій ігровий нік</label>
-        <input id="obNick" type="text" spellcheck="false" maxlength="16" data-i18n-ph="ob.nickPh" placeholder="Наприклад: Kozak_2009">
+        <input id="obNick" type="text" spellcheck="false" maxlength="16" data-i18n-ph="ob.nickPh" placeholder="Введіть ігровий нікнейм">
         <span class="hint" id="obNickHint" data-i18n="ob.nickHint">Під цим ім'ям тебе бачитимуть у грі. 3–16 символів: латиниця, цифри, _</span>
       </div>
       <div class="form-error" id="obError" role="alert" hidden></div>
@@ -61,7 +57,7 @@
 <!-- Основний інтерфейс -->
 <div class="app" id="app" hidden>
   <aside class="sidebar">
-    <button class="brand" id="brand" type="button" data-goto="project" data-i18n-title="nav.project" title="Проєкт">
+    <button class="brand avatar" id="brand" type="button" data-goto="project" data-i18n-title="nav.project" title="Проєкт">
       <span id="brandLetter">M</span>
     </button>
     <nav class="nav" id="nav" aria-label="Меню">
@@ -92,9 +88,10 @@
 
   <main class="main">
     <header class="topbar">
-      <button class="top-project" type="button" data-goto="project">
-        <span class="live-dot" id="topDot"></span>
+      <button class="top-project" type="button" data-goto="project" data-i18n-title="nav.project" title="Проєкт">
+        <span class="avatar" id="topAvatar">M</span>
         <span class="top-project-name" id="topProject">—</span>
+        <span class="live-dot" id="topDot"></span>
       </button>
       <div class="island is-busy" id="island" role="status" aria-live="polite">
         <span class="island-dot"></span>
@@ -113,7 +110,7 @@
       <!-- ЗБІРКИ -->
       <section class="view view-home" data-view="home">
         <div class="hero" id="hero">
-          <div class="hero-bg" id="heroBg"></div>
+          <div class="hero-media" id="heroMedia" aria-hidden="true"><div class="hero-bg"></div><div class="hero-bg"></div></div>
           <div class="hero-body">
             <div class="badges">
               <span class="badge" id="badgeMc" hidden></span>
@@ -123,29 +120,46 @@
             <h1 id="instName">—</h1>
             <p class="hero-desc" id="instDesc"></p>
             <p class="hero-meta" id="instMeta"></p>
+            <p class="ram-note" id="ramNote" hidden></p>
 
             <div class="actions">
               <button class="play" id="play" type="button" disabled>
-                <span class="play-label" id="playLabel">…</span>
-                <span class="play-sub" id="playSub"></span>
+                <span class="play-ico" id="playIco" aria-hidden="true"></span>
+                <span class="play-text">
+                  <span class="play-label" id="playLabel">…</span>
+                  <span class="play-sub" id="playSub"></span>
+                </span>
               </button>
-              <button class="icon-btn" id="repairBtn" type="button" data-i18n-title="home.repairTitle" title="Перевірити й виправити файли збірки">
+              <button class="icon-btn" id="repairBtn" type="button" data-i18n-title="home.repairTitle" title="Перевірити та відновити пошкоджені файли збірки">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg>
                 <span data-i18n="home.repair">Ремонт</span>
               </button>
-              <button class="icon-btn" id="folderBtn" type="button" data-i18n-title="home.folderTitle" title="Відкрити папку збірки (скріншоти, ресурспаки)">
+              <button class="icon-btn" id="folderBtn" type="button" data-i18n-title="home.folderTitle" title="Відкрити папку збірки зі скріншотами та світами">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
                 <span data-i18n="home.folder">Папка</span>
+              </button>
+              <button class="icon-btn danger" id="deleteBtn" type="button" data-i18n-title="home.deleteTitle" title="Видалити збірку з комп'ютера">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>
+                <span data-i18n="home.delete">Видалити</span>
               </button>
             </div>
 
             <div class="progress" id="progress" hidden>
+              <ol class="progress-steps" id="progressSteps" aria-hidden="true"></ol>
               <div class="progress-row">
                 <span class="progress-stage" id="progressStage"></span>
-                <span class="progress-percent" id="progressPercent">0%</span>
+                <span class="progress-percent" id="progressPercent"></span>
               </div>
-              <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-              <span class="progress-file" id="progressFile">&nbsp;</span>
+              <div class="progress-track" id="progressTrack"><div class="progress-fill" id="progressFill"></div></div>
+              <div class="progress-row progress-sub">
+                <span class="progress-file" id="progressFile">&nbsp;</span>
+                <span class="progress-amount" id="progressAmount"></span>
+              </div>
+              <p class="progress-status" id="progressStatus" role="status" aria-live="polite"></p>
+              <details class="progress-log" id="progressDetails">
+                <summary data-i18n="progress.details">Що робить лаунчер</summary>
+                <ol class="selectable" id="progressLog"></ol>
+              </details>
             </div>
 
             <p class="nick-note" id="nickNote"></p>
@@ -199,7 +213,7 @@
         </div>
         <div class="cards">
           <div class="card glass project-card">
-            <span class="brand brand-lg" id="projBrand">M</span>
+            <span class="brand brand-lg avatar" id="projBrand">M</span>
             <div class="project-info">
               <h3 id="projName">—</h3>
               <p class="muted"><span data-i18n="project.code">Код:</span> <b class="mono" id="projCode">—</b> · <span id="projCount"></span></p>
@@ -213,7 +227,7 @@
           <div class="card glass">
             <h3 data-i18n="project.switchTitle">Підключити інший проєкт</h3>
             <form class="add-row" id="switchForm" novalidate autocomplete="off">
-              <input id="switchCode" type="text" spellcheck="false" maxlength="120" data-i18n-ph="ob.codePh" placeholder="Наприклад: FNAF-2026">
+              <input id="switchCode" type="text" spellcheck="false" maxlength="120" data-i18n-ph="ob.codePh" placeholder="Введіть код проєкту">
               <button class="btn btn-primary" id="switchSubmit" type="submit">
                 <span class="btn-spin" aria-hidden="true"></span>
                 <span class="btn-text" data-i18n="project.connect">Підключити</span>
@@ -327,9 +341,10 @@
 
 <!-- Спливаюче меню картки збірки -->
 <div class="menu glass" id="instMenu" role="menu" hidden>
-  <button type="button" role="menuitem" data-act="folder" data-i18n="menu.folder">Відкрити папку</button>
-  <button type="button" role="menuitem" data-act="repair" data-i18n="menu.repair">Перевірити файли</button>
-  <button type="button" role="menuitem" data-act="delete" class="danger" data-i18n="menu.delete">Видалити збірку…</button>
+  <button type="button" role="menuitem" data-act="folder"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span data-i18n="menu.folder">Відкрити папку</span></button>
+  <button type="button" role="menuitem" data-act="repair"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg><span data-i18n="menu.repair">Перевірити файли</span></button>
+  <hr>
+  <button type="button" role="menuitem" data-act="delete" class="danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg><span data-i18n="menu.delete">Видалити збірку…</span></button>
 </div>
 
 <!-- Модальне вікно -->

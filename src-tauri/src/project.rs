@@ -247,27 +247,38 @@ fn is_project_repo(name: &str) -> bool {
     is_github_part(name) && lower.starts_with(PROJECT_PREFIX) && lower.len() > PROJECT_PREFIX.len()
 }
 
-fn project_title(repo: &str) -> String {
-    let suffix = if repo.to_lowercase().starts_with(PROJECT_PREFIX) {
-        repo.get(PROJECT_PREFIX.len()..).unwrap_or(repo)
+/// Частина назви репозиторію без префікса `terrapolis-` — у тому регістрі, в якому вона є.
+fn strip_prefix_any_case(value: &str) -> &str {
+    if value.to_lowercase().starts_with(PROJECT_PREFIX) {
+        value.get(PROJECT_PREFIX.len()..).unwrap_or(value)
     } else {
-        repo
-    };
-    let spaced: String = suffix
+        value
+    }
+}
+
+/// Назва для інтерфейсу з назви репозиторію. Регістр не змінюємо:
+/// `terrapolis-MyTeam` → `MyTeam`, `terrapolis-myteam` → `myteam`.
+fn project_title(repo: &str) -> String {
+    strip_prefix_any_case(repo)
         .chars()
         .map(|c| if matches!(c, '-' | '_') { ' ' } else { c })
-        .collect();
-    let mut chars = spaced.chars();
+        .collect()
+}
+
+/// Як назву генерували до 0.2.5 («Myteam») — щоб розпізнати й виправити збережені назви.
+fn legacy_title(repo: &str) -> String {
+    let title = project_title(repo);
+    let mut chars = title.chars();
     match chars.next() {
         Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
         None => String::new(),
     }
 }
 
-fn trusted_binding(code: &str, owner: &str, repo: &str, branch: &str) -> ProjectBinding {
+fn trusted_binding(code: &str, name: String, owner: &str, repo: &str, branch: &str) -> ProjectBinding {
     ProjectBinding {
         code: code.to_string(),
-        name: project_title(repo),
+        name,
         index_url: raw_url(owner, repo, branch, INDEX_FILE),
     }
 }
@@ -275,20 +286,103 @@ fn trusted_binding(code: &str, owner: &str, repo: &str, branch: &str) -> Project
 fn trusted_bindings(code: &str) -> Vec<ProjectBinding> {
     if let Some((owner, repo, branch)) = parse_repo_code(code) {
         if is_trusted_owner(&owner) && is_project_repo(&repo) {
-            return vec![trusted_binding(code, &owner, &repo, &branch)];
+            let name = project_title(&repo);
+            return vec![trusted_binding(code, name, &owner, &repo, &branch)];
         }
         return Vec::new();
     }
-    let lower = code.to_lowercase();
-    let suffix = lower.strip_prefix(PROJECT_PREFIX).unwrap_or(lower.as_str());
-    if suffix.is_empty() || !is_github_part(suffix) {
+    // Гравець увів «MyTeam»: показуємо так, як увів, а репозиторій шукаємо в нижньому регістрі.
+    let typed = strip_prefix_any_case(code.trim());
+    let suffix = typed.to_lowercase();
+    if suffix.is_empty() || !is_github_part(&suffix) {
         return Vec::new();
     }
     let repo = format!("{PROJECT_PREFIX}{suffix}");
     TRUSTED_OWNERS
         .iter()
-        .map(|owner| trusted_binding(code, owner, &repo, "main"))
+        .map(|owner| trusted_binding(code, typed.to_string(), owner, &repo, "main"))
         .collect()
+}
+
+fn name_key(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+/// Назва проєкту з `projects.json` у корені його репозиторію, наприклад
+/// `{"projects": {"MyTeam": {...}}}` або `{"name": "MyTeam"}`.
+async fn declared_name(client: &Client, owner: &str, repo: &str, branch: &str) -> Option<String> {
+    let url = raw_url(owner, repo, branch, "projects.json");
+    let value: serde_json::Value = get_json(client, &url).await.ok()?;
+    let clean = |text: &str| -> Option<String> {
+        let text = text.trim();
+        (!text.is_empty() && text.chars().count() <= 48).then(|| text.to_string())
+    };
+    if let Some(name) = value.get("name").and_then(|v| v.as_str()).and_then(clean) {
+        return Some(name);
+    }
+    let projects = value.get("projects")?.as_object()?;
+    let wanted = name_key(strip_prefix_any_case(repo));
+    let named = |key: &String, entry: &serde_json::Value| -> Option<String> {
+        entry
+            .get("name")
+            .and_then(|v| v.as_str())
+            .and_then(clean)
+            .or_else(|| clean(key))
+    };
+    if let Some((key, entry)) = projects.iter().find(|(key, _)| name_key(key) == wanted) {
+        return named(key, entry);
+    }
+    if projects.len() == 1 {
+        let (key, entry) = projects.iter().next()?;
+        return named(key, entry);
+    }
+    None
+}
+
+/// Іконка проєкту — `icon.png` у корені репозиторію (поруч з instances.json).
+pub fn project_icon_url(index_url: &str) -> String {
+    match github_source(index_url) {
+        Some((owner, repo, branch)) => raw_url(&owner, &repo, &branch, "icon.png"),
+        None if index_url.starts_with("https://") => format!("{}icon.png", base_of(index_url)),
+        None => String::new(),
+    }
+}
+
+/// Папка збірки в репозиторії (там, де її manifest.json) — для icon.png і background.png.
+pub fn instance_asset_base(entry: &InstanceEntry) -> String {
+    if entry.manifest.starts_with("https://") {
+        base_of(&entry.manifest).to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// Назва проєкту для інтерфейсу: з індексу, інакше збережена; стару «Myteam» виправляємо.
+pub fn display_name(binding: &ProjectBinding, index: &ProjectIndex) -> String {
+    let name = if index.name.trim().is_empty() {
+        binding.name.trim().to_string()
+    } else {
+        index.name.trim().to_string()
+    };
+    if let Some((_, repo, _)) = github_source(&binding.index_url) {
+        if name.is_empty() || name == legacy_title(&repo) {
+            let typed = strip_prefix_any_case(binding.code.trim());
+            // Код, який увів гравець, точніший за назву репозиторію в нижньому регістрі.
+            if !typed.contains('/') && typed.eq_ignore_ascii_case(strip_prefix_any_case(&repo)) {
+                return typed.to_string();
+            }
+            return project_title(&repo);
+        }
+    }
+    if name.is_empty() {
+        binding.code.clone()
+    } else {
+        name
+    }
 }
 
 async fn registry_binding(client: &Client, code: &str) -> Result<Option<ProjectBinding>> {
@@ -322,8 +416,12 @@ async fn registry_binding(client: &Client, code: &str) -> Result<Option<ProjectB
 }
 
 fn complete(mut binding: ProjectBinding, index: &ProjectIndex) -> ProjectBinding {
-    if binding.name.trim().is_empty() {
-        binding.name = index.name.clone();
+    // Та сама назва, але з правильним регістром від адміністратора («myteam» → «MyTeam»).
+    let declared = index.name.trim();
+    if binding.name.trim().is_empty()
+        || (!declared.is_empty() && name_key(&binding.name) == name_key(declared))
+    {
+        binding.name = declared.to_string();
     }
     if binding.name.trim().is_empty() {
         binding.name = binding.code.clone();
@@ -363,6 +461,8 @@ pub struct ProjectCard {
     pub title: String,
     pub description: String,
     pub owner: String,
+    #[serde(default)]
+    pub icon: String,
 }
 
 #[derive(Deserialize)]
@@ -424,20 +524,25 @@ fn api_status_error(status: StatusCode) -> FetchError {
     FetchError::Other(format!("GitHub: {status}"))
 }
 
-fn card_of(repo: GithubRepo) -> ProjectCard {
+async fn card_of(client: &Client, repo: GithubRepo) -> ProjectCard {
     let branch = repo
         .default_branch
         .as_deref()
         .filter(|branch| is_github_part(branch))
-        .unwrap_or("main");
+        .unwrap_or("main")
+        .to_string();
     let code = if branch == "main" {
         format!("{}/{}", repo.owner.login, repo.name)
     } else {
         format!("{}/{}@{}", repo.owner.login, repo.name, branch)
     };
+    let title = declared_name(client, &repo.owner.login, &repo.name, &branch)
+        .await
+        .unwrap_or_else(|| project_title(&repo.name));
     ProjectCard {
         code,
-        title: project_title(&repo.name),
+        icon: raw_url(&repo.owner.login, &repo.name, &branch, "icon.png"),
+        title,
         description: repo
             .description
             .as_deref()
@@ -464,18 +569,15 @@ async fn fetch_owner_cards(
         return Err(api_status_error(status));
     }
     let repos: Vec<GithubRepo> = response.json().await.map_err(classify)?;
-    Ok(repos
-        .into_iter()
-        .filter(|repo| {
-            is_project_repo(&repo.name)
-                && is_trusted_owner(&repo.owner.login)
-                && !repo.fork
-                && !repo.archived
-                && !repo.private
-                && !repo.disabled
-        })
-        .map(card_of)
-        .collect())
+    let wanted = repos.into_iter().filter(|repo| {
+        is_project_repo(&repo.name)
+            && is_trusted_owner(&repo.owner.login)
+            && !repo.fork
+            && !repo.archived
+            && !repo.private
+            && !repo.disabled
+    });
+    Ok(join_all(wanted.map(|repo| card_of(client, repo))).await)
 }
 
 fn list_cache_path(paths: &Paths) -> std::path::PathBuf {
@@ -702,10 +804,15 @@ async fn fetch_without_index(
     url: &str,
 ) -> std::result::Result<ProjectIndex, FetchError> {
     if let Some((owner, repo, branch)) = github_source(url) {
-        let instances = discover_instances(client, &owner, &repo, &branch).await?;
+        let (instances, declared) = futures_util::future::join(
+            discover_instances(client, &owner, &repo, &branch),
+            declared_name(client, &owner, &repo, &branch),
+        )
+        .await;
+        let instances = instances?;
         if !instances.is_empty() {
             let index = ProjectIndex {
-                name: binding.name.clone(),
+                name: declared.unwrap_or_else(|| binding.name.clone()),
                 description: String::new(),
                 instances,
             };
@@ -793,4 +900,75 @@ pub fn remote_manifest_cache(
 
 pub fn find<'a>(index: &'a ProjectIndex, id: &str) -> Option<&'a InstanceEntry> {
     index.instances.iter().find(|entry| entry.id == id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn binding(code: &str, name: &str) -> ProjectBinding {
+        ProjectBinding {
+            code: code.to_string(),
+            name: name.to_string(),
+            index_url: raw_url("hodiw1", "terrapolis-myteam", "main", INDEX_FILE),
+        }
+    }
+
+    fn index(name: &str) -> ProjectIndex {
+        ProjectIndex {
+            name: name.to_string(),
+            ..ProjectIndex::default()
+        }
+    }
+
+    #[test]
+    fn title_keeps_case() {
+        assert_eq!(project_title("terrapolis-myteam"), "myteam");
+        assert_eq!(project_title("terrapolis-MyTeam"), "MyTeam");
+        assert_eq!(project_title("Terrapolis-my_server"), "my server");
+    }
+
+    #[test]
+    fn typed_code_keeps_case_but_url_is_lowercase() {
+        let found = trusted_bindings("MyTeam");
+        assert_eq!(found[0].name, "MyTeam");
+        assert!(found[0].index_url.contains("/terrapolis-myteam/"));
+        let prefixed = trusted_bindings("Terrapolis-MyTeam");
+        assert_eq!(prefixed[0].name, "MyTeam");
+        assert!(prefixed[0].index_url.contains("/terrapolis-myteam/"));
+    }
+
+    #[test]
+    fn display_name_fixes_legacy_capitalisation() {
+        // Збережено «Myteam» (стара логіка), адмін назву не вказав.
+        assert_eq!(display_name(&binding("hodiw1/terrapolis-myteam", "Myteam"), &index("Myteam")), "myteam");
+        assert_eq!(display_name(&binding("MyTeam", "Myteam"), &index("Myteam")), "MyTeam");
+        // Адмін вказав назву в projects.json — вона головна.
+        assert_eq!(display_name(&binding("hodiw1/terrapolis-myteam", "Myteam"), &index("MyTeam")), "MyTeam");
+        assert_eq!(display_name(&binding("x", "Мій сервер"), &index("")), "Мій сервер");
+    }
+
+    #[test]
+    fn complete_prefers_declared_case() {
+        let done = complete(binding("hodiw1/terrapolis-myteam", "myteam"), &index("MyTeam"));
+        assert_eq!(done.name, "MyTeam");
+        let custom = complete(binding("CODE", "Partner Server"), &index("Something else"));
+        assert_eq!(custom.name, "Partner Server");
+    }
+
+    #[test]
+    fn asset_urls() {
+        assert_eq!(
+            project_icon_url(&raw_url("hodiw1", "terrapolis-myteam", "main", INDEX_FILE)),
+            "https://raw.githubusercontent.com/hodiw1/terrapolis-myteam/main/icon.png"
+        );
+        let entry = InstanceEntry {
+            manifest: raw_url("hodiw1", "terrapolis-myteam", "main", "instances/fazcraft/manifest.json"),
+            ..InstanceEntry::default()
+        };
+        assert_eq!(
+            instance_asset_base(&entry),
+            "https://raw.githubusercontent.com/hodiw1/terrapolis-myteam/main/instances/fazcraft/"
+        );
+    }
 }

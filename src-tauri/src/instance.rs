@@ -40,7 +40,24 @@ pub struct InstanceState {
     pub files: HashMap<String, String>,
     #[serde(default)]
     pub preset_applied: bool,
+    /// Збірку видалено, але світи/скріншоти гравця залишено на диску.
+    #[serde(default)]
+    pub kept_personal: bool,
 }
+
+/// Особисте гравця, яке можна залишити під час видалення збірки.
+pub const PERSONAL: [&str; 10] = [
+    "saves",
+    "screenshots",
+    "options.txt",
+    "optionsof.txt",
+    "optionsshaders.txt",
+    "xaero",
+    "XaeroWaypoints",
+    "XaeroWorldMap",
+    "journeymap",
+    "schematics",
+];
 
 pub fn state_file(paths: &Paths, id: &str) -> PathBuf {
     paths.instance_meta(id).join("state.json")
@@ -113,6 +130,96 @@ pub struct DiskInstance {
     pub pack_version: String,
     pub installed: bool,
     pub size_bytes: u64,
+    pub kept_personal: bool,
+}
+
+/// Скільки місця займає збірка і скільки з цього — особисте гравця.
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct DiskUsage {
+    pub total_bytes: u64,
+    pub saves_bytes: u64,
+    pub saves_count: usize,
+    pub screenshots_bytes: u64,
+    pub screenshots_count: usize,
+    pub personal_bytes: u64,
+}
+
+fn count_children(path: &Path, dirs: bool) -> usize {
+    std::fs::read_dir(path)
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter(|entry| {
+                    entry
+                        .file_type()
+                        .map(|kind| if dirs { kind.is_dir() } else { kind.is_file() })
+                        .unwrap_or(false)
+                })
+                .count()
+        })
+        .unwrap_or(0)
+}
+
+fn is_personal(name: &str) -> bool {
+    PERSONAL.iter().any(|item| item.eq_ignore_ascii_case(name))
+}
+
+pub async fn disk_usage(paths: &Paths, id: &str) -> DiskUsage {
+    let dir = paths.instance_dir(id);
+    tokio::task::spawn_blocking(move || {
+        let mut usage = DiskUsage {
+            total_bytes: dir_size(&dir),
+            saves_bytes: dir_size(&dir.join("saves")),
+            saves_count: count_children(&dir.join("saves"), true),
+            screenshots_bytes: dir_size(&dir.join("screenshots")),
+            screenshots_count: count_children(&dir.join("screenshots"), false),
+            personal_bytes: 0,
+        };
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                if is_personal(&entry.file_name().to_string_lossy()) {
+                    let path = entry.path();
+                    usage.personal_bytes += if path.is_dir() {
+                        dir_size(&path)
+                    } else {
+                        entry.metadata().map(|m| m.len()).unwrap_or(0)
+                    };
+                }
+            }
+        }
+        usage
+    })
+    .await
+    .unwrap_or_default()
+}
+
+/// Видаляє все, крім світів, скріншотів і налаштувань гравця.
+/// Наступне «Встановити» докачає збірку, а світи залишаться на місці.
+pub async fn delete_keeping_personal(paths: &Paths, id: &str) -> Result<()> {
+    let dir = paths.instance_dir(id);
+    if !dir.exists() {
+        return Ok(());
+    }
+    let previous = load_state(paths, id).await;
+    let mut entries = tokio::fs::read_dir(&dir).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        if is_personal(&entry.file_name().to_string_lossy()) {
+            continue;
+        }
+        let path = entry.path();
+        if entry.file_type().await?.is_dir() {
+            tokio::fs::remove_dir_all(&path).await?;
+        } else {
+            tokio::fs::remove_file(&path).await?;
+        }
+    }
+    let state = InstanceState {
+        name: previous.name,
+        project: previous.project,
+        kept_personal: true,
+        ..InstanceState::default()
+    };
+    save_state(paths, id, &state).await
 }
 
 pub async fn list_on_disk(paths: &Paths) -> Vec<DiskInstance> {
@@ -147,6 +254,7 @@ pub async fn list_on_disk(paths: &Paths) -> Vec<DiskInstance> {
             pack_version: state.pack_version,
             installed: state.installed,
             size_bytes,
+            kept_personal: state.kept_personal && !state.installed,
         });
     }
     out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));

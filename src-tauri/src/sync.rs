@@ -8,7 +8,7 @@ use serde::Serialize;
 use tauri::AppHandle;
 
 use crate::error::{AppError, Result};
-use crate::events::{phase, status, Progress};
+use crate::events::{phase, status, step, Progress};
 use crate::i18n::tr;
 use crate::instance::{self, PROTECTED};
 use crate::manifest::{is_config_like, safe_relative, Manifest, ManifestFile};
@@ -150,9 +150,14 @@ pub async fn sync_instance(
         .map(|e| e.dest.to_string_lossy().to_lowercase())
         .collect();
 
+    step(app, "files");
     status(
         app,
-        tr("Перевірка файлів збірки…", "Checking modpack files…"),
+        &t!(
+            "Перевірка файлів збірки: {}…",
+            "Checking modpack files: {}…",
+            entries.len()
+        ),
     );
     phase(app, "checking");
     let verify = Arc::new(Progress::new(app, "verify", entries.len() as u64));
@@ -191,6 +196,23 @@ pub async fn sync_instance(
     }
 
     let mut first_error: Option<AppError> = None;
+    if todo.is_empty() {
+        status(
+            app,
+            tr("Усі файли збірки актуальні", "All modpack files are up to date"),
+        );
+    } else {
+        let bytes: u64 = todo.iter().map(|e| e.file.size).sum();
+        status(
+            app,
+            &t!(
+                "Потрібно завантажити файлів: {} ({} МБ)",
+                "{} files to download ({} MB)",
+                todo.len(),
+                (bytes + 1024 * 1024 - 1) / (1024 * 1024)
+            ),
+        );
+    }
     if !todo.is_empty() {
         phase(app, "downloading");
         let total: u64 = todo.iter().map(|e| e.file.size).sum();
@@ -256,6 +278,7 @@ pub async fn sync_instance(
             );
         }
         state.installed = true;
+        state.kept_personal = false;
         state.pack_version = manifest.version.clone();
     }
     instance::save_state(paths, id, &state).await?;

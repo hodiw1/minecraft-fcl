@@ -144,6 +144,7 @@ async fn prepare_forge_like(
     if let Ok(saved) = tokio::fs::read_to_string(&marker).await {
         let id = saved.trim().to_string();
         if !id.is_empty() && paths.version_json(&id).is_file() {
+            status(app, &t!("{} вже встановлено", "{} is already installed", id));
             return Ok(id);
         }
     }

@@ -57,6 +57,7 @@ fn main() {
             commands::open_instance_folder,
             commands::list_installed,
             commands::delete_instance,
+            commands::instance_disk_usage,
             commands::delete_all_instances,
             commands::crash_report
         ])
