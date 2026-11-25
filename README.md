@@ -5,14 +5,14 @@
 **Кастомний ігровий лаунчер та платформа керування збірками для проєктів команди HDT**
 
 <p>
-  <img src="https://img.shields.io/badge/Status-Beta_0.2.3-f59e0b?style=for-the-badge&logo=github&logoColor=white" alt="Status Beta" />
+  <img src="https://img.shields.io/badge/Status-Beta_0.2.5-f59e0b?style=for-the-badge&logo=github&logoColor=white" alt="Status Beta" />
   <img src="https://img.shields.io/badge/Core-Rust-dea584?style=for-the-badge&logo=rust&logoColor=black" alt="Rust" />
   <img src="https://img.shields.io/badge/Engine-Tauri_v2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri v2" />
   <img src="https://img.shields.io/badge/UI-WebView2-0078D7?style=for-the-badge&logo=microsoftedge&logoColor=white" alt="WebView2" />
   <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows" />
 </p>
 
-> ⚠️ **Увага:** Це тестова бета-версія лаунчера (`v0.2.3-beta`). Функціонал активно тестується та доповнюється перед релізом `1.0.0`.
+> ⚠️ **Увага:** Це тестова бета-версія лаунчера (`v0.2.5-beta`). Функціонал активно тестується та доповнюється перед релізом `1.0.0`.
 
 </div>
 

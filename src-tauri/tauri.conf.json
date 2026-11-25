@@ -10,7 +10,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Minecraft Launcher",
+        "title": "Terrapolis",
         "width": 1100,
         "height": 690,
         "resizable": true,
