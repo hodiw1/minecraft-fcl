@@ -9,15 +9,16 @@ use tauri::AppHandle;
 
 use crate::error::{fail, AppError, Context, Result};
 use crate::events::{status, Progress};
+use crate::i18n::tr;
 use crate::paths::Paths;
+use crate::t;
 use crate::util::{
     download_file, extract_zip, fetch_json, join_rel, noop, verify_file_async, Checksum,
 };
-use crate::version::{
-    maven_path, rules_allow, Artifact, AssetIndexFile, Library, VersionJson,
-};
+use crate::version::{maven_path, rules_allow, Artifact, AssetIndexFile, Library, VersionJson};
 
-const VERSION_MANIFEST_URL: &str = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
+const VERSION_MANIFEST_URL: &str =
+    "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
 #[derive(Deserialize)]
 struct VersionList {
@@ -64,7 +65,14 @@ pub async fn load_vanilla(
     if let Ok(version) = read_version(paths, mc).await {
         return Ok(version);
     }
-    status(app, &format!("Завантаження метаданих Minecraft {mc}…"));
+    status(
+        app,
+        &t!(
+            "Завантаження метаданих Minecraft {}…",
+            "Downloading Minecraft {} metadata…",
+            mc
+        ),
+    );
     let list: VersionList = fetch_json(client, VERSION_MANIFEST_URL).await?;
     let entry = list
         .versions
@@ -86,16 +94,28 @@ pub async fn ensure_client_jar(
     paths: &Paths,
     version: &VersionJson,
     mc: &str,
+    deep: bool,
 ) -> Result<PathBuf> {
     let jar = paths.version_jar(mc);
     let download = version.downloads.as_ref().and_then(|d| d.client.as_ref());
     match download {
         Some(download) => {
-            let present = std::fs::metadata(&jar)
-                .map(|m| m.is_file() && (download.size == 0 || m.len() == download.size))
-                .unwrap_or(false);
+            let present = if deep {
+                verify_file_async(jar.clone(), Checksum::Sha1(download.sha1.clone())).await
+            } else {
+                std::fs::metadata(&jar)
+                    .map(|m| m.is_file() && (download.size == 0 || m.len() == download.size))
+                    .unwrap_or(false)
+            };
             if !present {
-                status(app, &format!("Завантаження клієнта Minecraft {mc}…"));
+                status(
+                    app,
+                    &t!(
+                        "Завантаження клієнта Minecraft {}…",
+                        "Downloading Minecraft {} client…",
+                        mc
+                    ),
+                );
                 let progress = Arc::new(Progress::new(app, "client", download.size));
                 progress.set_file(&format!("{mc}.jar"));
                 let reporter = progress.clone();
@@ -234,16 +254,35 @@ pub async fn install_libraries(
     paths: &Paths,
     version: &VersionJson,
     natives_dir: &Path,
+    deep: bool,
 ) -> Result<Vec<PathBuf>> {
     let resolved = resolve_libraries(paths, &version.libraries);
-    let missing: Vec<ResolvedLib> = resolved
-        .iter()
-        .filter(|library| !is_present(library))
-        .cloned()
-        .collect();
+    let mut missing: Vec<ResolvedLib> = Vec::new();
+    for library in &resolved {
+        let ok = if deep {
+            match &library.sha1 {
+                Some(hash) => {
+                    verify_file_async(library.path.clone(), Checksum::Sha1(hash.clone())).await
+                }
+                None => is_present(library),
+            }
+        } else {
+            is_present(library)
+        };
+        if !ok {
+            missing.push(library.clone());
+        }
+    }
 
     if !missing.is_empty() {
-        status(app, &format!("Завантаження бібліотек: {}…", missing.len()));
+        status(
+            app,
+            &t!(
+                "Завантаження бібліотек: {}…",
+                "Downloading libraries: {}…",
+                missing.len()
+            ),
+        );
         let progress = Arc::new(Progress::new(app, "libraries", missing.len() as u64));
         let results: Vec<Result<()>> = stream::iter(missing)
             .map(|library| {
@@ -281,7 +320,7 @@ pub async fn install_libraries(
     }
 
     let marker = natives_dir.join(".extracted");
-    if !marker.is_file() {
+    if deep || !marker.is_file() {
         tokio::fs::create_dir_all(natives_dir).await?;
         let natives: Vec<ResolvedLib> = resolved.iter().filter(|l| l.native).cloned().collect();
         let target = natives_dir.to_path_buf();
@@ -312,6 +351,8 @@ pub async fn install_assets(
     client: &Client,
     paths: &Paths,
     version: &VersionJson,
+    game_dir: &Path,
+    deep: bool,
 ) -> Result<AssetsInfo> {
     let index_ref = version
         .asset_index
@@ -323,7 +364,10 @@ pub async fn install_assets(
         .join(format!("{}.json", index_ref.id));
     let index_checksum = Checksum::Sha1(index_ref.sha1.clone());
     if !verify_file_async(index_path.clone(), index_checksum.clone()).await {
-        status(app, "Завантаження індексу ресурсів…");
+        status(
+            app,
+            tr("Завантаження індексу ресурсів…", "Downloading asset index…"),
+        );
         download_file(client, &index_ref.url, &index_path, &index_checksum, &noop).await?;
     }
 
@@ -331,26 +375,45 @@ pub async fn install_assets(
     let index: AssetIndexFile = serde_json::from_str(&text).ctx("пошкоджений індекс ресурсів")?;
     let objects_dir = assets_dir.join("objects");
 
-    let mut missing: Vec<(String, PathBuf, String)> = Vec::new();
-    for object in index.objects.values() {
-        let Some(prefix) = object.hash.get(..2) else {
-            continue;
-        };
-        let path = objects_dir.join(prefix).join(&object.hash);
-        let present = std::fs::metadata(&path)
-            .map(|m| m.is_file() && (object.size == 0 || m.len() == object.size))
-            .unwrap_or(false);
-        if !present {
-            let url = format!(
-                "https://resources.download.minecraft.net/{prefix}/{}",
-                object.hash
-            );
-            missing.push((url, path, object.hash.clone()));
+    let objects: Vec<(String, u64)> = index
+        .objects
+        .values()
+        .map(|object| (object.hash.clone(), object.size))
+        .collect();
+    let scan_dir = objects_dir.clone();
+    let missing: Vec<(String, PathBuf, String)> = tokio::task::spawn_blocking(move || {
+        let mut missing = Vec::new();
+        for (hash, size) in objects {
+            let Some(prefix) = hash.get(..2) else {
+                continue;
+            };
+            let path = scan_dir.join(prefix).join(&hash);
+            let present = std::fs::metadata(&path)
+                .map(|m| m.is_file() && (size == 0 || m.len() == size))
+                .unwrap_or(false);
+            let present = if present && deep {
+                crate::util::verify_file(&path, &Checksum::Sha1(hash.clone()))
+            } else {
+                present
+            };
+            if !present {
+                let url = format!("https://resources.download.minecraft.net/{prefix}/{hash}");
+                missing.push((url, path, hash));
+            }
         }
-    }
+        missing
+    })
+    .await?;
 
     if !missing.is_empty() {
-        status(app, &format!("Завантаження ресурсів: {}…", missing.len()));
+        status(
+            app,
+            &t!(
+                "Завантаження ресурсів: {}…",
+                "Downloading game assets: {}…",
+                missing.len()
+            ),
+        );
         let progress = Arc::new(Progress::new(app, "assets", missing.len() as u64));
         let results: Vec<Result<()>> = stream::iter(missing)
             .map(|(url, path, hash)| {
@@ -374,7 +437,7 @@ pub async fn install_assets(
     let mut game_assets = assets_dir.clone();
     if index.is_virtual || index.map_to_resources {
         let target = if index.map_to_resources {
-            paths.mc.join("resources")
+            game_dir.join("resources")
         } else {
             assets_dir.join("virtual").join(&index_ref.id)
         };
