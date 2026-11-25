@@ -372,6 +372,11 @@ pub async fn load_changelog(app: AppHandle, state: State<'_, AppState>) -> Resul
 }
 
 #[tauri::command]
+pub fn open_github(repo: String, kind: String, tag: String) -> Result<()> {
+    system::open_github(&repo, &kind, &tag)
+}
+
+#[tauri::command]
 pub async fn load_project(app: AppHandle, state: State<'_, AppState>) -> Result<ProjectView> {
     let (config, paths) = load_ctx(&app).await?;
     let binding = require_project(&config)?;

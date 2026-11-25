@@ -78,6 +78,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
         <span data-i18n="nav.project">Проєкт</span>
       </button>
+      <button class="nav-item" type="button" data-tab="changelog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>
+        <span data-i18n="nav.changelog">Changelog</span>
+      </button>
       <span class="nav-spacer"></span>
       <button class="nav-item" type="button" data-tab="settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
@@ -202,7 +206,6 @@
               <p class="muted" id="projState"></p>
             </div>
             <div class="project-actions">
-              <button class="btn btn-ghost" id="projChangelog" type="button" data-i18n="project.changelog">Changelog</button>
               <button class="btn btn-ghost" id="projRefresh" type="button" data-i18n="project.refresh">Оновити список</button>
             </div>
           </div>
@@ -228,6 +231,14 @@
             <button class="btn btn-danger" id="leaveBtn" type="button" data-i18n="project.leave">Вийти з проєкту</button>
           </div>
         </div>
+      </section>
+
+      <!-- CHANGELOG -->
+      <section class="view view-changelog" data-view="changelog">
+        <div class="view-head">
+          <h2 data-i18n="cl.title">Changelog</h2>
+        </div>
+        <div class="cl-wrap" id="clWrap"></div>
       </section>
 
       <!-- НАЛАШТУВАННЯ -->

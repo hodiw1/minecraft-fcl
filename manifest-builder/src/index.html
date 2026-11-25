@@ -710,7 +710,8 @@ dialog h2 {
   <header class="top">
     <div class="brand">
       <h1>Адмін-панель збірки</h1>
-      <span class="badge">hodiw1/minecraft-fcl · main</span>
+      <span class="badge" id="repoBadge">…</span>
+      <span class="badge badge-accent hidden" id="instanceBadge"></span>
     </div>
     <div class="actions">
       <button class="chip" id="authChip">Увійти через GitHub</button>
@@ -844,7 +845,8 @@ const state = {
   configList: [],
   configFile: null,
   configDirty: false,
-  servers: []
+  servers: [],
+  packPrefix: "pack/"
 };
 
 const ui = {};
@@ -1070,7 +1072,7 @@ async function openConfig(path) {
     $("configText").value = result.content;
     $("configText").disabled = false;
     $("configSave").disabled = true;
-    $("configPath").textContent = "pack/config/" + path;
+    $("configPath").textContent = state.packPrefix + "config/" + path;
     renderConfigList();
   } catch (error) {
     setStatus("error", error.message);
@@ -1274,6 +1276,20 @@ function renderAuth() {
   chip.textContent = state.login ? "@" + state.login + " · Вийти" : "Увійти через GitHub";
 }
 
+async function loadInfo() {
+  try {
+    const info = await api("GET", "/api/info");
+    $("repoBadge").textContent = info.owner + "/" + info.repo + " · " + info.branch;
+    if (info.instance) {
+      state.packPrefix = "instances/" + info.instance + "/pack/";
+      $("instanceBadge").textContent = info.instance;
+      $("instanceBadge").classList.remove("hidden");
+    }
+  } catch (error) {
+    log("Не вдалося отримати дані репозиторію: " + error.message);
+  }
+}
+
 async function loadAuth() {
   try {
     const result = await api("GET", "/api/auth");
@@ -1351,6 +1367,7 @@ async function init() {
   bind();
   showTab("mods");
   loadAuth();
+  loadInfo();
   setBusy(true);
   const result = await syncGit();
   const loaded = await refreshAll();

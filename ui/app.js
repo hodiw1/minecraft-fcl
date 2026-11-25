@@ -33,6 +33,10 @@ const DICT = {
     "nav.home": "Збірки",
     "nav.profiles": "Профілі",
     "nav.project": "Проєкт",
+    "nav.changelog": "Changelog",
+    "cl.read": "Читати повністю",
+    "cl.github": "Читати на GitHub",
+    "cl.noBody": "Опису немає.",
     "nav.settings": "Налаштування",
     "top.changeProfile": "Змінити профіль",
     "home.repair": "Ремонт",
@@ -119,7 +123,6 @@ const DICT = {
     "project.sub": "Проєкт — це сервер чи спільнота, до якої прив'язаний лаунчер. Від нього залежить список збірок.",
     "project.code": "Код:",
     "project.refresh": "Оновити список",
-    "project.changelog": "Changelog",
     "cl.title": "Що нового",
     "cl.launcher": "Лаунчер",
     "cl.project": "Проєкт",
@@ -235,6 +238,10 @@ const DICT = {
     "nav.home": "Modpacks",
     "nav.profiles": "Profiles",
     "nav.project": "Project",
+    "nav.changelog": "Changelog",
+    "cl.read": "Read in full",
+    "cl.github": "Read on GitHub",
+    "cl.noBody": "No description.",
     "nav.settings": "Settings",
     "top.changeProfile": "Change profile",
     "home.repair": "Repair",
@@ -321,7 +328,6 @@ const DICT = {
     "project.sub": "A project is the server or community the launcher is linked to. It decides which modpacks you see.",
     "project.code": "Code:",
     "project.refresh": "Refresh list",
-    "project.changelog": "Changelog",
     "cl.title": "What's new",
     "cl.launcher": "Launcher",
     "cl.project": "Project",
@@ -518,7 +524,7 @@ const el = {
   projCount: $("projCount"),
   projState: $("projState"),
   projRefresh: $("projRefresh"),
-  projChangelog: $("projChangelog"),
+  clWrap: $("clWrap"),
   switchForm: $("switchForm"),
   switchCode: $("switchCode"),
   switchSubmit: $("switchSubmit"),
@@ -929,6 +935,7 @@ function switchTab(name, smooth = true) {
   if (name === "settings") refreshSettings();
   if (name === "profiles") renderProfiles();
   if (name === "project") renderProject();
+  if (name === "changelog") loadChangelog();
   if (name === "home") scheduleServerPing(true);
 }
 
@@ -1486,40 +1493,89 @@ function changelogDate(iso) {
   return date.toLocaleDateString(lang === "en" ? "en-GB" : "uk-UA", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function changelogItem(item) {
-  const release = item.kind === "release";
-  const meta = [changelogDate(item.date), item.author].filter(Boolean).map(esc).join(" · ");
-  const body = item.body ? `<div class="cl-body">${esc(item.body)}</div>` : "";
-  return `<article class="cl-item${release ? " release" : ""}"><div class="cl-top"><span class="cl-tag">${esc(release ? t("cl.release") : t("cl.commit"))} · ${esc(item.tag)}</span><span class="cl-date">${meta}</span></div><div class="cl-title">${esc(item.title)}</div>${body}</article>`;
+const CL_ICONS = {
+  github: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg>',
+  expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>'
+};
+
+function changelogButton(action, label) {
+  return `<button class="cl-btn" type="button" data-cl="${action}" title="${esc(label)}" aria-label="${esc(label)}">${CL_ICONS[action]}</button>`;
 }
 
-function changelogColumn(title, column) {
+function changelogTag(item) {
+  return `${item.kind === "release" ? t("cl.release") : t("cl.commit")} · ${item.tag}`;
+}
+
+function changelogMeta(item) {
+  return [changelogDate(item.date), item.author].filter(Boolean).join(" · ");
+}
+
+function changelogItem(item, column, index) {
+  const release = item.kind === "release";
+  const body = item.body ? `<div class="cl-body">${esc(item.body)}</div>` : "";
+  return `<article class="cl-item${release ? " release" : ""}" data-index="${index}"><div class="cl-top"><span class="cl-tag">${esc(changelogTag(item))}</span><span class="cl-date">${esc(changelogMeta(item))}</span></div><div class="cl-title">${esc(item.title)}</div>${body}<div class="cl-actions">${changelogButton("expand", t("cl.read"))}${changelogButton("github", t("cl.github"))}</div></article>`;
+}
+
+function changelogColumn(key, label, column) {
   let body;
   if (column.error) body = `<div class="cl-state">${esc(column.error)}</div>`;
   else if (!column.repo) body = `<div class="cl-state">${esc(t("cl.noRepo"))}</div>`;
   else if (!column.items.length) body = `<div class="cl-state">${esc(t("cl.empty"))}</div>`;
-  else body = column.items.map(changelogItem).join("");
-  return `<section class="cl-col"><header><h4>${esc(title)}</h4><span class="mono">${esc(column.repo)}</span></header><div class="cl-list">${body}</div></section>`;
+  else body = column.items.map((item, index) => changelogItem(item, key, index)).join("");
+  const link = column.repo ? changelogButton("github", t("cl.github")) : "";
+  return `<section class="cl-col glass" data-column="${key}"><header><div class="cl-head"><small>${esc(label)}</small><h4 class="mono selectable" title="${esc(column.repo)}">${esc(column.repo || "—")}</h4></div>${link}</header><div class="cl-list">${body}</div></section>`;
 }
 
-async function openChangelog() {
+function paintChangelog() {
+  const data = S.changelog;
+  if (!data) return;
+  el.clWrap.innerHTML = `<div class="cl-grid">${changelogColumn("launcher", t("cl.launcher"), data.launcher)}${changelogColumn("project", t("cl.project"), data.project)}</div>`;
+}
+
+async function loadChangelog() {
   const token = ++changelogToken;
-  let alive = true;
-  openModal({
-    title: t("cl.title"),
-    html: `<p>${esc(t("cl.loading"))}</p>`,
-    wide: true,
-    buttons: [{ id: "close", label: t("common.close"), kind: "primary" }]
-  }).then(() => {
-    alive = false;
-  });
+  // Записи іншого проєкту не показуємо, поки вантажаться нові.
+  const key = S.binding?.index_url || "";
+  if (S.changelogKey !== key) S.changelog = null;
+  S.changelogKey = key;
+  if (S.changelog) paintChangelog();
+  else el.clWrap.innerHTML = `<div class="cl-state">${esc(t("cl.loading"))}</div>`;
   try {
     const data = await invoke("load_changelog");
-    if (!alive || token !== changelogToken) return;
-    el.modalText.innerHTML = `<div class="cl-grid">${changelogColumn(t("cl.launcher"), data.launcher)}${changelogColumn(t("cl.project"), data.project)}</div>`;
+    if (token !== changelogToken) return;
+    S.changelog = data;
+    paintChangelog();
   } catch (error) {
-    if (alive && token === changelogToken) el.modalText.innerHTML = `<p>${esc(errText(error))}</p>`;
+    if (token === changelogToken) el.clWrap.innerHTML = `<div class="cl-state">${esc(errText(error))}</div>`;
   }
+}
+
+function openOnGithub(repo, item) {
+  invoke("open_github", { repo, kind: item?.kind || "", tag: item?.tag || "" }).catch((e) => setIsland("error", errText(e)));
+}
+
+function openChangeItem(repo, item) {
+  const meta = [changelogTag(item), changelogMeta(item)].filter(Boolean).join(" · ");
+  openModal({
+    title: item.title,
+    html: `<p class="cl-meta">${esc(repo)}<br>${esc(meta)}</p><p class="cl-full selectable">${esc(item.body || t("cl.noBody"))}</p>`,
+    wide: true,
+    buttons: [
+      { id: "github", label: t("cl.github"), kind: "ghost", left: true, onClick: () => (openOnGithub(repo, item), false) },
+      { id: "close", label: t("common.close"), kind: "primary" }
+    ]
+  });
+}
+
+function onChangelogClick(event) {
+  const holder = event.target.closest("[data-column]");
+  if (!holder || !S.changelog) return;
+  const column = S.changelog[holder.dataset.column];
+  const itemEl = event.target.closest(".cl-item");
+  const item = itemEl ? column.items[Number(itemEl.dataset.index)] : null;
+  const action = event.target.closest("[data-cl]")?.dataset.cl;
+  if (action === "github") openOnGithub(column.repo, item);
+  else if (item) openChangeItem(column.repo, item);
 }
 
 async function onSwitchProject(event) {
@@ -1841,6 +1897,7 @@ function renderAll() {
   if (S.tab === "settings") refreshSettings();
   if (S.tab === "profiles") renderProfiles();
   if (S.tab === "project") renderProject();
+  if (S.tab === "changelog") paintChangelog();
   idleIsland();
   const active = el.nav.querySelector(".nav-item.on");
   requestAnimationFrame(() => moveNavIndicator(active, false));
@@ -2078,7 +2135,7 @@ function bindEvents() {
     el.switchError.hidden = true;
   });
   el.leaveBtn.addEventListener("click", onLeave);
-  el.projChangelog.addEventListener("click", openChangelog);
+  el.clWrap.addEventListener("click", onChangelogClick);
   el.projRefresh.addEventListener("click", async () => {
     setLoading(el.projRefresh, true);
     await loadProject();

@@ -15,6 +15,7 @@ use crate::project;
 const API_TIMEOUT: Duration = Duration::from_secs(15);
 const CACHE_SECS: u64 = 300;
 const MAX_ITEMS: usize = 30;
+const MAX_BODY: usize = 20_000;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ChangeItem {
@@ -124,7 +125,7 @@ fn release_item(release: ApiRelease) -> Option<ChangeItem> {
         kind: "release".to_string(),
         tag: release.tag_name.clone(),
         title: clip(&title, 140),
-        body: clip(release.body.as_deref().unwrap_or(""), 500),
+        body: clip(release.body.as_deref().unwrap_or(""), MAX_BODY),
         author: release.author.map(|user| user.login).unwrap_or_default(),
         date: release
             .published_at
@@ -147,7 +148,7 @@ fn commit_item(commit: ApiCommit) -> ChangeItem {
         kind: "commit".to_string(),
         tag: commit.sha.chars().take(7).collect(),
         title: clip(&first, 140),
-        body: clip(&rest, 300),
+        body: clip(&rest, MAX_BODY),
         author: commit.author.map(|user| user.login).unwrap_or(name),
         date,
     }
@@ -171,7 +172,7 @@ async fn fetch_items(client: &Client, owner: &str, repo: &str) -> Result<Vec<Cha
 
 fn cache_path(paths: &Paths, owner: &str, repo: &str) -> std::path::PathBuf {
     paths.projects_cache().join(format!(
-        "changelog-{}--{}.json",
+        "changelog-v2-{}--{}.json",
         owner.to_lowercase(),
         repo.to_lowercase()
     ))
