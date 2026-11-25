@@ -6,9 +6,9 @@ use crate::config::{
     self, new_id, validate_nickname, Config, Profile, ProjectBinding, GAME_LANGS, PRESETS, UI_LANGS,
 };
 use crate::error::{fail, AppError, Context, Result};
-use crate::events::{phase, status};
+use crate::events::{phase, status, step};
 use crate::i18n::{self, tr};
-use crate::instance::{self, DiskInstance};
+use crate::instance::{self, DiskInstance, DiskUsage};
 use crate::launch::{self, LastExit, LaunchRequest};
 use crate::manifest::{self, Manifest};
 use crate::paths::{Paths, DATA_CHILDREN};
@@ -151,6 +151,8 @@ pub struct InstanceView {
     pub description: String,
     pub server: String,
     pub image: String,
+    /// Папка збірки в репозиторії: звідси беруться icon.png і background.png.
+    pub asset_base: String,
     pub minecraft_version: String,
     pub loader: String,
     pub loader_version: String,
@@ -167,6 +169,8 @@ pub struct ProjectView {
     pub code: String,
     pub name: String,
     pub description: String,
+    /// icon.png у корені репозиторію проєкту.
+    pub icon: String,
     pub offline: bool,
     pub active_instance: String,
     pub instances: Vec<InstanceView>,
@@ -236,6 +240,7 @@ async fn build_view(
         description: entry.description.clone(),
         server: entry.server.clone(),
         image: entry.image.clone(),
+        asset_base: project::instance_asset_base(entry),
         minecraft_version: if entry.minecraft_version.is_empty() {
             mc
         } else {
@@ -401,15 +406,23 @@ pub async fn load_project(app: AppHandle, state: State<'_, AppState>) -> Result<
     for entry in &index.instances {
         instances.push(build_view(&paths, &binding, entry).await);
     }
-    let name = if index.name.trim().is_empty() {
-        binding.name.clone()
-    } else {
-        index.name.clone()
-    };
+    let name = project::display_name(&binding, &index);
+    if name != binding.name {
+        // Виправляємо збережену назву («Myteam» → «MyTeam»), щоб вона була правильна й до завантаження.
+        let fixed = name.clone();
+        let _ = update_config(&app, &state, move |config| {
+            if let Some(project) = config.project.as_mut() {
+                project.name = fixed;
+            }
+            Ok(())
+        })
+        .await;
+    }
     Ok(ProjectView {
         code: binding.code.clone(),
         name,
         description: index.description.clone(),
+        icon: project::project_icon_url(&binding.index_url),
         offline,
         active_instance: active,
         instances,
@@ -786,6 +799,11 @@ async fn fetch_manifest_for(
     binding: &ProjectBinding,
     instance_id: &str,
 ) -> Result<(InstanceEntry, Option<Manifest>)> {
+    step(app, "manifest");
+    status(
+        app,
+        tr("Отримання списку збірок проєкту…", "Loading the project's modpacks…"),
+    );
     let (index, _) = project::load_index(&state.client, paths, binding).await?;
     let entry = project::find(&index, instance_id).cloned().ctx(tr(
         "Збірку не знайдено в проєкті",
@@ -800,6 +818,15 @@ async fn fetch_manifest_for(
     );
     match manifest::fetch(&state.client, &entry.manifest).await {
         Ok(fresh) => {
+            status(
+                app,
+                &t!(
+                    "Маніфест отримано: версія {}, файлів {}",
+                    "Manifest received: version {}, {} files",
+                    if fresh.version.is_empty() { "—" } else { fresh.version.as_str() },
+                    fresh.files.len()
+                ),
+            );
             let _ = manifest::save_cache(
                 &project::remote_manifest_cache(paths, binding, &entry.id),
                 &fresh,
@@ -966,6 +993,7 @@ pub async fn delete_instance(
     app: AppHandle,
     state: State<'_, AppState>,
     instance_id: String,
+    keep_personal: Option<bool>,
 ) -> Result<()> {
     check_id(&instance_id)?;
     let _guard = state.busy.try_lock().map_err(|_| busy_error())?;
@@ -973,7 +1001,19 @@ pub async fn delete_instance(
         return Err(running_error());
     }
     let (_, paths) = load_ctx(&app).await?;
-    instance::delete(&paths, &instance_id).await
+    if keep_personal.unwrap_or(false) {
+        instance::delete_keeping_personal(&paths, &instance_id).await
+    } else {
+        instance::delete(&paths, &instance_id).await
+    }
+}
+
+/// Скільки місця звільнить видалення і скільки займають світи/скріншоти.
+#[tauri::command]
+pub async fn instance_disk_usage(app: AppHandle, instance_id: String) -> Result<DiskUsage> {
+    check_id(&instance_id)?;
+    let (_, paths) = load_ctx(&app).await?;
+    Ok(instance::disk_usage(&paths, &instance_id).await)
 }
 
 #[tauri::command]

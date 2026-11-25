@@ -8,7 +8,7 @@ pub const TRUSTED_OWNERS: [&str; 1] = [GITHUB_OWNER];
 pub const PROJECT_LIST_TTL_SECS: u64 = 120;
 
 /// Файл-реєстр кодів проєктів у репозиторії лаунчера:
-/// `{"projects": {"FNAF-2026": {"name": "...", "repo": "owner/repo", "branch": "main"}}}`
+/// `{"projects": {"MY-SERVER": {"name": "...", "repo": "owner/repo", "branch": "main"}}}`
 pub const REGISTRY_FILE: &str = "projects.json";
 /// Індекс збірок усередині репозиторію проєкту.
 pub const INDEX_FILE: &str = "instances.json";

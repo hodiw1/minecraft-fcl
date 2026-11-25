@@ -11,7 +11,7 @@ use tokio::process::Command;
 
 use crate::constants::LAUNCHER_NAME;
 use crate::error::{fail, Context, Result};
-use crate::events::{phase, status};
+use crate::events::{phase, status, step};
 use crate::i18n::tr;
 use crate::instance;
 use crate::java;
@@ -307,19 +307,41 @@ pub async fn prepare(
     paths.ensure_shared_dirs().await?;
     phase(app, "preparing");
 
+    step(app, "minecraft");
     status(
         app,
-        &t!("Підготовка Minecraft {}…", "Preparing Minecraft {}…", mc),
+        &t!("Перевірка Minecraft {}…", "Checking Minecraft {}…", mc),
     );
     let vanilla = minecraft::load_vanilla(app, client, paths, &mc).await?;
+    // Клієнт не залежить від Java, тож качаємо його в межах етапу «Minecraft».
+    let client_jar = minecraft::ensure_client_jar(app, client, paths, &vanilla, &mc, deep).await?;
 
     let java_major = manifest
         .java_major
         .or_else(|| vanilla.java_version.as_ref().map(|j| j.major_version))
         .unwrap_or(8);
+    step(app, "java");
+    status(
+        app,
+        &t!("Перевірка Java {}…", "Checking Java {}…", java_major),
+    );
     let java_path = java::ensure_java(app, client, paths, java_major).await?;
 
-    let client_jar = minecraft::ensure_client_jar(app, client, paths, &vanilla, &mc, deep).await?;
+    step(app, "loader");
+    let loader_name = manifest.loader.kind.trim();
+    status(
+        app,
+        &if loader_name.is_empty() || loader_name.eq_ignore_ascii_case("vanilla") {
+            tr("Завантажувач модів не потрібен (Vanilla)", "No mod loader needed (Vanilla)").to_string()
+        } else {
+            t!(
+                "Перевірка {} {}…",
+                "Checking {} {}…",
+                loader_name,
+                manifest.loader.version.trim()
+            )
+        },
+    );
     let loader_id = loaders::prepare_loader(app, client, paths, manifest, &java_path).await?;
 
     let version = if loader_id == mc {
@@ -330,8 +352,12 @@ pub async fn prepare(
     };
 
     let natives_dir = paths.version_dir(&version.id).join("natives");
+    step(app, "libraries");
+    status(app, tr("Перевірка бібліотек гри…", "Checking game libraries…"));
     let classpath =
         minecraft::install_libraries(app, client, paths, &version, &natives_dir, deep).await?;
+    step(app, "assets");
+    status(app, tr("Перевірка ресурсів гри…", "Checking game assets…"));
     let assets = minecraft::install_assets(app, client, paths, &version, game_dir, deep).await?;
 
     Ok(Prepared {
@@ -368,8 +394,18 @@ pub fn spawn(
         *running = Some(request.instance_id.to_string());
     }
 
+    step(app, "launch");
     phase(app, "launching");
-    status(app, tr("Запуск гри…", "Starting the game…"));
+    status(
+        app,
+        &t!(
+            "Запуск Minecraft {} · {} · ОЗП {} МБ…",
+            "Starting Minecraft {} · {} · {} MB RAM…",
+            prepared.mc,
+            request.nickname,
+            request.ram_mb
+        ),
+    );
     let started = SystemTime::now();
     let spawned = spawn_game(paths, &game_dir, &log_path, prepared, request);
     let mut child = match spawned {

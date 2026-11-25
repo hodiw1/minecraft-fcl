@@ -59,6 +59,10 @@ pub async fn ensure_java(
     let home = paths.runtime.join(format!("java-{major}"));
     let exe = home.join("bin").join(JAVA_BIN);
     if exe.is_file() {
+        status(
+            app,
+            &t!("Java {} вже встановлена", "Java {} is already installed", major),
+        );
         return Ok(exe);
     }
 

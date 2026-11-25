@@ -80,6 +80,12 @@ impl Progress {
     }
 }
 
+/// Етап встановлення/запуску для панелі прогресу:
+/// manifest → files → minecraft → java → loader → libraries → assets → launch.
+pub fn step(app: &AppHandle, name: &str) {
+    let _ = app.emit("play-step", name);
+}
+
 /// Фаза кнопки "Грати": checking → downloading → preparing → launching.
 pub fn phase(app: &AppHandle, name: &str) {
     let _ = app.emit("play-phase", name);
