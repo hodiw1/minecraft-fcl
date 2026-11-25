@@ -37,6 +37,7 @@ fn main() {
             commands::leave_project,
             commands::list_projects,
             commands::load_changelog,
+            commands::open_github,
             commands::load_project,
             commands::instance_details,
             commands::server_status,

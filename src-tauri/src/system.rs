@@ -19,6 +19,43 @@ pub fn open_folder(path: &Path) -> Result<()> {
     Ok(())
 }
 
+fn is_url_part(value: &str) -> bool {
+    !value.is_empty()
+        && !value.contains("..")
+        && value
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.' | '+'))
+}
+
+/// Відкриває у браузері репозиторій, реліз або коміт. URL складається тут із
+/// перевірених частин, тож інтерфейс не може відкрити довільну адресу.
+pub fn open_github(repo: &str, kind: &str, tag: &str) -> Result<()> {
+    let Some((owner, name)) = repo
+        .split_once('/')
+        .filter(|(owner, name)| is_url_part(owner) && is_url_part(name))
+    else {
+        return fail(tr("некоректний репозиторій", "invalid repository"));
+    };
+    let mut url = format!("https://github.com/{owner}/{name}");
+    match kind {
+        "release" if is_url_part(tag) => url.push_str(&format!("/releases/tag/{tag}")),
+        "release" => url.push_str("/releases"),
+        "commit" if is_url_part(tag) => url.push_str(&format!("/commit/{tag}")),
+        _ => {}
+    }
+    #[cfg(windows)]
+    let program = "explorer.exe";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let program = "xdg-open";
+    std::process::Command::new(program)
+        .arg(url)
+        .spawn()
+        .ctx(tr("не вдалося відкрити браузер", "failed to open the browser"))?;
+    Ok(())
+}
+
 /// Стандартний діалог вибору папки Windows без додаткових плагінів Tauri.
 pub async fn pick_folder(title: &str) -> Result<Option<String>> {
     #[cfg(windows)]

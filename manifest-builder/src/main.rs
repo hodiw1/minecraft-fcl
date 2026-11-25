@@ -17,20 +17,28 @@ use sha2::{Digest, Sha256};
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-const OWNER: &str = "hodiw1";
-const REPO: &str = "minecraft-fcl";
-const BRANCH: &str = "main";
 const ADDRESS: &str = "127.0.0.1:8080";
 const URL: &str = "http://127.0.0.1:8080";
-const RAW_BASE: &str = "https://raw.githubusercontent.com/hodiw1/minecraft-fcl/main/pack";
 const MANAGED_DIRS: [&str; 4] = ["mods", "config", "resourcepacks", "shaderpacks"];
 const CATEGORIES: [&str; 3] = ["mods", "shaderpacks", "resourcepacks"];
 const CONFIG_EXTENSIONS: [&str; 7] = ["toml", "json", "cfg", "properties", "yml", "yaml", "txt"];
 const GITHUB_FILE_LIMIT: u64 = 100 * 1024 * 1024;
 const CONFIG_SIZE_LIMIT: u64 = 5 * 1024 * 1024;
 
+#[derive(Clone)]
+struct RepoInfo {
+    owner: String,
+    repo: String,
+    branch: String,
+}
+
 struct AppState {
+    /// Корінь git-репозиторію: тут виконуються git-команди й лежить .admin-token.
     root: PathBuf,
+    /// Папка збірки з pack/ і manifest.json: instances/<name>/ або сам корінь.
+    base: PathBuf,
+    instance: Option<String>,
+    remote: RepoInfo,
     client: reqwest::Client,
     lock: tokio::sync::Mutex<()>,
 }
@@ -64,12 +72,19 @@ struct LoaderOut {
     version: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct FileOut {
     path: String,
     sha256: String,
+    #[serde(default)]
     size: u64,
     url: String,
+}
+
+#[derive(Deserialize)]
+struct PreviousManifest {
+    #[serde(default)]
+    files: Vec<FileOut>,
 }
 
 #[derive(Serialize)]
@@ -376,8 +391,8 @@ fn server_field(item: &Nbt, key: &str) -> String {
     String::new()
 }
 
-fn servers_path(root: &FsPath) -> PathBuf {
-    root.join("pack").join("servers.dat")
+fn servers_path(base: &FsPath) -> PathBuf {
+    base.join("pack").join("servers.dat")
 }
 
 async fn load_servers(path: &FsPath) -> Result<(String, Nbt), String> {
@@ -452,13 +467,75 @@ async fn read_token(root: &FsPath) -> Option<String> {
     }
 }
 
-async fn remote_op(root: &FsPath, op: &str) -> Result<String, String> {
+/// Лише stdout: попередження git у stderr не мають потрапити в URL чи шлях.
+async fn git_stdout(dir: &FsPath, args: &[&str]) -> Result<String, String> {
+    let mut command = Command::new("git");
+    command.args(args).current_dir(dir).stdin(Stdio::null());
+    hide(&mut command);
+    let output = command
+        .output()
+        .await
+        .map_err(|e| format!("не вдалося запустити git: {e}"))?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// `https://github.com/<owner>/<repo>[.git]` або `git@github.com:<owner>/<repo>[.git]`.
+fn parse_github_url(url: &str) -> Option<(String, String)> {
+    let url = url.trim();
+    let path = match url.strip_prefix("git@github.com:") {
+        Some(path) => path,
+        None => {
+            let (host, path) = url.strip_prefix("https://")?.split_once('/')?;
+            // У URL може бути user:token@ перед хостом.
+            if host.rsplit('@').next() != Some("github.com") {
+                return None;
+            }
+            path
+        }
+    };
+    let path = path.trim_end_matches('/');
+    let path = path.strip_suffix(".git").unwrap_or(path);
+    let (owner, repo) = path.split_once('/')?;
+    let valid = |part: &str| {
+        !part.is_empty()
+            && part
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+    };
+    (valid(owner) && valid(repo)).then(|| (owner.to_string(), repo.to_string()))
+}
+
+async fn detect_remote(root: &FsPath) -> Result<RepoInfo, String> {
+    let url = git_stdout(root, &["remote", "get-url", "origin"])
+        .await
+        .map_err(|e| format!("не вдалося отримати URL origin: {e}"))?;
+    // Сам URL не друкуємо: у ньому може бути токен.
+    let (owner, repo) = parse_github_url(&url).ok_or_else(|| {
+        "origin не схожий на репозиторій GitHub (https://github.com/<owner>/<repo> або git@github.com:<owner>/<repo>)"
+            .to_string()
+    })?;
+    let branch = git_stdout(root, &["branch", "--show-current"])
+        .await
+        .ok()
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| "main".to_string());
+    Ok(RepoInfo {
+        owner,
+        repo,
+        branch,
+    })
+}
+
+async fn remote_op(root: &FsPath, remote: &RepoInfo, op: &str) -> Result<String, String> {
     let mut args: Vec<&str> = vec![op];
     if op == "pull" {
         args.push("--ff-only");
     }
     args.push("origin");
-    args.push(BRANCH);
+    args.push(&remote.branch);
     let first = match git(root, &args).await {
         Ok(text) => return Ok(text),
         Err(error) => error,
@@ -466,13 +543,16 @@ async fn remote_op(root: &FsPath, op: &str) -> Result<String, String> {
     let Some(token) = read_token(root).await else {
         return Err(first);
     };
-    let url = format!("https://x-access-token:{token}@github.com/{OWNER}/{REPO}.git");
+    let url = format!(
+        "https://x-access-token:{token}@github.com/{}/{}.git",
+        remote.owner, remote.repo
+    );
     let mut args: Vec<&str> = vec![op];
     if op == "pull" {
         args.push("--ff-only");
     }
     args.push(&url);
-    args.push(BRANCH);
+    args.push(&remote.branch);
     git(root, &args)
         .await
         .map_err(|error| error.replace(&token, "***"))
@@ -554,9 +634,9 @@ fn safe_join(base: &FsPath, relative: &str) -> Result<PathBuf, Failure> {
     Ok(out)
 }
 
-fn category_dir(root: &FsPath, category: &str) -> Result<PathBuf, Failure> {
+fn category_dir(base: &FsPath, category: &str) -> Result<PathBuf, Failure> {
     if CATEGORIES.contains(&category) {
-        Ok(root.join("pack").join(category))
+        Ok(base.join("pack").join(category))
     } else {
         Err(fail("невідома категорія"))
     }
@@ -569,11 +649,11 @@ fn is_config_file(name: &str) -> bool {
         .any(|ext| lower.ends_with(&format!(".{ext}")))
 }
 
-fn config_path(root: &FsPath, relative: &str) -> Result<PathBuf, Failure> {
+fn config_path(base: &FsPath, relative: &str) -> Result<PathBuf, Failure> {
     if !is_config_file(relative) {
         return Err(fail("непідтримуваний тип файлу"));
     }
-    safe_join(&root.join("pack").join("config"), relative)
+    safe_join(&base.join("pack").join("config"), relative)
 }
 
 fn encode_segment(segment: &str) -> String {
@@ -611,10 +691,42 @@ fn hash_file(path: &FsPath) -> Result<String, String> {
     Ok(hex::encode(hasher.finalize()))
 }
 
-fn scan_pack(root: &FsPath) -> Result<Vec<FileOut>, String> {
-    let pack = root.join("pack");
+fn raw_base(remote: &RepoInfo, instance: Option<&str>) -> String {
+    let prefix = match instance {
+        Some(name) => format!("instances/{}/pack", encode_segment(name)),
+        None => "pack".to_string(),
+    };
+    format!(
+        "https://raw.githubusercontent.com/{}/{}/{}/{prefix}",
+        remote.owner,
+        remote.repo,
+        encode_path(&remote.branch)
+    )
+}
+
+/// Записи поточного manifest.json на файли з GitHub Releases, яких немає в pack/.
+fn release_entries(base: &FsPath) -> Result<Vec<FileOut>, String> {
+    let text = match std::fs::read_to_string(base.join("manifest.json")) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(format!("не вдалося прочитати manifest.json: {error}")),
+    };
+    // Пошкоджений маніфест не перезаписуємо — інакше релізні записи зникнуть.
+    let previous: PreviousManifest = serde_json::from_str(&text)
+        .map_err(|e| format!("поточний manifest.json пошкоджений, виправ його: {e}"))?;
+    let pack = base.join("pack");
+    Ok(previous
+        .files
+        .into_iter()
+        .filter(|file| file.url.contains("/releases/download/") && !pack.join(&file.path).is_file())
+        .collect())
+}
+
+fn scan_pack(base: &FsPath, raw_base: &str) -> Result<Vec<FileOut>, String> {
+    let pack = base.join("pack");
     let found = walk(&pack)?;
-    if found.is_empty() {
+    let released = release_entries(base)?;
+    if found.is_empty() && released.is_empty() {
         return Err("папка pack порожня".to_string());
     }
     let mut files = Vec::with_capacity(found.len());
@@ -627,17 +739,20 @@ fn scan_pack(root: &FsPath) -> Result<Vec<FileOut>, String> {
         }
         if size >= GITHUB_FILE_LIMIT {
             return Err(format!(
-                "pack/{relative} більший за 100 МБ, GitHub його не прийме"
+                "pack/{relative} ({} МБ) більший за 100 МБ, GitHub його не прийме. Завантаж файл у GitHub Releases, додай запис з цим посиланням у manifest.json і прибери файл з pack/",
+                size / (1024 * 1024)
             ));
         }
         let sha256 = hash_file(&pack.join(&relative))?;
         files.push(FileOut {
-            url: format!("{RAW_BASE}/{}", encode_path(&relative)),
+            url: format!("{raw_base}/{}", encode_path(&relative)),
             path: relative,
             sha256,
             size,
         });
     }
+    files.extend(released);
+    files.sort_by_key(|file| file.path.to_lowercase());
     Ok(files)
 }
 
@@ -693,8 +808,8 @@ fn next_version(current: &str) -> String {
     "1.0.0".to_string()
 }
 
-async fn read_meta(root: &FsPath) -> Meta {
-    let value = match tokio::fs::read_to_string(root.join("manifest.json")).await {
+async fn read_meta(base: &FsPath) -> Meta {
+    let value = match tokio::fs::read_to_string(base.join("manifest.json")).await {
         Ok(text) => serde_json::from_str::<Value>(&text).unwrap_or(Value::Null),
         Err(_) => Value::Null,
     };
@@ -747,6 +862,15 @@ async fn index() -> Html<&'static str> {
     Html(include_str!("index.html"))
 }
 
+async fn info(State(state): State<Shared>) -> ApiResult {
+    Ok(Json(json!({
+        "owner": state.remote.owner,
+        "repo": state.remote.repo,
+        "branch": state.remote.branch,
+        "instance": state.instance,
+    })))
+}
+
 async fn auth_status(State(state): State<Shared>) -> ApiResult {
     let Some(token) = read_token(&state.root).await else {
         return Ok(Json(json!({ "logged_in": false })));
@@ -778,7 +902,7 @@ async fn auth_logout(State(state): State<Shared>) -> ApiResult {
 
 async fn sync(State(state): State<Shared>) -> ApiResult {
     let _guard = state.lock.lock().await;
-    let output = remote_op(&state.root, "pull")
+    let output = remote_op(&state.root, &state.remote, "pull")
         .await
         .map_err(|e| fail(format!("git pull: {e}")))?;
     let message = if output.is_empty() {
@@ -790,12 +914,12 @@ async fn sync(State(state): State<Shared>) -> ApiResult {
 }
 
 async fn get_meta(State(state): State<Shared>) -> ApiResult {
-    let meta = read_meta(&state.root).await;
+    let meta = read_meta(&state.base).await;
     Ok(Json(json!(meta)))
 }
 
 async fn list_files(State(state): State<Shared>, Path(category): Path<String>) -> ApiResult {
-    let dir = category_dir(&state.root, &category)?;
+    let dir = category_dir(&state.base, &category)?;
     let items = tokio::task::spawn_blocking(move || walk(&dir))
         .await
         .map_err(|e| fail(e))?
@@ -812,7 +936,7 @@ async fn upload_files(
     Path(category): Path<String>,
     mut multipart: Multipart,
 ) -> ApiResult {
-    let dir = category_dir(&state.root, &category)?;
+    let dir = category_dir(&state.base, &category)?;
     tokio::fs::create_dir_all(&dir)
         .await
         .map_err(|e| fail(e))?;
@@ -853,7 +977,7 @@ async fn delete_file(
     Path(category): Path<String>,
     Query(query): Query<HashMap<String, String>>,
 ) -> ApiResult {
-    let dir = category_dir(&state.root, &category)?;
+    let dir = category_dir(&state.base, &category)?;
     let name = query
         .get("name")
         .ok_or_else(|| fail("не вказано name"))?;
@@ -866,7 +990,7 @@ async fn delete_file(
 }
 
 async fn list_configs(State(state): State<Shared>) -> ApiResult {
-    let dir = state.root.join("pack").join("config");
+    let dir = state.base.join("pack").join("config");
     let items = tokio::task::spawn_blocking(move || walk(&dir))
         .await
         .map_err(|e| fail(e))?
@@ -886,7 +1010,7 @@ async fn read_config(
     let relative = query
         .get("path")
         .ok_or_else(|| fail("не вказано path"))?;
-    let path = config_path(&state.root, relative)?;
+    let path = config_path(&state.base, relative)?;
     let metadata = tokio::fs::metadata(&path)
         .await
         .map_err(|e| fail(format!("не вдалося відкрити файл: {e}")))?;
@@ -900,7 +1024,7 @@ async fn read_config(
 }
 
 async fn write_config(State(state): State<Shared>, Json(body): Json<ConfigBody>) -> ApiResult {
-    let path = config_path(&state.root, &body.path)?;
+    let path = config_path(&state.base, &body.path)?;
     if !path.is_file() {
         return Err(fail("файл не існує"));
     }
@@ -911,7 +1035,7 @@ async fn write_config(State(state): State<Shared>, Json(body): Json<ConfigBody>)
 }
 
 async fn list_servers(State(state): State<Shared>) -> ApiResult {
-    let path = servers_path(&state.root);
+    let path = servers_path(&state.base);
     let (_, mut root) = load_servers(&path).await.map_err(|e| fail(e))?;
     let items = servers_mut(&mut root).map_err(|e| fail(e))?;
     let list: Vec<Value> = items
@@ -931,7 +1055,7 @@ async fn add_server(State(state): State<Shared>, Json(body): Json<ServerBody>) -
         return Err(fail("задовга назва або адреса"));
     }
     let _guard = state.lock.lock().await;
-    let path = servers_path(&state.root);
+    let path = servers_path(&state.base);
     let (root_name, mut root) = load_servers(&path).await.map_err(|e| fail(e))?;
     servers_mut(&mut root)
         .map_err(|e| fail(e))?
@@ -954,7 +1078,7 @@ async fn delete_server(
         .and_then(|v| v.parse().ok())
         .ok_or_else(|| fail("некоректний index"))?;
     let _guard = state.lock.lock().await;
-    let path = servers_path(&state.root);
+    let path = servers_path(&state.base);
     let (root_name, mut root) = load_servers(&path).await.map_err(|e| fail(e))?;
     let items = servers_mut(&mut root).map_err(|e| fail(e))?;
     if index >= items.len() {
@@ -970,12 +1094,16 @@ async fn delete_server(
 async fn publish(State(state): State<Shared>, Json(meta): Json<Meta>) -> ApiResult {
     let _guard = state.lock.lock().await;
     validate_meta(&meta).map_err(|e| fail(e))?;
+    ensure_gitattributes(&state.root)
+        .await
+        .map_err(|e| fail(format!(".gitattributes: {e}")))?;
 
-    let previous = read_meta(&state.root).await;
+    let previous = read_meta(&state.base).await;
     let version = next_version(&previous.version);
 
-    let scan_root = state.root.clone();
-    let files = tokio::task::spawn_blocking(move || scan_pack(&scan_root))
+    let scan_base = state.base.clone();
+    let url_base = raw_base(&state.remote, state.instance.as_deref());
+    let files = tokio::task::spawn_blocking(move || scan_pack(&scan_base, &url_base))
         .await
         .map_err(|e| fail(e))?
         .map_err(|e| fail(e))?;
@@ -994,7 +1122,7 @@ async fn publish(State(state): State<Shared>, Json(meta): Json<Meta>) -> ApiResu
         files,
     };
     let text = serde_json::to_string_pretty(&manifest).map_err(|e| fail(e))?;
-    tokio::fs::write(state.root.join("manifest.json"), text)
+    tokio::fs::write(state.base.join("manifest.json"), text)
         .await
         .map_err(|e| fail(e))?;
 
@@ -1002,43 +1130,137 @@ async fn publish(State(state): State<Shared>, Json(meta): Json<Meta>) -> ApiResu
         "manifest.json оновлено: версія {version}, файлів {count}"
     )];
 
-    git(&state.root, &["add", "."])
+    // Лише ця збірка: незавершені зміни інших збірок не потрапляють у коміт.
+    let mut paths: Vec<String> = vec![".gitattributes".to_string()];
+    match &state.instance {
+        Some(name) => paths.push(format!("instances/{name}")),
+        None => {
+            paths.push("pack".to_string());
+            paths.push("manifest.json".to_string());
+        }
+    }
+    if state.root.join("projects.json").is_file() {
+        paths.push("projects.json".to_string());
+    }
+    let pathspec: Vec<&str> = paths.iter().map(String::as_str).collect();
+
+    // --renormalize перезаписує в індексі вже відстежені файли за правилом -text,
+    // тож на GitHub потрапляють ті самі байти, що й захешовані вище.
+    let mut add_args = vec!["add", "--renormalize", "--"];
+    add_args.extend(&pathspec);
+    git(&state.root, &add_args)
+        .await
+        .map_err(|e| fail(format!("git add --renormalize: {e}")))?;
+    let mut add_args = vec!["add", "-A", "--"];
+    add_args.extend(&pathspec);
+    git(&state.root, &add_args)
         .await
         .map_err(|e| fail(format!("git add: {e}")))?;
-    log.push("git add .: ok".to_string());
+    log.push(format!("git add {}: ok", paths.join(" ")));
 
-    match git(&state.root, &["commit", "-m", "Update pack"]).await {
+    let mut commit_args = vec!["commit", "-m", "Update pack", "--"];
+    commit_args.extend(&pathspec);
+    match git(&state.root, &commit_args).await {
         Ok(_) => log.push("git commit -m \"Update pack\": ok".to_string()),
-        Err(error) if error.contains("nothing to commit") => {
+        Err(error)
+            if error.contains("nothing to commit") || error.contains("no changes added") =>
+        {
             log.push("git commit: немає змін для коміту".to_string())
         }
         Err(error) => return Err(fail(format!("git commit: {error}"))),
     }
 
-    remote_op(&state.root, "push")
+    remote_op(&state.root, &state.remote, "push")
         .await
         .map_err(|e| fail(format!("git push: {e}")))?;
-    log.push("git push origin main: ok".to_string());
+    log.push(format!("git push origin {}: ok", state.remote.branch));
 
     Ok(Json(json!({ "version": version, "files": count, "log": log })))
 }
 
-fn find_root() -> Result<PathBuf, String> {
-    if let Some(arg) = std::env::args().nth(1) {
-        let path = PathBuf::from(arg);
-        if path.join(".git").exists() {
-            return Ok(path);
+struct Args {
+    dir: PathBuf,
+    instance: Option<String>,
+}
+
+fn parse_args(mut args: impl Iterator<Item = String>) -> Result<Args, String> {
+    let mut dir = None;
+    let mut instance = None;
+    while let Some(arg) = args.next() {
+        let value = if arg == "--instance" {
+            Some(args.next().unwrap_or_default())
+        } else {
+            arg.strip_prefix("--instance=").map(str::to_string)
+        };
+        if let Some(value) = value {
+            if value.is_empty() || value.starts_with('-') {
+                return Err("після --instance вкажи назву збірки".to_string());
+            }
+            if instance.replace(value).is_some() {
+                return Err("--instance вказано двічі".to_string());
+            }
+        } else if arg.starts_with('-') {
+            return Err(format!("невідомий прапорець {arg}"));
+        } else if dir.replace(PathBuf::from(&arg)).is_some() {
+            return Err(format!("зайвий аргумент {arg}"));
         }
-        return Err(format!("{} не є git-репозиторієм", path.display()));
     }
-    let start = std::env::current_dir().map_err(|e| e.to_string())?;
-    for dir in start.ancestors() {
-        if dir.join(".git").exists() {
-            return Ok(dir.to_path_buf());
+    Ok(Args {
+        dir: dir.unwrap_or_else(|| PathBuf::from(".")),
+        instance,
+    })
+}
+
+async fn find_root(dir: &FsPath) -> Result<PathBuf, String> {
+    git_stdout(dir, &["rev-parse", "--show-toplevel"])
+        .await
+        .map(PathBuf::from)
+        .map_err(|error| format!("{} не є git-репозиторієм: {error}", dir.display()))
+}
+
+fn list_instances(root: &FsPath) -> Result<Vec<String>, String> {
+    let entries = std::fs::read_dir(root.join("instances")).map_err(|e| e.to_string())?;
+    let mut names = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        if entry.path().is_dir() && !name.starts_with('.') {
+            names.push(name);
         }
     }
-    Err("не знайдено git-репозиторій: запусти з папки репозиторію або передай шлях аргументом"
-        .to_string())
+    names.sort();
+    Ok(names)
+}
+
+/// Повертає папку збірки. Нічого не створює і не змінює.
+fn resolve_base(root: &FsPath, instance: Option<&str>) -> Result<PathBuf, String> {
+    let has_instances = root.join("instances").is_dir();
+    let available = if has_instances {
+        list_instances(root)?
+    } else {
+        Vec::new()
+    };
+    let listing = if available.is_empty() {
+        "  (немає жодної)".to_string()
+    } else {
+        available
+            .iter()
+            .map(|name| format!("  {name}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    match instance {
+        None if has_instances => Err(format!(
+            "вкажи збірку: manifest-builder --instance <name>\nЗбірки в instances/:\n{listing}"
+        )),
+        None => Ok(root.to_path_buf()),
+        Some(name) if available.iter().any(|item| item == name) => {
+            Ok(root.join("instances").join(name))
+        }
+        Some(name) => Err(format!(
+            "збірки \"{name}\" немає в instances/. Наявні збірки:\n{listing}"
+        )),
+    }
 }
 
 async fn ensure_ignored(root: &FsPath) {
@@ -1053,6 +1275,35 @@ async fn ensure_ignored(root: &FsPath) {
     }
     next.push_str(".admin-token\n");
     let _ = tokio::fs::write(&path, next).await;
+}
+
+/// Вимикає конвертацію CRLF→LF для файлів збірки: інакше git (core.autocrlf)
+/// змінює байти й SHA-256 у manifest.json перестає збігатися з файлом на GitHub.
+async fn ensure_gitattributes(root: &FsPath) -> Result<(), String> {
+    let rule = if root.join("instances").is_dir() {
+        "instances/*/pack/** -text"
+    } else {
+        "pack/** -text"
+    };
+    let path = root.join(".gitattributes");
+    let current = match tokio::fs::read_to_string(&path).await {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error.to_string()),
+    };
+    let normalized = |line: &str| line.split_whitespace().collect::<Vec<_>>().join(" ");
+    if current.lines().any(|line| normalized(line) == rule) {
+        return Ok(());
+    }
+    let mut next = current;
+    if !next.is_empty() && !next.ends_with('\n') {
+        next.push('\n');
+    }
+    next.push_str(rule);
+    next.push('\n');
+    tokio::fs::write(&path, next)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 fn open_browser(url: &str) {
@@ -1074,10 +1325,18 @@ fn open_browser(url: &str) {
     }
 }
 
+async fn setup() -> Result<(PathBuf, PathBuf, Option<String>, RepoInfo), String> {
+    let args = parse_args(std::env::args().skip(1))?;
+    let root = find_root(&args.dir).await?;
+    let base = resolve_base(&root, args.instance.as_deref())?;
+    let remote = detect_remote(&root).await?;
+    Ok((root, base, args.instance, remote))
+}
+
 #[tokio::main]
 async fn main() {
-    let root = match find_root() {
-        Ok(root) => root,
+    let (root, base, instance, remote) = match setup().await {
+        Ok(found) => found,
         Err(message) => {
             eprintln!("помилка: {message}");
             std::process::exit(1);
@@ -1085,9 +1344,12 @@ async fn main() {
     };
 
     for dir in MANAGED_DIRS {
-        let _ = tokio::fs::create_dir_all(root.join("pack").join(dir)).await;
+        let _ = tokio::fs::create_dir_all(base.join("pack").join(dir)).await;
     }
     ensure_ignored(&root).await;
+    if let Err(error) = ensure_gitattributes(&root).await {
+        eprintln!("попередження: не вдалося оновити .gitattributes: {error}");
+    }
 
     let client = match reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
@@ -1101,14 +1363,25 @@ async fn main() {
     };
 
     let shown = root.display().to_string();
+    let target = format!(
+        "{}/{} · {} · {}",
+        remote.owner,
+        remote.repo,
+        remote.branch,
+        instance.as_deref().unwrap_or("корінь репозиторію")
+    );
     let state: Shared = Arc::new(AppState {
         root,
+        base,
+        instance,
+        remote,
         client,
         lock: tokio::sync::Mutex::new(()),
     });
 
     let app = Router::new()
         .route("/", get(index))
+        .route("/api/info", get(info))
         .route(
             "/api/auth",
             get(auth_status).post(auth_login).delete(auth_logout),
@@ -1140,6 +1413,7 @@ async fn main() {
 
     println!("Адмін-панель: {URL}");
     println!("Репозиторій: {shown}");
+    println!("Публікація: {target}");
     open_browser(URL);
 
     if let Err(error) = axum::serve(listener, app).await {
