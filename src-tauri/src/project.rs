@@ -613,7 +613,7 @@ fn no_instances() -> FetchError {
     )
 }
 
-fn github_source(url: &str) -> Option<(String, String, String)> {
+pub fn github_source(url: &str) -> Option<(String, String, String)> {
     let rest = url.strip_prefix("https://raw.githubusercontent.com/")?;
     let mut parts = rest.splitn(4, '/');
     let owner = parts.next()?;

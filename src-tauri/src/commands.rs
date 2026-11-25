@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 
+use crate::changelog::{self, Changelog};
 use crate::config::{
     self, new_id, validate_nickname, Config, Profile, ProjectBinding, GAME_LANGS, PRESETS, UI_LANGS,
 };
@@ -362,6 +363,12 @@ pub async fn list_projects(
 ) -> Result<Vec<project::ProjectCard>> {
     let (_, paths) = load_ctx(&app).await?;
     project::discover_projects(&state.client, &paths).await
+}
+
+#[tauri::command]
+pub async fn load_changelog(app: AppHandle, state: State<'_, AppState>) -> Result<Changelog> {
+    let (config, paths) = load_ctx(&app).await?;
+    Ok(changelog::load(&state.client, &paths, config.project.as_ref()).await)
 }
 
 #[tauri::command]
