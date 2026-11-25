@@ -22,10 +22,10 @@ const DICT = {
     "ob.loadingProjects": "Шукаємо проєкти…",
     "ob.noProjects": "Проєктів поки не знайдено. Якщо маєш код — введи його нижче.",
     "ob.code": "Або введи код проєкту",
-    "ob.codePh": "Наприклад: FNAF-2026",
+    "ob.codePh": "Введіть код проєкту",
     "ob.codeHint": "Лише для прихованих проєктів — код дає адміністратор.",
     "ob.nick": "Твій ігровий нік",
-    "ob.nickPh": "Наприклад: Kozak_2009",
+    "ob.nickPh": "Введіть ігровий нікнейм",
     "ob.nickHint": "Під цим ім'ям тебе бачитимуть у грі. 3–16 символів: латиниця, цифри, _",
     "ob.submit": "Підключитися",
     "ob.checking": "Підключаємося…",
@@ -40,9 +40,9 @@ const DICT = {
     "nav.settings": "Налаштування",
     "top.changeProfile": "Змінити профіль",
     "home.repair": "Ремонт",
-    "home.repairTitle": "Перевірити й виправити файли збірки",
+    "home.repairTitle": "Перевірити та відновити пошкоджені файли збірки",
     "home.folder": "Папка",
-    "home.folderTitle": "Відкрити папку збірки (скріншоти, ресурспаки)",
+    "home.folderTitle": "Відкрити папку збірки зі скріншотами та світами",
     "home.listTitle": "Збірки проєкту",
     "home.installedMeta": "Встановлено · версія {v}",
     "home.notInstalledMeta": "Ще не встановлено",
@@ -84,6 +84,56 @@ const DICT = {
     "stage.client": "Клієнт Minecraft",
     "stage.libraries": "Бібліотеки гри",
     "stage.assets": "Ресурси гри",
+    "step.manifest": "Маніфест збірки",
+    "step.files": "Файли збірки",
+    "step.minecraft": "Minecraft",
+    "step.java": "Java",
+    "step.loader": "Завантажувач модів",
+    "step.libraries": "Бібліотеки гри",
+    "step.assets": "Ресурси гри",
+    "step.launch": "Запуск гри",
+    "progress.step": "Етап {n} з {total}",
+    "progress.starting": "Підготовка…",
+    "progress.failedAt": "Помилка на етапі «{step}»",
+    "progress.details": "Що робить лаунчер",
+    "progress.launched": "Гру запущено",
+    "progress.checked": "Перевірку завершено",
+    "progress.left": "ще ~{time}",
+    "unit.files": "файлів",
+    "unit.sec": "с",
+    "unit.min": "хв",
+    "unit.mbps": "МБ/с",
+    "home.delete": "Видалити",
+    "home.deleteTitle": "Видалити збірку з комп'ютера, щоб звільнити місце",
+    "home.ramLow": "Виділено {cur} ОЗУ — цій збірці радять {rec}",
+    "home.ramFix": "Змінити",
+    "play.verifyN": "Перевірка файлів {n}/{total}",
+    "play.downloadMods": "Завантаження модів — {p}%",
+    "play.prepMinecraft": "Підготовка Minecraft",
+    "play.prepJava": "Підготовка Java",
+    "play.prepLoader": "Встановлення завантажувача",
+    "play.gameFiles": "Файли гри — {p}%",
+    "play.subWait": "не закривай лаунчер",
+    "play.subInstall": "завантаження {size}",
+    "delete.lead": "Файли збірки буде видалено з комп'ютера. Встановити її знову можна будь-коли.",
+    "delete.free": "Звільниться",
+    "delete.worlds": "Світи",
+    "delete.shots": "Скріншоти",
+    "delete.keep": "Зберегти мої світи та скріншоти",
+    "delete.keepHint": "Залишиться {size}. Після повторного встановлення все буде на місці.",
+    "delete.noPersonal": "Світів і скріншотів у цій збірці немає — нічого особистого не загубиться.",
+    "delete.doneKept": "Збірку «{name}» видалено, світи й скріншоти збережено",
+    "delete.running": "Спершу закрий гру — запущену збірку видалити не можна",
+    "settings.kept": "збережено лише світи й скріншоти",
+    "err.offline": "Немає з'єднання з інтернетом. Перевір підключення і спробуй ще раз.",
+    "err.timeout": "Сервер відповідає надто довго. Спробуй ще раз за хвилину.",
+    "err.notFound": "Потрібний файл не знайдено на сервері. Напиши адміністратору проєкту — збірку, мабуть, саме оновлюють.",
+    "err.rateLimit": "GitHub тимчасово обмежив завантаження. Зачекай кілька хвилин і спробуй ще раз.",
+    "err.server": "Сервер із файлами тимчасово недоступний. Спробуй трохи пізніше.",
+    "err.disk": "На диску закінчилося місце. Звільни місце або обери іншу папку в Налаштуваннях.",
+    "err.access": "Немає доступу до папки лаунчера. Закрий гру та інші програми, що можуть її використовувати, або обери іншу папку.",
+    "err.corrupt": "Файл завантажився пошкодженим. Натисни «Спробувати ще» — лаунчер завантажить його заново.",
+    "err.details": "Технічні подробиці",
     "server.online": "Сервер онлайн · {n}/{max}",
     "server.offline": "Сервер недоступний",
     "server.checking": "Перевірка сервера…",
@@ -227,10 +277,10 @@ const DICT = {
     "ob.loadingProjects": "Looking for projects…",
     "ob.noProjects": "No projects found yet. If you have a code, enter it below.",
     "ob.code": "Or enter a project code",
-    "ob.codePh": "For example: FNAF-2026",
+    "ob.codePh": "Enter project code",
     "ob.codeHint": "Only for hidden projects — the admin gives you the code.",
     "ob.nick": "Your in-game nickname",
-    "ob.nickPh": "For example: Kozak_2009",
+    "ob.nickPh": "Enter your in-game nickname",
     "ob.nickHint": "Other players will see you by this name. 3–16 chars: Latin letters, digits, _",
     "ob.submit": "Connect",
     "ob.checking": "Connecting…",
@@ -245,9 +295,9 @@ const DICT = {
     "nav.settings": "Settings",
     "top.changeProfile": "Change profile",
     "home.repair": "Repair",
-    "home.repairTitle": "Check and fix modpack files",
+    "home.repairTitle": "Check and restore damaged modpack files",
     "home.folder": "Folder",
-    "home.folderTitle": "Open the modpack folder (screenshots, resource packs)",
+    "home.folderTitle": "Open the modpack folder with your screenshots and worlds",
     "home.listTitle": "Project modpacks",
     "home.installedMeta": "Installed · version {v}",
     "home.notInstalledMeta": "Not installed yet",
@@ -289,6 +339,56 @@ const DICT = {
     "stage.client": "Minecraft client",
     "stage.libraries": "Game libraries",
     "stage.assets": "Game assets",
+    "step.manifest": "Modpack manifest",
+    "step.files": "Modpack files",
+    "step.minecraft": "Minecraft",
+    "step.java": "Java",
+    "step.loader": "Mod loader",
+    "step.libraries": "Game libraries",
+    "step.assets": "Game assets",
+    "step.launch": "Launching",
+    "progress.step": "Step {n} of {total}",
+    "progress.starting": "Getting ready…",
+    "progress.failedAt": "Failed at “{step}”",
+    "progress.details": "What the launcher is doing",
+    "progress.launched": "Game started",
+    "progress.checked": "Check complete",
+    "progress.left": "~{time} left",
+    "unit.files": "files",
+    "unit.sec": "s",
+    "unit.min": "min",
+    "unit.mbps": "MB/s",
+    "home.delete": "Delete",
+    "home.deleteTitle": "Remove this modpack from your computer to free up space",
+    "home.ramLow": "{cur} of RAM allocated — this modpack recommends {rec}",
+    "home.ramFix": "Change",
+    "play.verifyN": "Checking files {n}/{total}",
+    "play.downloadMods": "Downloading mods — {p}%",
+    "play.prepMinecraft": "Preparing Minecraft",
+    "play.prepJava": "Preparing Java",
+    "play.prepLoader": "Installing mod loader",
+    "play.gameFiles": "Game files — {p}%",
+    "play.subWait": "keep the launcher open",
+    "play.subInstall": "{size} download",
+    "delete.lead": "The modpack files will be removed from your computer. You can install it again any time.",
+    "delete.free": "Frees up",
+    "delete.worlds": "Worlds",
+    "delete.shots": "Screenshots",
+    "delete.keep": "Keep my worlds and screenshots",
+    "delete.keepHint": "{size} will stay. After reinstalling, everything will be back in place.",
+    "delete.noPersonal": "There are no worlds or screenshots in this modpack — nothing personal will be lost.",
+    "delete.doneKept": "\"{name}\" deleted, worlds and screenshots kept",
+    "delete.running": "Close the game first — a running modpack can't be deleted",
+    "settings.kept": "only worlds and screenshots kept",
+    "err.offline": "No internet connection. Check your connection and try again.",
+    "err.timeout": "The server is taking too long to respond. Try again in a minute.",
+    "err.notFound": "A required file is missing on the server. Contact the project administrator — the modpack is probably being updated.",
+    "err.rateLimit": "GitHub is temporarily limiting downloads. Wait a few minutes and try again.",
+    "err.server": "The file server is temporarily unavailable. Try again a bit later.",
+    "err.disk": "The disk is full. Free up some space or choose another folder in Settings.",
+    "err.access": "The launcher can't access its folder. Close the game and other programs that may be using it, or choose another folder.",
+    "err.corrupt": "A file was downloaded damaged. Press \"Try again\" — the launcher will download it again.",
+    "err.details": "Technical details",
     "server.online": "Server online · {n}/{max}",
     "server.offline": "Server unavailable",
     "server.checking": "Checking server…",
@@ -477,7 +577,8 @@ const el = {
   obSubmit: $("obSubmit"),
   obLang: $("obLang"),
   app: $("app"),
-  brandLetter: $("brandLetter"),
+  brand: $("brand"),
+  topAvatar: $("topAvatar"),
   nav: $("nav"),
   navInd: $("navInd"),
   island: $("island"),
@@ -487,7 +588,8 @@ const el = {
   topHead: $("topHead"),
   topNick: $("topNick"),
   hero: $("hero"),
-  heroBg: $("heroBg"),
+  heroMedia: $("heroMedia"),
+  ramNote: $("ramNote"),
   badgeMc: $("badgeMc"),
   badgeLoader: $("badgeLoader"),
   badgeServer: $("badgeServer"),
@@ -498,6 +600,8 @@ const el = {
   play: $("play"),
   playLabel: $("playLabel"),
   playSub: $("playSub"),
+  playIco: $("playIco"),
+  deleteBtn: $("deleteBtn"),
   repairBtn: $("repairBtn"),
   folderBtn: $("folderBtn"),
   progress: $("progress"),
@@ -505,6 +609,11 @@ const el = {
   progressPercent: $("progressPercent"),
   progressFill: $("progressFill"),
   progressFile: $("progressFile"),
+  progressSteps: $("progressSteps"),
+  progressTrack: $("progressTrack"),
+  progressAmount: $("progressAmount"),
+  progressStatus: $("progressStatus"),
+  progressLog: $("progressLog"),
   nickNote: $("nickNote"),
   instCount: $("instCount"),
   instList: $("instList"),
@@ -564,6 +673,7 @@ const ICONS = {
   logout: '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
   palette: '<svg viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7H17a5 5 0 0 0 5-5C22 6 17.5 2 12 2z"/></svg>',
   more: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>',
+  memory: '<svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="10" rx="1.5"/><path d="M8 7V4M12 7V4M16 7V4M8 20v-3M12 20v-3M16 20v-3"/></svg>',
   shirt: '<svg viewBox="0 0 24 24"><path d="M20.4 6.6 16 4a4 4 0 0 1-8 0L3.6 6.6a1 1 0 0 0-.5 1.1l.9 3.6a1 1 0 0 0 1 .7H7v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8h2a1 1 0 0 0 1-.7l.9-3.6a1 1 0 0 0-.5-1.1z"/></svg>'
 };
 
@@ -654,6 +764,233 @@ function updateCalm() {
   document.body.classList.toggle("calm", Boolean(S.running) || document.hidden);
 }
 
+/* ═══════════════════════════ КАРТИНКИ З РЕПОЗИТОРІЮ ═══════════════════════════ */
+
+// Знайдену адресу пам'ятаємо між запусками (localStorage), а декодовані картинки —
+// у пам'яті, тож перемикання збірок відбувається миттєво й без мерехтіння.
+const ASSET_TTL = 6 * 60 * 60 * 1000;
+const ASSET_MISS_TTL = 30 * 60 * 1000;
+const assetJobs = new Map();
+const assetResolved = new Map();
+const assetReady = new Map();
+
+function storageGet(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* сховище недоступне — працюємо без нього */
+  }
+}
+
+function loadImage(url) {
+  if (assetReady.has(url)) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => {
+      const done = () => {
+        assetReady.set(url, image);
+        resolve(true);
+      };
+      image.decode().then(done, done);
+    };
+    image.onerror = () => resolve(false);
+    image.src = url;
+  });
+}
+
+function assetList(candidates) {
+  return candidates.filter((url) => typeof url === "string" && url.startsWith("https://"));
+}
+
+function assetKey(candidates) {
+  return assetList(candidates).join("|");
+}
+
+/** Перша картинка зі списку, яка справді існує (решта — 404). */
+function resolveAsset(candidates) {
+  const list = assetList(candidates);
+  const key = list.join("|");
+  if (!list.length) {
+    assetResolved.set(key, null);
+    return Promise.resolve(null);
+  }
+  if (assetJobs.has(key)) return assetJobs.get(key);
+  const job = (async () => {
+    const saved = storageGet("asset:" + key);
+    const age = saved ? Date.now() - saved.at : Infinity;
+    let url = null;
+    if (saved && saved.url === "" && age < ASSET_MISS_TTL) url = null;
+    else if (saved?.url && age < ASSET_TTL && (await loadImage(saved.url))) url = saved.url;
+    else {
+      for (const candidate of list) {
+        if (await loadImage(candidate)) {
+          url = candidate;
+          break;
+        }
+      }
+      storageSet("asset:" + key, { url: url || "", at: Date.now() });
+    }
+    assetResolved.set(key, url);
+    return url;
+  })();
+  assetJobs.set(key, job);
+  return job;
+}
+
+function instanceBackgrounds(inst) {
+  const base = inst?.asset_base || "";
+  const files = ["bg.png", "bg.jpg", "background.png", "background.jpg", "background.webp", "banner.png", "banner.jpg"];
+  return [inst?.image, ...(base ? files.map((name) => base + name) : [])];
+}
+
+function instanceIcons(inst) {
+  return inst?.asset_base ? [inst.asset_base + "icon.png"] : [];
+}
+
+function projectIcons() {
+  if (S.view?.icon) return [S.view.icon];
+  const index = S.binding?.index_url || "";
+  return index.startsWith("https://") ? [index.replace(/[^/]*$/, "icon.png")] : [];
+}
+
+/** Іконка проєкту/збірки; поки картинки немає (або 404) — акуратна літера. */
+function paintAvatar(node, letter, candidates) {
+  if (!node) return;
+  const key = assetKey(candidates);
+  node.dataset.asset = key;
+  let label = node.querySelector(".av-l");
+  if (!label) {
+    node.textContent = "";
+    label = document.createElement("span");
+    label.className = "av-l";
+    node.append(label);
+  }
+  label.textContent = letter;
+  const apply = (url) => {
+    if (node.dataset.asset !== key) return;
+    let img = node.querySelector("img");
+    if (!url) {
+      img?.remove();
+      node.classList.remove("has-img");
+      return;
+    }
+    if (!img) {
+      img = document.createElement("img");
+      img.alt = "";
+      img.draggable = false;
+      node.append(img);
+    }
+    if (img.getAttribute("src") !== url) {
+      img.classList.toggle("ready", assetReady.has(url));
+      img.onload = () => img.classList.add("ready");
+      img.src = url;
+    }
+    node.classList.add("has-img");
+  };
+  if (assetResolved.has(key)) apply(assetResolved.get(key));
+  else {
+    apply(null);
+    resolveAsset(candidates).then(apply);
+  }
+}
+
+/** Приглушена мініатюра фону збірки в картці списку. */
+function paintArt(node, inst) {
+  if (!node) return;
+  const candidates = instanceBackgrounds(inst);
+  const apply = (url) => {
+    if (!url || !node.isConnected) return;
+    node.style.backgroundImage = 'url("' + url.replace(/["\\\n]/g, "") + '")';
+    node.classList.add("ready");
+  };
+  const key = assetKey(candidates);
+  if (assetResolved.has(key)) apply(assetResolved.get(key));
+  else resolveAsset(candidates).then(apply);
+}
+
+function initial(text) {
+  return (String(text || "").trim().slice(0, 1) || "T").toUpperCase();
+}
+
+/** Фони й іконки всіх збірок — заздалегідь, щоб перемикання було миттєвим. */
+function prefetchAssets() {
+  resolveAsset(projectIcons());
+  for (const inst of S.view?.instances || []) {
+    resolveAsset(instanceIcons(inst));
+    resolveAsset(instanceBackgrounds(inst));
+  }
+}
+
+/* фон Hero: два шари, перехід лише через opacity */
+let heroLayer = 0;
+let heroUrl = null;
+
+function showHeroImage(url) {
+  if (url === heroUrl) return;
+  heroUrl = url;
+  const layers = el.heroMedia.children;
+  const previous = layers[heroLayer];
+  if (!url) {
+    previous.classList.remove("ready");
+    el.hero.classList.remove("has-image");
+    return;
+  }
+  heroLayer ^= 1;
+  const next = layers[heroLayer];
+  next.classList.remove("ready");
+  next.style.backgroundImage = 'url("' + url.replace(/["\\\n]/g, "") + '")';
+  void next.offsetWidth;
+  next.classList.add("ready");
+  previous.classList.remove("ready");
+  el.hero.classList.add("has-image");
+}
+
+function paintHeroImage(inst) {
+  if (!inst) return showHeroImage(null);
+  const candidates = instanceBackgrounds(inst);
+  const key = assetKey(candidates);
+  if (assetResolved.has(key)) return showHeroImage(assetResolved.get(key));
+  showHeroImage(null);
+  resolveAsset(candidates).then((url) => {
+    if (current()?.id === inst.id) showHeroImage(url);
+  });
+}
+
+/* ═══════════════════════════ ЛЮДСЬКІ ПОМИЛКИ ═══════════════════════════ */
+
+const ERROR_RULES = [
+  [/os error 112|not enough space|no space left|недостатньо місця/i, "err.disk"],
+  [/os error 5\b|os error 32\b|access is denied|permission denied|відмовлено в доступі|being used by another process/i, "err.access"],
+  [/контрольна сума|checksum|hash mismatch/i, "err.corrupt"],
+  [/\b(403|429)\b|rate limit/i, "err.rateLimit"],
+  [/\b404\b/, "err.notFound"],
+  [/server error|\b50[0-9]\b/i, "err.server"],
+  [/timed out|timeout/i, "err.timeout"],
+  [/error sending request|dns error|failed to lookup|connection refused|connection reset|connect error|network is unreachable|os error 1100[1-4]|os error 1006[0-5]/i, "err.offline"]
+];
+
+/** Технічну помилку (Rust/HTTP) перекладаємо людською мовою; оригінал — у «подробицях». */
+function humanError(error) {
+  const raw = errText(error);
+  for (const [pattern, key] of ERROR_RULES) {
+    if (pattern.test(raw)) return { text: t(key), raw };
+  }
+  return { text: raw, raw: "" };
+}
+
+function errHuman(error) {
+  return humanError(error).text;
+}
+
 /* ═══════════════════════════ МОДАЛЬНЕ ВІКНО ═══════════════════════════ */
 
 let modalResolve = null;
@@ -741,12 +1078,13 @@ async function copyText(text) {
 }
 
 function showError(error, extra) {
-  const text = errText(error);
+  const { text, raw } = humanError(error);
+  const details = raw ? `<details class="err-details"><summary>${esc(t("err.details"))}</summary><pre>${esc(raw)}</pre></details>` : "";
   return openModal({
     icon: "alert",
     tone: "danger",
     title: t("error.title"),
-    html: `<p>${esc(text)}</p>`,
+    html: `<p>${esc(text)}</p>${details}`,
     buttons: [
       {
         id: "copy",
@@ -754,7 +1092,7 @@ function showError(error, extra) {
         kind: "ghost",
         left: true,
         onClick: async (button) => {
-          if (await copyText(text)) button.textContent = t("crash.copied");
+          if (await copyText(raw || text)) button.textContent = t("crash.copied");
           return false;
         }
       },
@@ -941,25 +1279,362 @@ function switchTab(name, smooth = true) {
 
 /* ═══════════════════════════ ЗБІРКИ ═══════════════════════════ */
 
+/* ═══════════════════════════ ПАНЕЛЬ ПРОГРЕСУ ═══════════════════════════ */
+
+const STEPS = ["manifest", "files", "minecraft", "java", "loader", "libraries", "assets", "launch"];
+const STEP_OF_STAGE = { verify: "files", download: "files", client: "minecraft", java: "java", libraries: "libraries", assets: "assets" };
+const BYTE_STAGES = new Set(["client", "java", "download", "launcher-update"]);
+const LOG_LIMIT = 120;
+let progressHideTimer = 0;
+
 function stageText(stage) {
   return DICT[lang]["stage." + stage] ? t("stage." + stage) : t("play.checking");
+}
+
+function decimal(value, digits = 1) {
+  const text = value.toFixed(digits);
+  return lang === "uk" ? text.replace(".", ",") : text;
+}
+
+function formatDuration(ms) {
+  const sec = ms / 1000;
+  if (sec < 60) return decimal(sec, sec < 10 ? 1 : 0) + " " + t("unit.sec");
+  return Math.floor(sec / 60) + " " + t("unit.min") + " " + Math.round(sec % 60) + " " + t("unit.sec");
+}
+
+function megabytes(bytes) {
+  return decimal(bytes / MB, bytes >= 100 * MB ? 0 : 1);
+}
+
+/* ═══ плавна поява/зникнення панелі прогресу ═══ */
+
+const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+let progressLeaveTimer = 0;
+
+/** Анімація лише transform/opacity. Якщо вікно згорнуте й кадри не малюються —
+ *  через тривалість анімації елемент гарантовано стає в кінцевий стан. */
+function motion(node, keyframes, duration) {
+  if (!node || reduceMotion.matches || document.hidden) return;
+  const animation = node.animate(keyframes, { duration, easing: EASE });
+  setTimeout(() => animation.cancel(), duration + 150);
+}
+
+/** Сусіди панелі в Hero не стрибають, а плавно «підіймаються» (FLIP, лише transform). */
+function flipHero(change) {
+  const nodes = [...el.progress.parentElement.children].filter((node) => node !== el.progress && !node.hidden);
+  const before = nodes.map((node) => node.getBoundingClientRect().top);
+  change();
+  nodes.forEach((node, index) => {
+    const dy = before[index] - node.getBoundingClientRect().top;
+    if (Math.abs(dy) < 1) return;
+    motion(node, [{ transform: `translate3d(0, ${dy}px, 0)` }, { transform: "none" }], 520);
+  });
+}
+
+/** Короткий «підйом» тексту, коли змінюється етап. */
+function liftIn(node) {
+  motion(
+    node,
+    [
+      { opacity: 0, transform: "translate3d(0, 6px, 0)" },
+      { opacity: 1, transform: "none" }
+    ],
+    320
+  );
+}
+
+function setProgressStatus(text) {
+  if (el.progressStatus.textContent === text) return;
+  el.progressStatus.textContent = text;
+  liftIn(el.progressStatus);
+}
+
+function showProgress() {
+  clearTimeout(progressLeaveTimer);
+  const panel = el.progress;
+  if (panel.classList.contains("leaving")) {
+    panel.classList.remove("leaving");
+    return;
+  }
+  if (!panel.hidden) return;
+  flipHero(() => {
+    panel.hidden = false;
+  });
+}
+
+function resetProgressPanel() {
+  el.progress.classList.remove("simple", "failed", "finished", "leaving");
+  el.progressFill.style.transform = "scaleX(0)";
+}
+
+/** Почати показ етапів: mode = "play" | "repair". */
+function startProgress(mode) {
+  clearTimeout(progressHideTimer);
+  S.run = {
+    steps: mode === "repair" ? STEPS.slice(0, -1) : STEPS,
+    step: "",
+    stepStart: performance.now(),
+    start: performance.now(),
+    done: new Set(),
+    failed: "",
+    finished: false,
+    stage: "",
+    percent: 0,
+    measured: false,
+    speed: 0,
+    sample: null
+  };
+  S.percent = 0;
+  el.progressLog.replaceChildren();
+  el.progress.classList.remove("simple", "failed", "finished");
+  showProgress();
+  el.progressFile.textContent = " ";
+  el.progressAmount.textContent = "";
+  el.progressStatus.textContent = t("progress.starting");
+  setBar(null);
+  renderSteps();
+}
+
+function setBar(percent) {
+  const indeterminate = percent === null;
+  const wasIndeterminate = el.progressTrack.classList.contains("indeterminate");
+  el.progressTrack.classList.toggle("indeterminate", indeterminate);
+  if (indeterminate) {
+    el.progressFill.style.transform = "";
+    el.progressPercent.textContent = "";
+    return;
+  }
+  // З «бігунка» — одразу на потрібний відсоток, без перетікання з анімації.
+  if (wasIndeterminate) el.progressFill.style.transition = "none";
+  el.progressFill.style.transform = "scaleX(" + percent / 100 + ")";
+  if (wasIndeterminate) {
+    void el.progressFill.offsetWidth;
+    el.progressFill.style.transition = "";
+  }
+  el.progressPercent.textContent = Math.floor(percent) + "%";
+}
+
+function renderSteps() {
+  const run = S.run;
+  if (!run) return;
+  const index = run.steps.indexOf(run.step);
+  el.progressSteps.style.setProperty("--steps", run.steps.length);
+  el.progressSteps.innerHTML = run.steps
+    .map((name) => {
+      let state = "";
+      if (run.failed === name) state = "failed";
+      else if (run.done.has(name)) state = "done";
+      else if (name === run.step) state = "active";
+      return '<li class="' + state + '" title="' + esc(t("step." + name)) + '"></li>';
+    })
+    .join("");
+  if (run.failed) el.progressStage.textContent = t("progress.failedAt", { step: t("step." + run.failed) });
+  else if (index < 0) el.progressStage.textContent = t("progress.starting");
+  else el.progressStage.textContent = t("progress.step", { n: index + 1, total: run.steps.length }) + " · " + t("step." + run.step);
+}
+
+function addLog(text, kind = "") {
+  const run = S.run;
+  if (!run) return;
+  const item = document.createElement("li");
+  if (kind) item.className = kind;
+  const time = document.createElement("span");
+  time.className = "tm";
+  time.textContent = "+" + formatDuration(performance.now() - run.start);
+  item.append(time, document.createTextNode(text));
+  el.progressLog.append(item);
+  while (el.progressLog.childElementCount > LOG_LIMIT) el.progressLog.firstElementChild.remove();
+  el.progressLog.scrollTop = el.progressLog.scrollHeight;
+}
+
+function completeStep(name) {
+  const run = S.run;
+  if (!name || run.done.has(name)) return;
+  run.done.add(name);
+  addLog("✓ " + t("step." + name) + " · " + formatDuration(performance.now() - run.stepStart), "ok");
+}
+
+function setStep(name) {
+  const run = S.run;
+  if (!run || run.finished || name === run.step) return;
+  const next = run.steps.indexOf(name);
+  if (next < 0 || next < run.steps.indexOf(run.step)) return;
+  completeStep(run.step);
+  // Етапи, які бекенд пропустив (наприклад, без завантажувача), теж готові.
+  for (const earlier of run.steps.slice(0, next)) run.done.add(earlier);
+  run.step = name;
+  run.counts = null;
+  run.stepStart = performance.now();
+  run.measured = false;
+  run.stage = "";
+  run.sample = null;
+  run.speed = 0;
+  el.progressFile.textContent = " ";
+  el.progressAmount.textContent = "";
+  setBar(null);
+  renderSteps();
+  schedulePlay();
+}
+
+function amountText(payload) {
+  const run = S.run;
+  if (!BYTE_STAGES.has(payload.stage)) {
+    return payload.total ? payload.current + " / " + payload.total + " " + t("unit.files") : "";
+  }
+  let text = megabytes(payload.current) + " / " + megabytes(payload.total) + " " + t("unit.mb");
+  if (!run) return text;
+  const now = performance.now();
+  if (!run.sample || payload.current < run.sample.bytes) run.sample = { at: now, bytes: payload.current };
+  const elapsed = now - run.sample.at;
+  if (elapsed >= 600) {
+    const instant = ((payload.current - run.sample.bytes) / elapsed) * 1000;
+    run.speed = run.speed ? run.speed * 0.7 + instant * 0.3 : instant;
+    run.sample = { at: now, bytes: payload.current };
+  }
+  if (run.speed > 1024 && payload.current < payload.total) {
+    text += " · " + decimal(run.speed / MB) + " " + t("unit.mbps");
+    text += " · " + t("progress.left", { time: formatDuration(((payload.total - payload.current) / run.speed) * 1000) });
+  }
+  return text;
 }
 
 function setProgress(payload) {
   const percent = Math.max(0, Math.min(100, Number(payload.percent) || 0));
   S.percent = percent;
-  el.progress.hidden = false;
-  el.progressFill.style.transform = `scaleX(${percent / 100})`;
-  el.progressPercent.textContent = Math.round(percent) + "%";
-  el.progressStage.textContent = stageText(payload.stage);
+  const run = S.run;
+  if (!run) {
+    // Оновлення лаунчера чи інша дія без етапів — лише смужка.
+    el.progress.classList.add("simple");
+    showProgress();
+    el.progressStage.textContent = stageText(payload.stage);
+    setBar(percent);
+    el.progressFile.textContent = payload.file || " ";
+    el.progressAmount.textContent = amountText(payload);
+    return;
+  }
+  if (run.finished) return;
+  const owner = STEP_OF_STAGE[payload.stage];
+  if (owner) setStep(owner);
+  if (run.stage !== payload.stage) {
+    run.stage = payload.stage;
+    run.sample = null;
+    run.speed = 0;
+  }
+  run.measured = true;
+  run.percent = percent;
+  run.counts = { current: payload.current, total: payload.total };
+  setBar(percent);
   el.progressFile.textContent = payload.file || " ";
-  if (S.phase === "downloading" || S.phase === "preparing") renderPlay();
+  el.progressAmount.textContent = amountText(payload);
+  schedulePlay();
+}
+
+function onLauncherStatus(text) {
+  const run = S.run;
+  if (!run || run.finished) return;
+  setProgressStatus(text);
+  addLog(text);
+  // Після 100% триває робота без лічильника (розпакування, інсталятор) — «бігунок».
+  if (run.measured && run.percent >= 100) {
+    run.measured = false;
+    setBar(null);
+    el.progressAmount.textContent = "";
+  }
+}
+
+function finishProgress(ok, text) {
+  const run = S.run;
+  if (!run) return hideProgress();
+  run.finished = true;
+  if (ok) {
+    completeStep(run.step);
+    for (const name of run.steps) run.done.add(name);
+    run.step = run.steps[run.steps.length - 1];
+    el.progress.classList.add("finished");
+    setBar(100);
+    el.progressFile.textContent = " ";
+    el.progressAmount.textContent = formatDuration(performance.now() - run.start);
+    setProgressStatus(text);
+    addLog("✓ " + text, "ok");
+    renderSteps();
+    progressHideTimer = setTimeout(() => {
+      if (S.run === run) hideProgress();
+    }, 2600);
+    return;
+  }
+  run.failed = run.step || run.steps[0];
+  el.progress.classList.add("failed");
+  if (!run.measured) setBar(0);
+  setProgressStatus(text);
+  addLog("✕ " + text, "err");
+  renderSteps();
 }
 
 function hideProgress() {
-  el.progress.hidden = true;
-  el.progressFill.style.transform = "scaleX(0)";
+  clearTimeout(progressHideTimer);
+  S.run = null;
   S.percent = 0;
+  const panel = el.progress;
+  if (panel.hidden || reduceMotion.matches) {
+    panel.hidden = true;
+    resetProgressPanel();
+    return;
+  }
+  // Спершу панель плавно опускається й зникає, потім решта Hero м'яко сідає на місце.
+  panel.classList.add("leaving");
+  clearTimeout(progressLeaveTimer);
+  progressLeaveTimer = setTimeout(() => {
+    flipHero(() => {
+      panel.hidden = true;
+      resetProgressPanel();
+    });
+  }, 260);
+}
+
+const PLAY_ICONS = {
+  play: '<svg viewBox="0 0 24 24"><path class="fill" d="M7 4.6v14.8L19 12z"/></svg>',
+  install: '<svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+  update: '<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"/></svg>',
+  running: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
+  busy: '<span class="btn-spin"></span>'
+};
+
+/** Підпис кнопки під час встановлення — що саме зараз відбувається. */
+function busyLabel() {
+  const run = S.run;
+  if (S.busy !== "play" && S.busy !== "repair") return t("play.wait");
+  const p = Math.round(S.percent);
+  const measuring = run?.measured && run.percent < 100;
+  switch (run?.step) {
+    case "files":
+      if (run.stage === "download" && measuring) return t("play.downloadMods", { p });
+      if (run.stage === "verify" && run.counts?.total) return t("play.verifyN", { n: run.counts.current, total: run.counts.total });
+      return S.busy === "repair" ? t("play.repairing") : t("play.checking");
+    case "minecraft":
+      return measuring ? t("play.gameFiles", { p }) : t("play.prepMinecraft");
+    case "java":
+      return t("play.prepJava") + (measuring ? " — " + p + "%" : "");
+    case "loader":
+      return t("play.prepLoader");
+    case "libraries":
+    case "assets":
+      return measuring ? t("play.gameFiles", { p }) : t("play.preparing");
+    case "launch":
+      return t("play.launching");
+    default:
+      return S.busy === "repair" ? t("play.repairing") : t("play.checking");
+  }
+}
+
+let playFrame = 0;
+
+function schedulePlay() {
+  if (!playFrame) {
+    playFrame = requestAnimationFrame(() => {
+      playFrame = 0;
+      renderPlay();
+    });
+  }
 }
 
 function renderPlay() {
@@ -968,13 +1643,15 @@ function renderPlay() {
   let label = t("play.play");
   let sub = "";
   let disabled = false;
-  let mode = "";
+  let mode = "play";
 
   if (S.viewError) {
     label = t("common.retry");
+    mode = "update";
   } else if (!inst) {
     label = S.view ? t("play.choose") : t("play.wait");
     disabled = true;
+    mode = "";
   } else if (S.running) {
     label = S.running === inst.id ? t("play.running") : t("play.otherRunning");
     sub = t("play.subRunning");
@@ -983,31 +1660,38 @@ function renderPlay() {
   } else if (S.busy) {
     disabled = true;
     mode = "busy";
-    if (S.busy === "repair") label = t("play.repairing");
-    else if (S.phase === "downloading") label = t("play.downloading") + " " + Math.round(S.percent) + "%";
-    else if (S.phase === "preparing") label = t("play.preparing");
-    else if (S.phase === "launching") label = t("play.launching");
-    else if (S.busy === "play") label = t("play.checking");
-    else label = t("play.wait");
+    label = busyLabel();
+    sub = S.busy === "play" || S.busy === "repair" ? t("play.subWait") : "";
   } else if (S.updating) {
     label = t("play.wait");
     disabled = true;
+    mode = "busy";
   } else if (!activeProfile()) {
     label = t("play.addNick");
+    mode = "";
   } else if (!inst.installed) {
     label = t("play.install");
     mode = "install";
     const size = formatSize(inst.size_bytes);
-    sub = size ? "~" + size : "";
+    sub = size ? t("play.subInstall", { size: "~" + size }) : "";
   } else if (inst.update_available) {
     label = t("play.update");
+    mode = "update";
     sub = t("play.subUpdate", { v: inst.remote_version });
   }
 
   play.disabled = disabled;
-  play.classList.toggle("install", mode === "install");
-  play.classList.toggle("busy", mode === "busy");
-  play.classList.toggle("running", mode === "running");
+  for (const name of ["install", "update", "busy", "running"]) play.classList.toggle(name, mode === name);
+  const icon = PLAY_ICONS[mode] || "";
+  if (el.playIco.dataset.mode !== mode) {
+    el.playIco.dataset.mode = mode;
+    el.playIco.innerHTML = icon;
+  }
+  const shape = label.replace(/[d.,]+/g, "#");
+  if (el.playLabel.dataset.shape !== shape) {
+    if (el.playLabel.dataset.shape !== undefined) liftIn(el.playLabel.parentElement);
+    el.playLabel.dataset.shape = shape;
+  }
   el.playLabel.textContent = label;
   el.playSub.textContent = sub;
   play.setAttribute("aria-busy", mode === "busy");
@@ -1015,14 +1699,24 @@ function renderPlay() {
   const locked = !inst || Boolean(S.busy) || Boolean(S.running);
   el.repairBtn.disabled = locked || !inst?.installed;
   el.folderBtn.disabled = !inst?.installed;
+  el.deleteBtn.disabled = !inst?.installed || Boolean(S.busy) || S.running === inst?.id;
+}
+
+function renderRamNote() {
+  const inst = current();
+  const rec = Math.min(inst?.recommended_ram_mb || 0, S.maxRam);
+  const cur = S.settings?.ram_mb || 0;
+  const show = Boolean(inst && rec && cur && cur < rec && !S.busy);
+  el.ramNote.hidden = !show;
+  if (show) {
+    el.ramNote.innerHTML = ICONS.memory + "<span>" + esc(t("home.ramLow", { cur: formatRam(cur), rec: formatRam(rec) })) + '</span><button type="button" data-goto="settings">' + esc(t("home.ramFix")) + "</button>";
+  }
 }
 
 function renderNickNote() {
   const profile = activeProfile();
   el.nickNote.innerHTML = profile ? t("home.playingAs", { nick: esc(profile.nickname) }) : t("home.noNick");
 }
-
-let heroImageToken = 0;
 
 function renderHero() {
   const inst = current();
@@ -1035,7 +1729,8 @@ function renderHero() {
     el.badgeMc.hidden = true;
     el.badgeLoader.hidden = true;
     el.badgeServer.hidden = true;
-    el.heroBg.classList.remove("ready");
+    el.ramNote.hidden = true;
+    paintHeroImage(null);
     renderPlay();
     return;
   }
@@ -1058,19 +1753,8 @@ function renderHero() {
   if (!inst.installed) meta.push(t("play.subFirst"));
   el.instMeta.textContent = meta.join(" · ");
 
-  const token = ++heroImageToken;
-  el.heroBg.classList.remove("ready");
-  el.hero.classList.remove("has-image");
-  if (inst.image) {
-    const image = new Image();
-    image.onload = () => {
-      if (token !== heroImageToken) return;
-      el.heroBg.style.backgroundImage = `url("${inst.image.replace(/["\\\n]/g, "")}")`;
-      el.heroBg.classList.add("ready");
-      el.hero.classList.add("has-image");
-    };
-    image.src = inst.image;
-  }
+  paintHeroImage(inst);
+  renderRamNote();
   renderServer();
   renderPlay();
 }
@@ -1105,19 +1789,22 @@ function renderList() {
     .map((inst, index) => {
       const on = inst.id === S.activeId;
       const details = [loaderName(inst.loader), inst.minecraft_version, formatSize(inst.size_bytes)].filter(Boolean).join(" · ");
-      const icon = inst.image
-        ? `<span class="inst-icon" style="background-image:url('${esc(inst.image.replace(/['"\\\n]/g, ""))}')"></span>`
-        : `<span class="inst-icon">${esc(inst.name.slice(0, 1).toUpperCase())}</span>`;
+      const icon = `<span class="inst-icon avatar" data-icon="${esc(inst.id)}"></span>`;
       const more = inst.installed
         ? `<button class="more" type="button" data-more="${esc(inst.id)}" aria-label="${esc(t("inst.more"))}" title="${esc(t("inst.more"))}">${ICONS.more}</button>`
         : "";
       return `<div class="inst-card${on ? " on" : ""}" role="option" tabindex="0" aria-selected="${on}" data-id="${esc(inst.id)}" style="animation-delay:${Math.min(index, 8) * 30}ms">
+        <span class="inst-art" data-art="${esc(inst.id)}"></span>
         ${icon}
-        <span class="inst-info"><b>${esc(inst.name)}</b><small>${esc(details)}</small></span>
-        <span class="inst-side">${statusTag(inst)}${more}</span>
+        <span class="inst-info"><b>${esc(inst.name)}</b><span class="inst-sub">${statusTag(inst)}<small>${esc(details)}</small></span></span>
+        <span class="inst-side">${more}</span>
       </div>`;
     })
     .join("");
+  for (const inst of items) {
+    paintAvatar(list.querySelector(`[data-icon="${CSS.escape(inst.id)}"]`), initial(inst.name), instanceIcons(inst));
+    paintArt(list.querySelector(`[data-art="${CSS.escape(inst.id)}"]`), inst);
+  }
 }
 
 function renderServer() {
@@ -1161,6 +1848,7 @@ let saveActiveTimer = 0;
 async function selectInstance(id, { save = true } = {}) {
   if (!S.view?.instances.some((i) => i.id === id)) return;
   const changed = S.activeId !== id;
+  if (changed && !S.busy) hideProgress();
   S.activeId = id;
   renderList();
   if (changed || save === false) renderHero();
@@ -1199,6 +1887,8 @@ async function loadProject({ quiet = false } = {}) {
     S.view = view;
     S.viewError = null;
     S.activeId = view.active_instance;
+    if (S.binding && view.name) S.binding.name = view.name;
+    prefetchAssets();
     renderTop();
     renderList();
     renderHero();
@@ -1206,10 +1896,10 @@ async function loadProject({ quiet = false } = {}) {
     selectInstance(S.activeId, { save: false });
   } catch (error) {
     S.view = null;
-    S.viewError = errText(error);
+    S.viewError = errHuman(error);
     renderList();
     renderHero();
-    setIsland("error", errText(error));
+    setIsland("error", errHuman(error));
   }
 }
 
@@ -1217,7 +1907,8 @@ function renderTop() {
   const name = S.view?.name || S.binding?.name || S.binding?.code || "—";
   el.topProject.textContent = name;
   el.topDot.classList.toggle("off", Boolean(S.view?.offline));
-  el.brandLetter.textContent = name.trim().slice(0, 1).toUpperCase() || "M";
+  paintAvatar(el.brand, initial(name), projectIcons());
+  paintAvatar(el.topAvatar, initial(name), projectIcons());
 }
 
 async function onPlay() {
@@ -1234,9 +1925,13 @@ async function onPlay() {
   }
   S.busy = "play";
   S.phase = "checking";
+  startProgress("play");
   renderPlay();
   try {
     const result = await invoke("play", { instanceId: inst.id });
+    finishProgress(true, t("progress.launched"));
+    if (!S.running) S.running = inst.id;
+    updateCalm();
     if (result.offline) setIsland("warn", t("status.offlinePlay"));
     else if (result.first_install) setIsland("ok", t("status.installed"));
     const fresh = current();
@@ -1246,12 +1941,12 @@ async function onPlay() {
       if (fresh.remote_version) fresh.local_version = fresh.remote_version;
     }
   } catch (error) {
-    setIsland("error", errText(error));
+    finishProgress(false, errHuman(error));
+    setIsland("error", errHuman(error));
     showError(error, [{ id: "retry", label: t("common.retry"), kind: "ghost", onClick: () => setTimeout(onPlay, 220) }]);
   } finally {
     S.busy = null;
     S.phase = null;
-    hideProgress();
     renderList();
     renderHero();
   }
@@ -1265,21 +1960,23 @@ async function onRepair(id) {
   if (inst.id !== S.activeId) await selectInstance(inst.id);
   S.busy = "repair";
   S.phase = "checking";
+  startProgress("repair");
   renderPlay();
   try {
     const report = await invoke("repair_instance", { instanceId: inst.id });
+    finishProgress(true, t("progress.checked"));
     const nothing = report.downloaded === 0 && report.removed === 0;
     setIsland("ok", nothing ? t("repair.ok") : t("repair.fixed", { d: report.downloaded, r: report.removed }));
     inst.installed = true;
     inst.update_available = false;
     if (inst.remote_version) inst.local_version = inst.remote_version;
   } catch (error) {
-    setIsland("error", errText(error));
+    finishProgress(false, errHuman(error));
+    setIsland("error", errHuman(error));
     showError(error);
   } finally {
     S.busy = null;
     S.phase = null;
-    hideProgress();
     renderList();
     renderHero();
   }
@@ -1288,18 +1985,61 @@ async function onRepair(id) {
 async function onDelete(id) {
   const inst = S.view?.instances.find((i) => i.id === id) || S.disk.find((d) => d.id === id);
   if (!inst || S.busy) return;
+  if (S.running === id) {
+    setIsland("warn", t("delete.running"));
+    return;
+  }
   const name = inst.name || id;
-  const ok = await confirmDialog({ icon: "trash", tone: "danger", title: t("delete.title", { name }), html: t("delete.text"), ok: t("delete.go"), danger: true });
-  if (!ok) return;
+  let usage = null;
   try {
-    await invoke("delete_instance", { instanceId: id });
-    setIsland("ok", t("delete.done", { name }));
+    usage = await invoke("instance_disk_usage", { instanceId: id });
+  } catch {
+    usage = null;
+  }
+  const hasPersonal = Boolean(usage && (usage.saves_count > 0 || usage.screenshots_count > 0));
+  const cell = (label, value, cellId) => '<div><small>' + esc(label) + "</small><b" + (cellId ? ' id="' + cellId + '"' : "") + ">" + esc(value) + "</b></div>";
+  const freeWith = (keep) => formatSize(Math.max(0, usage.total_bytes - (keep ? usage.personal_bytes : 0)));
+  const stats = usage
+    ? '<div class="usage">' + cell(t("delete.free"), freeWith(hasPersonal), "freeValue") + cell(t("delete.worlds"), String(usage.saves_count)) + cell(t("delete.shots"), String(usage.screenshots_count)) + "</div>"
+    : "";
+  const keepBox = hasPersonal
+    ? '<label class="check"><input type="checkbox" id="keepPersonal" checked><span>' + esc(t("delete.keep")) + "<small>" + esc(t("delete.keepHint", { size: formatSize(usage.personal_bytes) })) + "</small></span></label>"
+    : usage
+      ? "<p>" + esc(t("delete.noPersonal")) + "</p>"
+      : "";
+  let keep = false;
+  const choice = openModal({
+    icon: "trash",
+    tone: "danger",
+    title: t("delete.title", { name }),
+    html: "<p>" + esc(t("delete.lead")) + "</p>" + stats + keepBox,
+    buttons: [
+      { id: "cancel", label: t("common.cancel"), kind: "ghost" },
+      {
+        id: "ok",
+        label: t("delete.go"),
+        kind: "danger",
+        onClick: () => {
+          keep = Boolean($("keepPersonal")?.checked);
+        }
+      }
+    ]
+  });
+  $("keepPersonal")?.addEventListener("change", (event) => {
+    const free = $("freeValue");
+    if (free) free.textContent = freeWith(event.target.checked);
+  });
+  if ((await choice) !== "ok") return;
+  try {
+    await invoke("delete_instance", { instanceId: id, keepPersonal: keep });
+    setIsland("ok", keep ? t("delete.doneKept", { name }) : t("delete.done", { name }));
     const local = S.view?.instances.find((i) => i.id === id);
     if (local) {
       local.installed = false;
       local.update_available = false;
       local.local_version = "";
     }
+    if (id === S.activeId) hideProgress();
     renderList();
     renderHero();
     if (S.tab === "settings") refreshSettings();
@@ -1474,7 +2214,7 @@ async function onAddProfile(event) {
 function renderProject() {
   const name = S.view?.name || S.binding?.name || "—";
   el.projName.textContent = name;
-  el.projBrand.textContent = name.trim().slice(0, 1).toUpperCase() || "M";
+  paintAvatar(el.projBrand, initial(name), projectIcons());
   el.projCode.textContent = S.binding?.code || "—";
   el.projCount.textContent = S.view ? plural(S.view.instances.length, "plural.packs") : "";
   el.projState.textContent = S.view ? (S.view.offline ? t("project.offline") : t("project.online")) : S.viewError || "";
@@ -1595,7 +2335,7 @@ async function onSwitchProject(event) {
     renderProject();
     setIsland("ok", t("project.switched", { name: S.binding.name || code }));
   } catch (error) {
-    el.switchError.textContent = errText(error);
+    el.switchError.textContent = errHuman(error);
     el.switchError.hidden = false;
   } finally {
     setLoading(el.switchSubmit, false);
@@ -1650,6 +2390,7 @@ function saveRam() {
   clearTimeout(ramSaveTimer);
   ramSaveTimer = setTimeout(() => {
     S.settings.ram_mb = Number(el.ram.value);
+    renderRamNote();
     invoke("save_settings", { patch: { ram_mb: S.settings.ram_mb } }).catch((e) => setIsland("error", errText(e)));
   }, 250);
 }
@@ -1693,7 +2434,8 @@ function renderDisk() {
     .map((d) => {
       const notes = [formatSize(d.size_bytes)];
       if (d.pack_version) notes.push("v" + d.pack_version);
-      if (!d.installed) notes.push(t("settings.partial"));
+      if (d.kept_personal) notes.push(t("settings.kept"));
+      else if (!d.installed) notes.push(t("settings.partial"));
       if (d.project && S.binding && d.project.toLowerCase() !== S.binding.code.toLowerCase()) notes.push(t("settings.fromProject", { code: d.project }));
       return `<div class="disk-row" data-disk="${esc(d.id)}">
         <span><b>${esc(d.name)}</b><small>${esc(notes.join(" · "))}</small></span>
@@ -1792,8 +2534,9 @@ function renderProjectList() {
     return;
   }
   el.obProjects.innerHTML = list
-    .map((project) => `<button type="button" class="pl-item" role="radio" aria-checked="false" data-code="${esc(project.code)}"><b>${esc(project.title)}</b><span>${esc(project.description)}</span></button>`)
+    .map((project, index) => `<button type="button" class="pl-item" role="radio" aria-checked="false" data-code="${esc(project.code)}"><span class="avatar" data-pl="${index}"></span><span class="pl-text"><b>${esc(project.title)}</b><span>${esc(project.description)}</span></span></button>`)
     .join("");
+  list.forEach((project, index) => paintAvatar(el.obProjects.querySelector(`[data-pl="${index}"]`), initial(project.title), [project.icon]));
   markPicked();
 }
 
@@ -1806,7 +2549,7 @@ async function loadProjectList() {
     S.projectList = await invoke("list_projects");
   } catch (error) {
     S.projectList = [];
-    S.projectListError = errText(error);
+    S.projectListError = errHuman(error);
   }
   if (S.projectList.length === 1) S.pickedProject = S.projectList[0].code;
   renderProjectList();
@@ -1857,7 +2600,7 @@ async function onOnboardingSubmit(event) {
     if (needNick) applyProfiles(await invoke("add_profile", { nickname }));
     showApp();
   } catch (error) {
-    el.obError.textContent = errText(error);
+    el.obError.textContent = errHuman(error);
     el.obError.hidden = false;
   } finally {
     setLoading(el.obSubmit, false);
@@ -1898,6 +2641,8 @@ function renderAll() {
   if (S.tab === "profiles") renderProfiles();
   if (S.tab === "project") renderProject();
   if (S.tab === "changelog") paintChangelog();
+  renderSteps();
+  renderRamNote();
   idleIsland();
   const active = el.nav.querySelector(".nav-item.on");
   requestAnimationFrame(() => moveNavIndicator(active, false));
@@ -1908,11 +2653,12 @@ function renderAll() {
 async function registerListeners() {
   await listen("launcher-status", (event) => {
     if (S.busy || S.updating) setIsland("busy", String(event.payload));
+    onLauncherStatus(String(event.payload));
   });
+  await listen("play-step", (event) => setStep(String(event.payload)));
   await listen("sync-progress", (event) => setProgress(event.payload));
   await listen("play-phase", (event) => {
     S.phase = String(event.payload);
-    if (S.phase === "launching") hideProgress();
     renderPlay();
   });
   await listen("game-state", (event) => {
@@ -1967,57 +2713,6 @@ function showCrash(payload) {
     ]
   });
 }
-
-/* обвідка за курсором (як у Ranking): один rAF на кадр, passive-слухачі */
-let tracked = null;
-let center = null;
-let angle = 0;
-let angleFrame = 0;
-let pointerX = 0;
-let pointerY = 0;
-
-function nextAngle(x, y) {
-  const fresh = (Math.atan2(x - center.x, center.y - y) * 180) / Math.PI;
-  let delta = (fresh - angle) % 360;
-  if (delta > 180) delta -= 360;
-  else if (delta < -180) delta += 360;
-  angle += delta;
-  return angle;
-}
-
-function paintAngle() {
-  angleFrame = 0;
-  if (tracked) tracked.style.setProperty("--kat", nextAngle(pointerX, pointerY) + "deg");
-}
-
-document.addEventListener(
-  "pointerover",
-  (event) => {
-    const target = event.target.closest?.(".nav-item, .icon-btn");
-    if (!target || target === tracked || event.pointerType === "touch") return;
-    tracked = target;
-    const rect = target.getBoundingClientRect();
-    center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    angle = 0;
-    target.style.setProperty("--kat", nextAngle(event.clientX, event.clientY) + "deg");
-  },
-  { passive: true }
-);
-
-document.addEventListener(
-  "pointermove",
-  (event) => {
-    if (!tracked) return;
-    if (!tracked.contains(event.target)) {
-      tracked = null;
-      return;
-    }
-    pointerX = event.clientX;
-    pointerY = event.clientY;
-    if (!angleFrame) angleFrame = requestAnimationFrame(paintAngle);
-  },
-  { passive: true }
-);
 
 function bindEvents() {
   document.addEventListener("click", (event) => {
@@ -2075,6 +2770,7 @@ function bindEvents() {
   el.play.addEventListener("click", onPlay);
   el.repairBtn.addEventListener("click", () => onRepair());
   el.folderBtn.addEventListener("click", () => openFolder());
+  el.deleteBtn.addEventListener("click", () => onDelete(S.activeId));
 
   el.obForm.addEventListener("submit", onOnboardingSubmit);
   el.obCode.addEventListener("input", () => {
