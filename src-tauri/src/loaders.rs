@@ -10,6 +10,7 @@ use crate::error::{fail, Context, Result};
 use crate::events::status;
 use crate::manifest::Manifest;
 use crate::paths::Paths;
+use crate::t;
 use crate::util::{download_file, hide_window, noop, read_zip_text, Checksum};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -66,7 +67,14 @@ async fn prepare_fabric(
     let id = format!("fabric-loader-{loader_version}-{mc}");
     let json_path = paths.version_json(&id);
     if !json_path.is_file() {
-        status(app, &format!("Встановлення Fabric {loader_version}…"));
+        status(
+            app,
+            &t!(
+                "Встановлення Fabric {}…",
+                "Installing Fabric {}…",
+                loader_version
+            ),
+        );
         let url = format!(
             "https://meta.fabricmc.net/v2/versions/loader/{mc}/{loader_version}/profile/json"
         );
@@ -145,7 +153,14 @@ async fn prepare_forge_like(
         .cache
         .join(format!("{label}-{mc}-{loader_version}-installer.jar"));
     if !installer.is_file() {
-        status(app, &format!("Завантаження інсталятора {label}…"));
+        status(
+            app,
+            &t!(
+                "Завантаження інсталятора {}…",
+                "Downloading {} installer…",
+                label
+            ),
+        );
         let url = installer_url(kind, mc, loader_version);
         download_file(client, &url, &installer, &Checksum::None, &noop).await?;
     }
@@ -157,7 +172,11 @@ async fn prepare_forge_like(
 
     status(
         app,
-        &format!("Встановлення {label} (це може тривати кілька хвилин)…"),
+        &t!(
+            "Встановлення {} (це може тривати кілька хвилин)…",
+            "Installing {} (this may take a few minutes)…",
+            label
+        ),
     );
     let mut command = Command::new(java);
     command

@@ -79,3 +79,8 @@ impl Progress {
         let _ = self.app.emit("sync-progress", payload);
     }
 }
+
+/// Фаза кнопки "Грати": checking → downloading → preparing → launching.
+pub fn phase(app: &AppHandle, name: &str) {
+    let _ = app.emit("play-phase", name);
+}

@@ -4,9 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::constants::manifest_url;
 use crate::error::{fail, Result};
-use crate::paths::Paths;
 use crate::util::fetch_json;
 
 pub const MANAGED_DIRS: [&str; 4] = ["mods", "config", "resourcepacks", "shaderpacks"];
@@ -97,26 +95,38 @@ fn validate(manifest: &Manifest) -> Result<()> {
     Ok(())
 }
 
-pub async fn fetch(client: &Client) -> Result<Manifest> {
+pub fn is_config_like(path: &str) -> bool {
+    path == "servers.dat" || path.starts_with("config/")
+}
+
+pub fn total_size(manifest: &Manifest) -> u64 {
+    manifest.files.iter().map(|f| f.size).sum()
+}
+
+pub async fn fetch(client: &Client, url: &str) -> Result<Manifest> {
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    let url = format!("{}?t={}", manifest_url(), stamp);
+    let separator = if url.contains('?') { '&' } else { '?' };
+    let url = format!("{url}{separator}t={stamp}");
     let manifest: Manifest = fetch_json(client, &url).await?;
     validate(&manifest)?;
     Ok(manifest)
 }
 
-pub async fn load_cached(paths: &Paths) -> Option<Manifest> {
-    let text = tokio::fs::read_to_string(&paths.manifest_cache).await.ok()?;
+pub async fn load_cached(path: &Path) -> Option<Manifest> {
+    let text = tokio::fs::read_to_string(path).await.ok()?;
     let manifest: Manifest = serde_json::from_str(&text).ok()?;
     validate(&manifest).ok()?;
     Some(manifest)
 }
 
-pub async fn save_cache(paths: &Paths, manifest: &Manifest) -> Result<()> {
+pub async fn save_cache(path: &Path, manifest: &Manifest) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
     let text = serde_json::to_string_pretty(manifest)?;
-    tokio::fs::write(&paths.manifest_cache, text).await?;
+    tokio::fs::write(path, text).await?;
     Ok(())
 }
