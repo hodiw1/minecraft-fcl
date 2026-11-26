@@ -7,62 +7,326 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="bg">
+<div class="bg" aria-hidden="true">
   <span class="orb orb-a"></span>
   <span class="orb orb-b"></span>
   <span class="orb orb-c"></span>
 </div>
 
-<div class="island is-busy" id="island">
-  <span class="island-dot"></span>
-  <span class="island-text" id="statusText">Запуск…</span>
+<!-- Завантаження -->
+<div class="boot" id="boot">
+  <span class="spinner"></span>
+  <span id="bootText" data-i18n="boot.loading">Завантаження…</span>
 </div>
 
-<main class="layout">
-  <section class="hero glass">
-    <div class="hero-badges">
-      <span class="badge" id="mcBadge">Minecraft —</span>
-      <span class="badge badge-accent" id="loaderBadge">—</span>
-    </div>
-    <h1 id="packName">Збірка</h1>
-    <p class="hero-sub" id="packVersion">Завантаження інформації…</p>
-  </section>
-
-  <section class="panel glass">
-    <div class="field">
-      <label for="nickname">Нікнейм</label>
-      <input id="nickname" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Steve_2024">
-      <span class="hint" id="nickHint">3–16 символів: латиниця, цифри, _</span>
-    </div>
-
-    <div class="field">
-      <div class="field-row">
-        <label for="ram">Оперативна пам'ять</label>
-        <span class="ram-value" id="ramValue">4 ГБ</span>
+<!-- Перший вхід: код проєкту + нік -->
+<section class="onboarding" id="onboarding" hidden>
+  <div class="ob-card glass">
+    <div class="ob-top">
+      <span class="brand brand-lg">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>
+      </span>
+      <div class="seg seg-sm" id="obLang" role="radiogroup" aria-label="Language">
+        <button type="button" data-lang="uk" role="radio">UKR</button>
+        <button type="button" data-lang="en" role="radio">ENG</button>
       </div>
-      <input id="ram" type="range" min="1024" max="8192" step="256" value="4096">
-      <span class="hint" id="ramHint">&nbsp;</span>
     </div>
+    <h1 data-i18n="ob.title">Ласкаво просимо!</h1>
+    <p class="ob-sub" id="obSub" data-i18n="ob.sub">Щоб почати, обери проєкт зі списку та вкажи свій ігровий нік.</p>
 
-    <div class="progress">
-      <div class="progress-row">
-        <span class="progress-stage" id="progressStage">Очікування</span>
-        <span class="progress-percent" id="progressPercent">0%</span>
+    <form id="obForm" novalidate autocomplete="off">
+      <div class="field">
+        <label data-i18n="ob.pick">Проєкти</label>
+        <div class="project-list" id="obProjects" role="radiogroup"></div>
       </div>
-      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-      <span class="progress-file" id="progressFile">&nbsp;</span>
-    </div>
+      <div class="field">
+        <label for="obCode" data-i18n="ob.code">Або введи код проєкту</label>
+        <input id="obCode" type="text" spellcheck="false" maxlength="120" data-i18n-ph="ob.codePh" placeholder="Наприклад: FNAF-2026">
+        <span class="hint" data-i18n="ob.codeHint">Лише для прихованих проєктів — код дає адміністратор.</span>
+      </div>
+      <div class="field" id="obNickField">
+        <label for="obNick" data-i18n="ob.nick">Твій ігровий нік</label>
+        <input id="obNick" type="text" spellcheck="false" maxlength="16" data-i18n-ph="ob.nickPh" placeholder="Наприклад: Kozak_2009">
+        <span class="hint" id="obNickHint" data-i18n="ob.nickHint">Під цим ім'ям тебе бачитимуть у грі. 3–16 символів: латиниця, цифри, _</span>
+      </div>
+      <div class="form-error" id="obError" role="alert" hidden></div>
+      <button class="btn btn-primary btn-lg" id="obSubmit" type="submit">
+        <span class="btn-spin" aria-hidden="true"></span>
+        <span class="btn-text" data-i18n="ob.submit">Підключитися</span>
+      </button>
+    </form>
+  </div>
+</section>
 
-    <button class="play" id="play" disabled>
-      <span id="playLabel">Зачекайте…</span>
+<!-- Основний інтерфейс -->
+<div class="app" id="app" hidden>
+  <aside class="sidebar">
+    <button class="brand" id="brand" type="button" data-goto="project" data-i18n-title="nav.project" title="Проєкт">
+      <span id="brandLetter">M</span>
     </button>
-  </section>
-</main>
+    <nav class="nav" id="nav" aria-label="Меню">
+      <span class="nav-ind" id="navInd" aria-hidden="true"></span>
+      <button class="nav-item" type="button" data-tab="home">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span data-i18n="nav.home">Збірки</span>
+      </button>
+      <button class="nav-item" type="button" data-tab="profiles">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+        <span data-i18n="nav.profiles">Профілі</span>
+      </button>
+      <button class="nav-item" type="button" data-tab="project">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+        <span data-i18n="nav.project">Проєкт</span>
+      </button>
+      <span class="nav-spacer"></span>
+      <button class="nav-item" type="button" data-tab="settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span data-i18n="nav.settings">Налаштування</span>
+      </button>
+    </nav>
+  </aside>
 
-<footer class="version">
-  <span class="version-dot"></span>
-  <span id="launcherVersion">Лаунчер v—</span>
-</footer>
+  <main class="main">
+    <header class="topbar">
+      <button class="top-project" type="button" data-goto="project">
+        <span class="live-dot" id="topDot"></span>
+        <span class="top-project-name" id="topProject">—</span>
+      </button>
+      <div class="island is-busy" id="island" role="status" aria-live="polite">
+        <span class="island-dot"></span>
+        <span class="island-text" id="statusText">…</span>
+      </div>
+      <button class="top-profile" type="button" data-goto="profiles" data-i18n-title="top.changeProfile" title="Змінити профіль">
+        <canvas class="head" id="topHead" width="32" height="32"></canvas>
+        <span class="top-profile-text">
+          <b id="topNick">—</b>
+          <small data-i18n="top.changeProfile">Змінити профіль</small>
+        </span>
+      </button>
+    </header>
+
+    <div class="views">
+      <!-- ЗБІРКИ -->
+      <section class="view view-home" data-view="home">
+        <div class="hero" id="hero">
+          <div class="hero-bg" id="heroBg"></div>
+          <div class="hero-body">
+            <div class="badges">
+              <span class="badge" id="badgeMc" hidden></span>
+              <span class="badge badge-accent" id="badgeLoader" hidden></span>
+              <span class="badge badge-server" id="badgeServer" hidden><i></i><span id="serverText"></span></span>
+            </div>
+            <h1 id="instName">—</h1>
+            <p class="hero-desc" id="instDesc"></p>
+            <p class="hero-meta" id="instMeta"></p>
+
+            <div class="actions">
+              <button class="play" id="play" type="button" disabled>
+                <span class="play-label" id="playLabel">…</span>
+                <span class="play-sub" id="playSub"></span>
+              </button>
+              <button class="icon-btn" id="repairBtn" type="button" data-i18n-title="home.repairTitle" title="Перевірити й виправити файли збірки">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg>
+                <span data-i18n="home.repair">Ремонт</span>
+              </button>
+              <button class="icon-btn" id="folderBtn" type="button" data-i18n-title="home.folderTitle" title="Відкрити папку збірки (скріншоти, ресурспаки)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <span data-i18n="home.folder">Папка</span>
+              </button>
+            </div>
+
+            <div class="progress" id="progress" hidden>
+              <div class="progress-row">
+                <span class="progress-stage" id="progressStage"></span>
+                <span class="progress-percent" id="progressPercent">0%</span>
+              </div>
+              <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+              <span class="progress-file" id="progressFile">&nbsp;</span>
+            </div>
+
+            <p class="nick-note" id="nickNote"></p>
+          </div>
+        </div>
+
+        <aside class="inst-panel">
+          <div class="panel-head">
+            <h2 data-i18n="home.listTitle">Збірки проєкту</h2>
+            <span class="count" id="instCount">0</span>
+          </div>
+          <div class="inst-list" id="instList" role="listbox" aria-label="Збірки"></div>
+        </aside>
+      </section>
+
+      <!-- ПРОФІЛІ -->
+      <section class="view view-profiles" data-view="profiles">
+        <div class="view-head">
+          <h2 data-i18n="profiles.title">Профілі</h2>
+          <p data-i18n="profiles.sub">Нікнейми, під якими ти заходиш у гру. Кнопка «Грати» використовує активний профіль.</p>
+        </div>
+        <div class="profiles-grid">
+          <div class="skin-stage glass">
+            <canvas id="skinBody" width="128" height="256" aria-hidden="true"></canvas>
+            <b class="stage-nick" id="stageNick">—</b>
+            <div class="stage-actions">
+              <button class="btn btn-primary" id="skinUpload" type="button" data-i18n="profiles.upload">Завантажити скін</button>
+              <button class="btn btn-ghost" id="skinReset" type="button" data-i18n="profiles.reset">Стандартний</button>
+            </div>
+            <p class="hint center" data-i18n="profiles.skinFormat">Файл .png 64×64 — такий, як на сайтах зі скінами.</p>
+            <p class="note" data-i18n-html="profiles.skinNote">Скін бачиш <b>лише ти</b> (якщо в збірці є мод CustomSkinLoader). Щоб його бачили інші гравці, сервер має підтримувати скіни — уточни в адміністратора.</p>
+          </div>
+
+          <div class="profile-col">
+            <form class="add-row glass" id="addProfileForm" novalidate autocomplete="off">
+              <input id="newNick" type="text" maxlength="16" spellcheck="false" data-i18n-ph="profiles.newPh" placeholder="Новий нікнейм">
+              <button class="btn btn-primary" type="submit" data-i18n="profiles.add">Додати</button>
+            </form>
+            <span class="hint" id="newNickHint" data-i18n="profiles.nickRule">3–16 символів: латиниця, цифри, _</span>
+            <div class="profile-list" id="profileList"></div>
+          </div>
+        </div>
+        <input type="file" id="skinFile" accept=".png,image/png" hidden>
+      </section>
+
+      <!-- ПРОЄКТ -->
+      <section class="view view-project" data-view="project">
+        <div class="view-head">
+          <h2 data-i18n="project.title">Проєкт</h2>
+          <p data-i18n="project.sub">Проєкт — це сервер чи спільнота, до якої прив'язаний лаунчер. Від нього залежить список збірок.</p>
+        </div>
+        <div class="cards">
+          <div class="card glass project-card">
+            <span class="brand brand-lg" id="projBrand">M</span>
+            <div class="project-info">
+              <h3 id="projName">—</h3>
+              <p class="muted"><span data-i18n="project.code">Код:</span> <b class="mono" id="projCode">—</b> · <span id="projCount"></span></p>
+              <p class="muted" id="projState"></p>
+            </div>
+            <button class="btn btn-ghost" id="projRefresh" type="button" data-i18n="project.refresh">Оновити список</button>
+          </div>
+
+          <div class="card glass">
+            <h3 data-i18n="project.switchTitle">Підключити інший проєкт</h3>
+            <form class="add-row" id="switchForm" novalidate autocomplete="off">
+              <input id="switchCode" type="text" spellcheck="false" maxlength="120" data-i18n-ph="ob.codePh" placeholder="Наприклад: FNAF-2026">
+              <button class="btn btn-primary" id="switchSubmit" type="submit">
+                <span class="btn-spin" aria-hidden="true"></span>
+                <span class="btn-text" data-i18n="project.connect">Підключити</span>
+              </button>
+            </form>
+            <div class="form-error" id="switchError" role="alert" hidden></div>
+            <p class="hint" data-i18n="project.switchHint">Встановлені збірки залишаться на диску. Видалити їх можна в Налаштуваннях.</p>
+          </div>
+
+          <div class="card glass card-danger">
+            <div>
+              <h3 data-i18n="project.leaveTitle">Вийти з проєкту</h3>
+              <p class="muted" data-i18n="project.leaveSub">Лаунчер забуде код і попросить ввести новий. Профілі й збірки залишаться.</p>
+            </div>
+            <button class="btn btn-danger" id="leaveBtn" type="button" data-i18n="project.leave">Вийти з проєкту</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- НАЛАШТУВАННЯ -->
+      <section class="view view-settings" data-view="settings">
+        <div class="view-head">
+          <h2 data-i18n="settings.title">Налаштування</h2>
+        </div>
+        <div class="cards">
+          <div class="card glass">
+            <div class="row-between">
+              <h3 data-i18n="settings.ram">Оперативна пам'ять для гри</h3>
+              <span class="ram-value" id="ramValue">4 ГБ</span>
+            </div>
+            <input id="ram" type="range" min="1024" max="8192" step="256" value="4096" aria-labelledby="ramValue">
+            <div class="ram-scale"><span id="ramMin">1 ГБ</span><span id="ramMax">8 ГБ</span></div>
+            <p class="hint" id="ramHint"></p>
+            <p class="hint warn" id="ramWarn" hidden></p>
+            <button class="btn btn-ghost btn-sm" id="ramRecommended" type="button" data-i18n="settings.ramUseRec">Поставити рекомендоване</button>
+          </div>
+
+          <div class="card glass">
+            <h3 data-i18n="settings.graphics">Пресет графіки</h3>
+            <div class="seg" id="presetSeg" role="radiogroup">
+              <button type="button" data-preset="low" data-i18n="preset.low">Низька</button>
+              <button type="button" data-preset="medium" data-i18n="preset.medium">Середня</button>
+              <button type="button" data-preset="high" data-i18n="preset.high">Висока</button>
+              <button type="button" data-preset="ultra" data-i18n="preset.ultra">Ультра</button>
+            </div>
+            <p class="hint" data-i18n="settings.presetHint">Застосовується автоматично один раз — під час встановлення збірки. Гучність, клавіші й чутливість миші лаунчер не змінює.</p>
+            <button class="btn btn-ghost btn-sm" id="applyPreset" type="button"></button>
+          </div>
+
+          <div class="card glass">
+            <h3 data-i18n="settings.lang">Мова</h3>
+            <div class="setting-row">
+              <span data-i18n="settings.uiLang">Мова лаунчера</span>
+              <div class="seg seg-sm" id="uiLangSeg" role="radiogroup">
+                <button type="button" data-lang="uk">UKR</button>
+                <button type="button" data-lang="en">ENG</button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <label for="gameLang" data-i18n="settings.gameLang">Мова Minecraft</label>
+              <select id="gameLang">
+                <option value="uk_ua">Українська</option>
+                <option value="en_us">English (US)</option>
+                <option value="en_gb">English (UK)</option>
+                <option value="pl_pl">Polski</option>
+                <option value="de_de">Deutsch</option>
+                <option value="fr_fr">Français</option>
+                <option value="es_es">Español</option>
+                <option value="cs_cz">Čeština</option>
+                <option value="be_by">Беларуская</option>
+                <option value="ru_ru">Русский</option>
+              </select>
+            </div>
+            <p class="hint" data-i18n="settings.gameLangHint">Змінюється у всіх встановлених збірках. У грі мову теж можна змінити будь-коли.</p>
+          </div>
+
+          <div class="card glass">
+            <h3 data-i18n="settings.folder">Папка лаунчера та збірок</h3>
+            <p class="path mono" id="dataDir">—</p>
+            <div class="btn-row">
+              <button class="btn btn-ghost btn-sm" id="changeDir" type="button" data-i18n="settings.change">Змінити…</button>
+              <button class="btn btn-ghost btn-sm" id="openDir" type="button" data-i18n="settings.open">Відкрити</button>
+              <button class="btn btn-ghost btn-sm" id="resetDir" type="button" data-i18n="settings.resetDir" hidden>Повернути стандартну</button>
+            </div>
+            <p class="hint" data-i18n="settings.folderHint">Знадобиться, якщо на диску C: мало місця. Java, бібліотеки й ресурси гри спільні для всіх збірок і не дублюються.</p>
+          </div>
+
+          <div class="card glass">
+            <div class="row-between">
+              <h3 data-i18n="settings.installed">Встановлені збірки</h3>
+              <span class="muted" id="installedTotal"></span>
+            </div>
+            <div class="disk-list" id="diskList"></div>
+            <button class="btn btn-danger btn-sm" id="deleteAll" type="button" data-i18n="settings.deleteAll">Видалити всі збірки</button>
+          </div>
+
+          <p class="about muted" id="aboutText"></p>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Спливаюче меню картки збірки -->
+<div class="menu glass" id="instMenu" role="menu" hidden>
+  <button type="button" role="menuitem" data-act="folder" data-i18n="menu.folder">Відкрити папку</button>
+  <button type="button" role="menuitem" data-act="repair" data-i18n="menu.repair">Перевірити файли</button>
+  <button type="button" role="menuitem" data-act="delete" class="danger" data-i18n="menu.delete">Видалити збірку…</button>
+</div>
+
+<!-- Модальне вікно -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-card glass" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <span class="modal-icon" id="modalIcon"></span>
+    <h3 id="modalTitle"></h3>
+    <div class="modal-text" id="modalText"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>

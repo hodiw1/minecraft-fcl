@@ -10,6 +10,8 @@ use tauri::AppHandle;
 use crate::constants::releases_api_url;
 use crate::error::{fail, Context, Result};
 use crate::events::{status, Progress};
+use crate::i18n::tr;
+use crate::t;
 use crate::util::{download_file, Checksum};
 
 #[derive(Deserialize)]
@@ -62,7 +64,9 @@ pub fn cleanup_old_executable() {
 }
 
 fn parse_version(raw: &str) -> Option<Version> {
-    let cleaned = raw.trim().trim_start_matches(|c: char| c == 'v' || c == 'V');
+    let cleaned = raw
+        .trim()
+        .trim_start_matches(|c: char| c == 'v' || c == 'V');
     if let Ok(version) = Version::parse(cleaned) {
         return Some(version);
     }
@@ -109,7 +113,14 @@ pub async fn check_and_update(app: &AppHandle, client: &Client) -> Result<Update
         })
         .ctx("у релізі немає .exe файлу")?;
 
-    status(app, &format!("Завантаження оновлення лаунчера {latest}…"));
+    status(
+        app,
+        &t!(
+            "Завантаження оновлення лаунчера {}…",
+            "Downloading launcher update {}…",
+            latest
+        ),
+    );
 
     let exe = std::env::current_exe().ctx("не вдалося визначити шлях до .exe")?;
     let new_exe = exe_sibling(&exe, "new");
@@ -151,7 +162,7 @@ pub async fn check_and_update(app: &AppHandle, client: &Client) -> Result<Update
         return fail(format!("не вдалося підкласти новий .exe: {error}"));
     }
 
-    status(app, "Перезапуск лаунчера…");
+    status(app, tr("Перезапуск лаунчера…", "Restarting launcher…"));
     std::process::Command::new(&exe)
         .spawn()
         .ctx("не вдалося перезапустити лаунчер")?;

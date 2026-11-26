@@ -6,7 +6,9 @@ use tauri::AppHandle;
 
 use crate::error::{fail, Result};
 use crate::events::{status, Progress};
+use crate::i18n::tr;
 use crate::paths::Paths;
+use crate::t;
 use crate::util::{download_file, extract_zip, Checksum};
 
 const JAVA_BIN: &str = if cfg!(windows) { "java.exe" } else { "java" };
@@ -63,7 +65,14 @@ pub async fn ensure_java(
     tokio::fs::create_dir_all(&paths.runtime).await?;
     tokio::fs::create_dir_all(&paths.cache).await?;
 
-    status(app, &format!("Завантаження Java {major} (Temurin JRE)…"));
+    status(
+        app,
+        &t!(
+            "Завантаження Java {} (Temurin JRE)…",
+            "Downloading Java {} (Temurin JRE)…",
+            major
+        ),
+    );
     let arch = if cfg!(target_arch = "aarch64") {
         "aarch64"
     } else {
@@ -84,7 +93,7 @@ pub async fn ensure_java(
     .await?;
     progress.finish();
 
-    status(app, "Розпакування Java…");
+    status(app, tr("Розпакування Java…", "Unpacking Java…"));
     let temp = paths.runtime.join(format!("java-{major}.tmp"));
     if temp.exists() {
         tokio::fs::remove_dir_all(&temp).await?;

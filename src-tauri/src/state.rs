@@ -1,10 +1,17 @@
+use std::sync::{Arc, Mutex};
+
 use reqwest::Client;
 
 use crate::util::http_client;
 
 pub struct AppState {
     pub client: Client,
+    /// Одна важка операція за раз: встановлення, ремонт, запуск, видалення, перенесення папки.
     pub busy: tokio::sync::Mutex<()>,
+    /// Захищає read-modify-write config.json від гонок між командами.
+    pub config_lock: tokio::sync::Mutex<()>,
+    /// id збірки, гра з якої зараз запущена (захист від кількох копій Minecraft).
+    pub game: Arc<Mutex<Option<String>>>,
 }
 
 impl AppState {
@@ -12,6 +19,12 @@ impl AppState {
         Self {
             client: http_client().expect("не вдалося створити HTTP-клієнт"),
             busy: tokio::sync::Mutex::new(()),
+            config_lock: tokio::sync::Mutex::new(()),
+            game: Arc::new(Mutex::new(None)),
         }
+    }
+
+    pub fn running_game(&self) -> Option<String> {
+        self.game.lock().ok().and_then(|g| g.clone())
     }
 }
