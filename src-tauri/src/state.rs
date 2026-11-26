@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use reqwest::Client;
 
+use crate::updater::ReleaseInfo;
 use crate::util::http_client;
 
 pub struct AppState {
@@ -12,6 +13,10 @@ pub struct AppState {
     pub config_lock: tokio::sync::Mutex<()>,
     /// id збірки, гра з якої зараз запущена (захист від кількох копій Minecraft).
     pub game: Arc<Mutex<Option<String>>>,
+    /// Зміни в mods/ власних збірок — по одній за раз.
+    pub mods_lock: tokio::sync::Mutex<()>,
+    /// Остання знайдена нова версія лаунчера (щоб «Завантажити» не перевіряло все заново).
+    pub update: Mutex<Option<ReleaseInfo>>,
 }
 
 impl AppState {
@@ -21,6 +26,8 @@ impl AppState {
             busy: tokio::sync::Mutex::new(()),
             config_lock: tokio::sync::Mutex::new(()),
             game: Arc::new(Mutex::new(None)),
+            mods_lock: tokio::sync::Mutex::new(()),
+            update: Mutex::new(None),
         }
     }
 

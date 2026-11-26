@@ -1,11 +1,10 @@
 use std::path::{Component, Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{fail, Result};
-use crate::util::fetch_json;
+use crate::mirrors;
 
 pub const MANAGED_DIRS: [&str; 4] = ["mods", "config", "resourcepacks", "shaderpacks"];
 
@@ -103,16 +102,25 @@ pub fn total_size(manifest: &Manifest) -> u64 {
     manifest.files.iter().map(|f| f.size).sum()
 }
 
+/// manifest.json збірки: оригінальне посилання, а за потреби — дзеркала (без кешу CDN).
 pub async fn fetch(client: &Client, url: &str) -> Result<Manifest> {
-    let stamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let separator = if url.contains('?') { '&' } else { '?' };
-    let url = format!("{url}{separator}t={stamp}");
-    let manifest: Manifest = fetch_json(client, &url).await?;
+    let manifest: Manifest = mirrors::get_json(client, url, true)
+        .await
+        .map_err(|error| error.into_plain(url))?;
     validate(&manifest)?;
     Ok(manifest)
+}
+
+/// Розбір manifest.json з архіву чи диска з тими самими перевірками, що й для мережі.
+pub fn parse(text: &str) -> Result<Manifest> {
+    let manifest: Manifest = serde_json::from_str(text.trim_start_matches('\u{feff}'))?;
+    validate(&manifest)?;
+    Ok(manifest)
+}
+
+/// Чи є файл модом у mods/ (саме .jar, будь-якої вкладеності).
+pub fn is_mod_path(path: &str) -> bool {
+    path.starts_with("mods/") && path.to_ascii_lowercase().ends_with(".jar")
 }
 
 pub async fn load_cached(path: &Path) -> Option<Manifest> {

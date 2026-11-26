@@ -19,6 +19,7 @@ pub enum LoaderKind {
     Fabric,
     Forge,
     NeoForge,
+    Quilt,
 }
 
 impl LoaderKind {
@@ -28,7 +29,18 @@ impl LoaderKind {
             "fabric" => Ok(LoaderKind::Fabric),
             "forge" => Ok(LoaderKind::Forge),
             "neoforge" | "neo-forge" | "neo_forge" => Ok(LoaderKind::NeoForge),
+            "quilt" => Ok(LoaderKind::Quilt),
             other => fail(format!("невідомий завантажувач у маніфесті: {other}")),
+        }
+    }
+
+    pub fn id(self) -> &'static str {
+        match self {
+            LoaderKind::Vanilla => "vanilla",
+            LoaderKind::Fabric => "fabric",
+            LoaderKind::Forge => "forge",
+            LoaderKind::NeoForge => "neoforge",
+            LoaderKind::Quilt => "quilt",
         }
     }
 }
@@ -52,31 +64,45 @@ pub async fn prepare_loader(
     }
 
     match kind {
-        LoaderKind::Fabric => prepare_fabric(app, client, paths, mc, loader_version).await,
+        LoaderKind::Fabric | LoaderKind::Quilt => {
+            prepare_fabric_like(app, client, paths, kind, mc, loader_version).await
+        }
         _ => prepare_forge_like(app, client, paths, kind, mc, loader_version, java).await,
     }
 }
 
-async fn prepare_fabric(
+/// Fabric і Quilt: профіль версії готовий на їхньому meta-сервері, інсталятор не потрібен.
+async fn prepare_fabric_like(
     app: &AppHandle,
     client: &Client,
     paths: &Paths,
+    kind: LoaderKind,
     mc: &str,
     loader_version: &str,
 ) -> Result<String> {
-    let id = format!("fabric-loader-{loader_version}-{mc}");
+    let (id, url, label) = if kind == LoaderKind::Quilt {
+        (
+            format!("quilt-loader-{loader_version}-{mc}"),
+            format!("https://meta.quiltmc.org/v3/versions/loader/{mc}/{loader_version}/profile/json"),
+            "Quilt",
+        )
+    } else {
+        (
+            format!("fabric-loader-{loader_version}-{mc}"),
+            format!("https://meta.fabricmc.net/v2/versions/loader/{mc}/{loader_version}/profile/json"),
+            "Fabric",
+        )
+    };
     let json_path = paths.version_json(&id);
     if !json_path.is_file() {
         status(
             app,
             &t!(
-                "Встановлення Fabric {}…",
-                "Installing Fabric {}…",
+                "Встановлення {} {}…",
+                "Installing {} {}…",
+                label,
                 loader_version
             ),
-        );
-        let url = format!(
-            "https://meta.fabricmc.net/v2/versions/loader/{mc}/{loader_version}/profile/json"
         );
         download_file(client, &url, &json_path, &Checksum::None, &noop).await?;
     }

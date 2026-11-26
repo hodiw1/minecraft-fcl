@@ -4,15 +4,22 @@ mod changelog;
 mod commands;
 mod config;
 mod constants;
+mod curseforge;
+mod custom;
 mod error;
 mod events;
 mod i18n;
+mod import_pack;
 mod instance;
 mod java;
 mod launch;
 mod loaders;
 mod manifest;
 mod minecraft;
+mod mirrors;
+mod modrinth;
+mod mods;
+mod pack_debugger;
 mod paths;
 mod project;
 mod server_status;
@@ -23,16 +30,27 @@ mod updater;
 mod util;
 mod version;
 
+use tauri::Manager;
+
 fn main() {
     tauri::Builder::default()
         .manage(state::AppState::new())
-        .setup(|_app| {
+        .setup(|app| {
             updater::cleanup_old_executable();
+            // Дзеркала: спершу кеш із диска (миттєво, без мережі), потім — свіжий конфіг у фоні.
+            if let Ok(root) = paths::Paths::app_root(app.handle()) {
+                mirrors::init_from_disk(&root);
+                let client = app.state::<state::AppState>().client.clone();
+                tauri::async_runtime::spawn(async move {
+                    mirrors::refresh(&client, &root).await;
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_init_info,
             commands::check_launcher_update,
+            commands::install_launcher_update,
             commands::connect_project,
             commands::leave_project,
             commands::list_projects,
@@ -42,6 +60,7 @@ fn main() {
             commands::instance_details,
             commands::server_status,
             commands::save_settings,
+            commands::mirrors_info,
             commands::apply_graphics_preset,
             commands::pick_folder,
             commands::set_data_dir,
@@ -54,12 +73,27 @@ fn main() {
             commands::get_skin,
             commands::play,
             commands::repair_instance,
+            commands::debug_instance,
+            commands::pick_zip,
+            commands::import_local_pack,
             commands::open_instance_folder,
             commands::list_installed,
             commands::delete_instance,
             commands::instance_disk_usage,
             commands::delete_all_instances,
-            commands::crash_report
+            commands::crash_report,
+            commands::minecraft_versions,
+            commands::loader_versions,
+            commands::create_custom_instance,
+            commands::mod_sources,
+            commands::mod_categories,
+            commands::search_mods,
+            commands::mod_versions,
+            commands::list_mods,
+            commands::install_mod,
+            commands::set_mod_enabled,
+            commands::remove_mod,
+            commands::open_mods_folder
         ])
         .run(tauri::generate_context!())
         .expect("помилка запуску лаунчера");

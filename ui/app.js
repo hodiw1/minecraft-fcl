@@ -43,7 +43,67 @@ const DICT = {
     "home.repairTitle": "Перевірити та відновити пошкоджені файли збірки",
     "home.folder": "Папка",
     "home.folderTitle": "Відкрити папку збірки зі скріншотами та світами",
-    "home.listTitle": "Збірки проєкту",
+    "home.listTitle": "Збірки",
+    "home.projectTitle": "Збірки проєкту",
+    "home.customTitle": "Власні збірки",
+    "home.customEmpty": "Власних збірок поки немає. Натисни «+», щоб створити.",
+    "home.customMeta": "Власна збірка",
+    "home.customDescNew": "Натисни «Грати» — лаунчер сам завантажить Minecraft {mc} і {loader}. Моди можна додати вже зараз кнопкою «Моди».",
+    "home.customDescMods": "Додавай моди кнопкою «Моди»: показуються лише сумісні з {loader} і Minecraft {mc}, залежності ставляться самі.",
+    "home.customDescVanilla": "Чиста гра Minecraft {mc} без модів.",
+    "create.button": "Створити власну збірку",
+    "create.title": "Нова власна збірка",
+    "create.lead": "Будь-яка версія Minecraft з офіційних серверів і завантажувач на вибір. Усе завантажиться під час першого запуску.",
+    "create.name": "Назва",
+    "create.namePh": "Наприклад, «Fabric 1.21.1»",
+    "create.mc": "Версія Minecraft",
+    "create.snapshots": "Снапшоти",
+    "create.loader": "Завантажувач",
+    "create.loaderVersion": "Версія завантажувача",
+    "create.loading": "Завантаження…",
+    "create.noLoader": "Немає версій для цієї версії Minecraft",
+    "create.go": "Створити",
+    "create.done": "Збірку «{name}» створено — натисни «Грати», щоб встановити",
+    "delete.leadCustom": "Власну збірку буде видалено з комп'ютера разом з модами.",
+    "plural.mods": ["мод", "моди", "модів"],
+    "create.ctaTitle": "Створити власну збірку",
+    "create.ctaText": "Будь-яка версія Minecraft, Fabric, Forge, NeoForge або Quilt і моди з Modrinth та CurseForge",
+    "create.step1": "1. Версія гри",
+    "create.step2": "2. Завантажувач модів",
+    "create.step3": "3. Назва",
+    "create.mcHint": "Офіційний список версій з серверів Mojang",
+    "create.loaderHint": "Обрано найновішу версію — зазвичай саме вона потрібна",
+    "create.recommended": "Рекомендовано",
+    "loader.vanilla": "Чиста гра без модів",
+    "loader.fabric": "Легкий і швидкий, більшість сучасних модів",
+    "loader.forge": "Класика: великі моди та старі версії",
+    "loader.neoforge": "Сучасне продовження Forge (1.20.1+)",
+    "home.mods": "Моди",
+    "home.modsTitle": "Знайти, встановити й керувати модами цієї збірки",
+    "home.modsVanilla": "Моди потребують завантажувача — створи збірку на Fabric, Forge, NeoForge або Quilt",
+    "mods.title": "Моди — {name}",
+    "mods.lead": "{loader} · Minecraft {mc}. Показано лише сумісні моди, потрібні залежності встановлюються автоматично.",
+    "mods.browse": "Знайти моди",
+    "mods.installed": "Встановлені",
+    "mods.folder": "Папка mods",
+    "mods.searchPh": "Пошук на Modrinth: Sodium, JEI, Create…",
+    "mods.popular": "Популярні моди для цієї версії",
+    "mods.nothing": "Нічого не знайдено. Спробуй іншу назву.",
+    "mods.none": "Модів ще немає. Перейди у «Знайти моди», щоб додати перший.",
+    "mods.install": "Встановити",
+    "mods.installing": "Встановлення…",
+    "mods.isInstalled": "Встановлено",
+    "mods.more": "Показати ще",
+    "mods.by": "від {author}",
+    "mods.manual": "Додано вручну",
+    "mods.dependency": "Залежність",
+    "mods.enable": "Увімкнути або вимкнути мод",
+    "mods.remove": "Видалити мод",
+    "mods.done": "Встановлено: {list}",
+    "mods.missing": "Не знайдено сумісних версій для: {list}",
+    "mods.removed": "Мод «{name}» видалено",
+    "mods.running": "Закрий гру, щоб змінювати моди",
+    "common.done": "Готово",
     "home.installedMeta": "Встановлено · версія {v}",
     "home.notInstalledMeta": "Ще не встановлено",
     "home.updateMeta": "Є оновлення: {from} → {to}",
@@ -133,18 +193,19 @@ const DICT = {
     "err.disk": "На диску закінчилося місце. Звільни місце або обери іншу папку в Налаштуваннях.",
     "err.access": "Немає доступу до папки лаунчера. Закрий гру та інші програми, що можуть її використовувати, або обери іншу папку.",
     "err.corrupt": "Файл завантажився пошкодженим. Натисни «Спробувати ще» — лаунчер завантажить його заново.",
+    "err.blocked": "Джерело заблоковано у твоїй мережі, а всі дзеркала теж недоступні. Спробуй пізніше, через інше підключення або імпортуй збірку з .zip.",
     "err.details": "Технічні подробиці",
     "server.online": "Сервер онлайн · {n}/{max}",
     "server.offline": "Сервер недоступний",
     "server.checking": "Перевірка сервера…",
     "status.loading": "Завантаження списку збірок…",
     "status.ready": "Готово до гри",
-    "status.offline": "Немає інтернету — показано збережений список",
+    "status.offline": "Джерела недоступні — показано збережений список",
     "status.gameRunning": "Гра запущена — приємної гри!",
     "status.gameClosed": "Гру закрито",
     "status.updateFailed": "Не вдалося перевірити оновлення лаунчера",
     "status.restarting": "Перезапуск лаунчера…",
-    "status.offlinePlay": "Запущено без інтернету — оновлення не перевірялись",
+    "status.offlinePlay": "Офлайн-режим: гру запущено з локального кешу без перевірки оновлень",
     "status.installed": "Збірку встановлено — гра запускається",
     "profiles.title": "Профілі",
     "profiles.sub": "Нікнейми, під якими ти заходиш у гру. Кнопка «Грати» використовує активний профіль.",
@@ -264,7 +325,114 @@ const DICT = {
     "common.retry": "Спробувати ще",
     "plural.packs": ["збірка", "збірки", "збірок"],
     "unit.mb": "МБ",
-    "unit.gb": "ГБ"
+    "unit.gb": "ГБ",
+    "legal.notice": "НЕ Є ОФІЦІЙНИМ ПРОДУКТОМ MINECRAFT. НЕ СХВАЛЕНО MOJANG АБО MICROSOFT І НЕ ПОВ'ЯЗАНО З НИМИ.",
+    "settings.aboutTitle": "Про лаунчер",
+    "settings.updates": "Оновлення лаунчера",
+    "settings.autoUpdate": "Автоматично завантажувати та встановлювати оновлення лаунчера",
+    "settings.autoUpdateHint": "Якщо вимкнено — лаунчер лише покаже сповіщення з описом змін, а встановиш, коли буде зручно.",
+    "settings.checkUpdate": "Перевірити оновлення",
+    "settings.version": "Поточна версія: v{v}",
+    "update.title": "Доступна нова версія лаунчера",
+    "update.later": "Пізніше",
+    "update.changelog": "Що нового",
+    "update.download": "Завантажити",
+    "update.downloadFull": "Завантажити оновлення",
+    "update.downloading": "Завантаження оновлення…",
+    "update.restarting": "Перезапуск лаунчера…",
+    "update.released": "реліз від {date}",
+    "update.modalTitle": "Що нового у v{v}",
+    "update.noNotes": "Автор релізу не додав опис змін.",
+    "update.upToDate": "У тебе найновіша версія лаунчера — v{v}",
+    "update.checkFailed": "Не вдалося перевірити оновлення: усі джерела недоступні",
+    "update.failed": "Не вдалося встановити оновлення",
+    "update.gameRunning": "Закрий гру, щоб встановити оновлення",
+    "update.autoOn": "Автооновлення увімкнено",
+    "update.autoOff": "Автооновлення вимкнено — про нові версії лаунчер повідомлятиме",
+    "settings.network": "Мережа та дзеркала",
+    "settings.networkHint": "Якщо основне джерело недоступне (блокування, збій, ліміт GitHub), лаунчер сам переходить на наступне дзеркало — і для збірок, і для оновлень.",
+    "mirrors.source.builtin": "Вбудований список дзеркал",
+    "mirrors.source.cache": "Збережений конфіг дзеркал",
+    "mirrors.source.remote": "Актуальний конфіг дзеркал",
+    "mirrors.source.custom": "Власний файл дзеркал",
+    "mirrors.content": "Файли збірок",
+    "mirrors.update": "Оновлення лаунчера",
+    "mirrors.down": "не відповідає",
+    "mirrors.custom": "Власні дзеркала: створи файл {file} у форматі {format}. Шаблони: {owner}, {repo}, {branch} або {url}.",
+    "settings.modSources": "Джерела модів",
+    "settings.modrinthOk": "Modrinth — працює без ключа",
+    "settings.cfKey": "Ключ CurseForge API",
+    "settings.cfKeyPh": "Встав ключ із console.curseforge.com",
+    "settings.cfSave": "Зберегти",
+    "settings.cfClear": "Видалити ключ",
+    "settings.cfSet": "Ключ збережено: {hint}",
+    "settings.cfEnv": "Ключ узято зі змінної середовища CURSEFORGE_API_KEY",
+    "settings.cfNone": "Ключ не вказано — пошук на CurseForge вимкнено",
+    "settings.cfHint": "Безкоштовний ключ видає CurseForge for Studios (console.curseforge.com → API keys). Ключ зберігається лише на цьому комп'ютері й надсилається тільки на api.curseforge.com.",
+    "settings.cfSaved": "Ключ CurseForge збережено",
+    "settings.cfCleared": "Ключ CurseForge видалено",
+    "dd.search": "Пошук…",
+    "dd.nothing": "Нічого не знайдено",
+    "dd.loading": "Завантаження…",
+    "badge.release": "Release",
+    "badge.snapshot": "Snapshot",
+    "badge.beta": "Beta",
+    "badge.alpha": "Alpha",
+    "badge.latest": "Latest",
+    "badge.recommended": "Recommended",
+    "badge.auto": "Авто",
+    "status.localOnly": "Офлайн-режим: усі дзеркала недоступні — показано встановлені збірки",
+    "home.offlineBadge": "Офлайн-режим",
+    "play.subOffline": "офлайн · з локального кешу",
+    "play.subNeedNet": "потрібен інтернет або імпорт .zip",
+    "step.debug": "Дебагер збірки",
+    "stage.debug": "Дебагер: перевірка модів",
+    "stage.debug-download": "Дебагер: докачування модів",
+    "play.debugging": "Дебагер збірки…",
+    "play.debugDownload": "Дебагер: докачування — {p}%",
+    "menu.debug": "Перевірити збірку (Дебагер)",
+    "menu.import": "Імпортувати з .zip…",
+    "menu.mods": "Моди збірки",
+    "debug.title": "Дебагер збірки «{name}»",
+    "debug.clean": "Усе гаразд: кожен мод на місці, SHA-256 збігаються, сторонніх .jar у mods/ немає.",
+    "debug.checked": "Перевірено",
+    "debug.ok": "У порядку",
+    "debug.fixed": "Виправлено",
+    "debug.failed": "Не вдалося",
+    "debug.removed": "Прибрано зайві моди (перенесено в {dir} — їх можна повернути)",
+    "debug.downloaded": "Докачано відсутні моди",
+    "debug.replaced": "Замінено пошкоджені моди",
+    "debug.failedList": "Не вдалося виправити",
+    "debug.offline": "Без мережі відсутні й пошкоджені моди лише позначено — лаунчер виправить їх, щойно з'явиться зв'язок.",
+    "debug.report": "Звіт",
+    "import.button": "Імпорт",
+    "import.buttonTitle": "Встановити цю збірку з .zip архіву — без інтернету",
+    "import.newTitle": "Імпортувати .zip як нову власну збірку",
+    "import.confirmTitle": "Імпортувати архів у «{name}»?",
+    "import.confirmText": "З архіву <b>{file}</b> буде розпаковано лише manifest.json, mods/, config/, resourcepacks/, shaderpacks/ і servers.dat. Світи, скріншоти й options.txt не зміняться.",
+    "import.go": "Імпортувати",
+    "import.running": "Імпорт збірки з архіву…",
+    "import.doneTitle": "Збірку «{name}» імпортовано",
+    "import.files": "Розпаковано",
+    "import.verified": "Збіглося з manifest.json",
+    "import.skipped": "Пропущено",
+    "import.mismatched": "Ці файли відрізняються від manifest.json — лаунчер оновить їх, щойно буде інтернет:",
+    "import.ready": "Збірку можна запускати навіть без інтернету. Особисті файли (світи, скріншоти, options.txt) не змінювались.",
+    "mods.searchPhCurse": "Пошук на CurseForge: JEI, Create, Biomes O' Plenty…",
+    "mods.allCategories": "Усі категорії",
+    "mods.category": "Категорія",
+    "mods.autoFilter": "Автофільтр",
+    "mods.latestCompatible": "Найновіша сумісна",
+    "mods.version": "Версія файлу",
+    "mods.loadingVersions": "Завантаження версій…",
+    "mods.cfNeedKey": "Для CurseForge потрібен API-ключ. Додай його в Налаштуваннях → «Джерела модів». Modrinth працює без ключа.",
+    "mods.cfOpenSettings": "Відкрити налаштування",
+    "mods.managedTitle": "Моди збірки «{name}»",
+    "mods.managedLead": "Склад збірки визначає manifest.json проєкту. Дебагер перед кожним запуском докачує відсутні моди й прибирає сторонні. Щоб додавати свої моди — створи власну збірку.",
+    "mods.managed": "Частина збірки",
+    "mods.managedMissing": "Відсутній — дебагер докачає перед запуском",
+    "mods.extra": "Сторонній — дебагер прибере перед запуском",
+    "loader.quilt": "Форк Fabric: запускає більшість модів Fabric"
   },
   en: {
     "boot.loading": "Loading…",
@@ -298,7 +466,67 @@ const DICT = {
     "home.repairTitle": "Check and restore damaged modpack files",
     "home.folder": "Folder",
     "home.folderTitle": "Open the modpack folder with your screenshots and worlds",
-    "home.listTitle": "Project modpacks",
+    "home.listTitle": "Modpacks",
+    "home.projectTitle": "Project modpacks",
+    "home.customTitle": "Custom modpacks",
+    "home.customEmpty": "No custom modpacks yet. Press \"+\" to create one.",
+    "home.customMeta": "Custom modpack",
+    "home.customDescNew": "Press Play — the launcher will download Minecraft {mc} and {loader} by itself. You can already add mods with the Mods button.",
+    "home.customDescMods": "Add mods with the Mods button: only mods compatible with {loader} and Minecraft {mc} are shown, dependencies are installed automatically.",
+    "home.customDescVanilla": "Pure Minecraft {mc}, no mods.",
+    "create.button": "Create a custom modpack",
+    "create.title": "New custom modpack",
+    "create.lead": "Any Minecraft version from the official servers and a loader of your choice. Everything is downloaded on first launch.",
+    "create.name": "Name",
+    "create.namePh": "For example, \"Fabric 1.21.1\"",
+    "create.mc": "Minecraft version",
+    "create.snapshots": "Snapshots",
+    "create.loader": "Loader",
+    "create.loaderVersion": "Loader version",
+    "create.loading": "Loading…",
+    "create.noLoader": "No versions for this Minecraft version",
+    "create.go": "Create",
+    "create.done": "Modpack \"{name}\" created — press Play to install it",
+    "delete.leadCustom": "The custom modpack will be removed from your computer along with its mods.",
+    "plural.mods": ["mod", "mods", "mods"],
+    "create.ctaTitle": "Create a custom modpack",
+    "create.ctaText": "Any Minecraft version, Fabric, Forge, NeoForge or Quilt and mods from Modrinth and CurseForge",
+    "create.step1": "1. Game version",
+    "create.step2": "2. Mod loader",
+    "create.step3": "3. Name",
+    "create.mcHint": "The official version list from Mojang's servers",
+    "create.loaderHint": "The newest version is selected — usually that's the one you need",
+    "create.recommended": "Recommended",
+    "loader.vanilla": "Pure game, no mods",
+    "loader.fabric": "Light and fast, most modern mods",
+    "loader.forge": "The classic: big mods and old versions",
+    "loader.neoforge": "The modern successor of Forge (1.20.1+)",
+    "home.mods": "Mods",
+    "home.modsTitle": "Find, install and manage this modpack's mods",
+    "home.modsVanilla": "Mods need a loader — create a modpack with Fabric, Forge, NeoForge or Quilt",
+    "mods.title": "Mods — {name}",
+    "mods.lead": "{loader} · Minecraft {mc}. Only compatible mods are shown; required dependencies are installed automatically.",
+    "mods.browse": "Find mods",
+    "mods.installed": "Installed",
+    "mods.folder": "Mods folder",
+    "mods.searchPh": "Search Modrinth: Sodium, JEI, Create…",
+    "mods.popular": "Popular mods for this version",
+    "mods.nothing": "Nothing found. Try another name.",
+    "mods.none": "No mods yet. Open \"Find mods\" to add the first one.",
+    "mods.install": "Install",
+    "mods.installing": "Installing…",
+    "mods.isInstalled": "Installed",
+    "mods.more": "Show more",
+    "mods.by": "by {author}",
+    "mods.manual": "Added manually",
+    "mods.dependency": "Dependency",
+    "mods.enable": "Enable or disable the mod",
+    "mods.remove": "Remove mod",
+    "mods.done": "Installed: {list}",
+    "mods.missing": "No compatible versions found for: {list}",
+    "mods.removed": "Mod \"{name}\" removed",
+    "mods.running": "Close the game to change mods",
+    "common.done": "Done",
     "home.installedMeta": "Installed · version {v}",
     "home.notInstalledMeta": "Not installed yet",
     "home.updateMeta": "Update available: {from} → {to}",
@@ -388,18 +616,19 @@ const DICT = {
     "err.disk": "The disk is full. Free up some space or choose another folder in Settings.",
     "err.access": "The launcher can't access its folder. Close the game and other programs that may be using it, or choose another folder.",
     "err.corrupt": "A file was downloaded damaged. Press \"Try again\" — the launcher will download it again.",
+    "err.blocked": "The source is blocked on your network and all mirrors are unreachable too. Try later, use another connection or import the modpack from a .zip.",
     "err.details": "Technical details",
     "server.online": "Server online · {n}/{max}",
     "server.offline": "Server unavailable",
     "server.checking": "Checking server…",
     "status.loading": "Loading modpacks…",
     "status.ready": "Ready to play",
-    "status.offline": "No internet — showing the saved list",
+    "status.offline": "Sources unreachable — showing the saved list",
     "status.gameRunning": "Game is running — have fun!",
     "status.gameClosed": "Game closed",
     "status.updateFailed": "Couldn't check for launcher updates",
     "status.restarting": "Restarting launcher…",
-    "status.offlinePlay": "Started offline — updates weren't checked",
+    "status.offlinePlay": "Offline mode: the game started from the local cache without checking for updates",
     "status.installed": "Modpack installed — the game is starting",
     "profiles.title": "Profiles",
     "profiles.sub": "Nicknames you use to join the game. The Play button uses the active profile.",
@@ -519,7 +748,114 @@ const DICT = {
     "common.retry": "Try again",
     "plural.packs": ["modpack", "modpacks", "modpacks"],
     "unit.mb": "MB",
-    "unit.gb": "GB"
+    "unit.gb": "GB",
+    "legal.notice": "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
+    "settings.aboutTitle": "About",
+    "settings.updates": "Launcher updates",
+    "settings.autoUpdate": "Automatically download and install launcher updates",
+    "settings.autoUpdateHint": "When off, the launcher only shows a notification with the changelog, and you install it whenever it suits you.",
+    "settings.checkUpdate": "Check for updates",
+    "settings.version": "Current version: v{v}",
+    "update.title": "A new launcher version is available",
+    "update.later": "Later",
+    "update.changelog": "Changelog",
+    "update.download": "Download",
+    "update.downloadFull": "Download update",
+    "update.downloading": "Downloading the update…",
+    "update.restarting": "Restarting the launcher…",
+    "update.released": "released {date}",
+    "update.modalTitle": "What's new in v{v}",
+    "update.noNotes": "The release has no description.",
+    "update.upToDate": "You have the latest launcher — v{v}",
+    "update.checkFailed": "Couldn't check for updates: all sources are unreachable",
+    "update.failed": "Couldn't install the update",
+    "update.gameRunning": "Close the game to install the update",
+    "update.autoOn": "Auto-update enabled",
+    "update.autoOff": "Auto-update disabled — the launcher will notify you about new versions",
+    "settings.network": "Network & mirrors",
+    "settings.networkHint": "If the main source is unreachable (blocked, down, GitHub rate limit), the launcher switches to the next mirror by itself — for modpacks and for updates.",
+    "mirrors.source.builtin": "Built-in mirror list",
+    "mirrors.source.cache": "Saved mirror config",
+    "mirrors.source.remote": "Up-to-date mirror config",
+    "mirrors.source.custom": "Custom mirror file",
+    "mirrors.content": "Modpack files",
+    "mirrors.update": "Launcher updates",
+    "mirrors.down": "not responding",
+    "mirrors.custom": "Custom mirrors: create {file} in the format {format}. Templates: {owner}, {repo}, {branch} or {url}.",
+    "settings.modSources": "Mod sources",
+    "settings.modrinthOk": "Modrinth — works without a key",
+    "settings.cfKey": "CurseForge API key",
+    "settings.cfKeyPh": "Paste the key from console.curseforge.com",
+    "settings.cfSave": "Save",
+    "settings.cfClear": "Remove key",
+    "settings.cfSet": "Key saved: {hint}",
+    "settings.cfEnv": "Key taken from the CURSEFORGE_API_KEY environment variable",
+    "settings.cfNone": "No key — CurseForge search is disabled",
+    "settings.cfHint": "A free key is issued by CurseForge for Studios (console.curseforge.com → API keys). It is stored only on this computer and sent only to api.curseforge.com.",
+    "settings.cfSaved": "CurseForge key saved",
+    "settings.cfCleared": "CurseForge key removed",
+    "dd.search": "Search…",
+    "dd.nothing": "Nothing found",
+    "dd.loading": "Loading…",
+    "badge.release": "Release",
+    "badge.snapshot": "Snapshot",
+    "badge.beta": "Beta",
+    "badge.alpha": "Alpha",
+    "badge.latest": "Latest",
+    "badge.recommended": "Recommended",
+    "badge.auto": "Auto",
+    "status.localOnly": "Offline mode: all mirrors are unreachable — showing installed modpacks",
+    "home.offlineBadge": "Offline mode",
+    "play.subOffline": "offline · from local cache",
+    "play.subNeedNet": "needs internet or a .zip import",
+    "step.debug": "Pack debugger",
+    "stage.debug": "Debugger: checking mods",
+    "stage.debug-download": "Debugger: downloading mods",
+    "play.debugging": "Pack debugger…",
+    "play.debugDownload": "Debugger: downloading — {p}%",
+    "menu.debug": "Check modpack (Debugger)",
+    "menu.import": "Import from .zip…",
+    "menu.mods": "Modpack mods",
+    "debug.title": "Pack debugger — \"{name}\"",
+    "debug.clean": "All good: every mod is in place, SHA-256 hashes match, no foreign .jar files in mods/.",
+    "debug.checked": "Checked",
+    "debug.ok": "OK",
+    "debug.fixed": "Fixed",
+    "debug.failed": "Failed",
+    "debug.removed": "Removed extra mods (moved to {dir} — you can restore them)",
+    "debug.downloaded": "Downloaded missing mods",
+    "debug.replaced": "Replaced damaged mods",
+    "debug.failedList": "Couldn't fix",
+    "debug.offline": "Without a connection, missing and damaged mods are only reported — the launcher fixes them as soon as you're back online.",
+    "debug.report": "Report",
+    "import.button": "Import",
+    "import.buttonTitle": "Install this modpack from a .zip archive — no internet needed",
+    "import.newTitle": "Import a .zip as a new custom modpack",
+    "import.confirmTitle": "Import the archive into \"{name}\"?",
+    "import.confirmText": "Only manifest.json, mods/, config/, resourcepacks/, shaderpacks/ and servers.dat will be extracted from <b>{file}</b>. Worlds, screenshots and options.txt stay untouched.",
+    "import.go": "Import",
+    "import.running": "Importing the modpack archive…",
+    "import.doneTitle": "\"{name}\" imported",
+    "import.files": "Extracted",
+    "import.verified": "Matched manifest.json",
+    "import.skipped": "Skipped",
+    "import.mismatched": "These files differ from manifest.json — the launcher will update them once you're online:",
+    "import.ready": "The modpack can be started even without internet. Personal files (worlds, screenshots, options.txt) were not changed.",
+    "mods.searchPhCurse": "Search CurseForge: JEI, Create, Biomes O' Plenty…",
+    "mods.allCategories": "All categories",
+    "mods.category": "Category",
+    "mods.autoFilter": "Auto filter",
+    "mods.latestCompatible": "Latest compatible",
+    "mods.version": "File version",
+    "mods.loadingVersions": "Loading versions…",
+    "mods.cfNeedKey": "CurseForge needs an API key. Add it in Settings → \"Mod sources\". Modrinth works without a key.",
+    "mods.cfOpenSettings": "Open settings",
+    "mods.managedTitle": "Mods of \"{name}\"",
+    "mods.managedLead": "The project's manifest.json defines this modpack. Before every launch the debugger downloads missing mods and removes foreign ones. To add your own mods, create a custom modpack.",
+    "mods.managed": "Part of the modpack",
+    "mods.managedMissing": "Missing — the debugger downloads it before launch",
+    "mods.extra": "Foreign — the debugger removes it before launch",
+    "loader.quilt": "Fabric fork: runs most Fabric mods"
   }
 };
 
@@ -603,6 +939,8 @@ const el = {
   playIco: $("playIco"),
   deleteBtn: $("deleteBtn"),
   repairBtn: $("repairBtn"),
+  modsBtn: $("modsBtn"),
+  heroMark: $("heroMark"),
   folderBtn: $("folderBtn"),
   progress: $("progress"),
   progressStage: $("progressStage"),
@@ -649,7 +987,21 @@ const el = {
   presetSeg: $("presetSeg"),
   applyPreset: $("applyPreset"),
   uiLangSeg: $("uiLangSeg"),
-  gameLang: $("gameLang"),
+  gameLangDd: $("gameLangDd"),
+  versionText: $("versionText"),
+  autoUpdate: $("autoUpdate"),
+  checkUpdateBtn: $("checkUpdateBtn"),
+  cfForm: $("cfForm"),
+  cfKey: $("cfKey"),
+  cfState: $("cfState"),
+  cfClear: $("cfClear"),
+  mirrorSource: $("mirrorSource"),
+  mirrorList: $("mirrorList"),
+  mirrorCustom: $("mirrorCustom"),
+  importBtn: $("importBtn"),
+  badgeOffline: $("badgeOffline"),
+  toasts: $("toasts"),
+  tip: $("tip"),
   dataDir: $("dataDir"),
   changeDir: $("changeDir"),
   openDir: $("openDir"),
@@ -672,9 +1024,19 @@ const ICONS = {
   folder: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
   logout: '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
   palette: '<svg viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7H17a5 5 0 0 0 5-5C22 6 17.5 2 12 2z"/></svg>',
+  box: '<svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   more: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg>',
   memory: '<svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="10" rx="1.5"/><path d="M8 7V4M12 7V4M16 7V4M8 20v-3M12 20v-3M16 20v-3"/></svg>',
-  shirt: '<svg viewBox="0 0 24 24"><path d="M20.4 6.6 16 4a4 4 0 0 1-8 0L3.6 6.6a1 1 0 0 0-.5 1.1l.9 3.6a1 1 0 0 0 1 .7H7v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8h2a1 1 0 0 0 1-.7l.9-3.6a1 1 0 0 0-.5-1.1z"/></svg>'
+  shirt: '<svg viewBox="0 0 24 24"><path d="M20.4 6.6 16 4a4 4 0 0 1-8 0L3.6 6.6a1 1 0 0 0-.5 1.1l.9 3.6a1 1 0 0 0 1 .7H7v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8h2a1 1 0 0 0 1-.7l.9-3.6a1 1 0 0 0-.5-1.1z"/></svg>',
+  archive: '<svg viewBox="0 0 24 24"><path d="M3 4h18v4H3z"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M12 11v6M9.5 14.5 12 17l2.5-2.5"/></svg>',
+  bug: '<svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v4M14 3v4"/><rect x="6" y="7" width="12" height="13" rx="6"/><path d="M12 11v5M3 13h3M18 13h3M4 7l2.5 2M20 7l-2.5 2M4 20l2.5-2M20 20l-2.5-2"/></svg>',
+  update: '<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>',
+  sparkle: '<svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>',
+  search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+  check: '<svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>',
+  close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>'
 };
 
 /* ═══════════════════════════ СТАН ═══════════════════════════ */
@@ -702,7 +1064,13 @@ const S = {
   disk: [],
   skins: new Map(),
   server: new Map(),
-  menuFor: null
+  menuFor: null,
+  /** Остання перевірка оновлення лаунчера (UpdateCheck з бекенда). */
+  update: null,
+  /** «Пізніше» — до наступного запуску. */
+  updateDismissed: false,
+  /** Шаблони дзеркал контенту — для картинок збірок із GitHub. */
+  mirrors: null
 };
 
 function esc(value) {
@@ -731,6 +1099,31 @@ function loaderName(loader) {
   return names[String(loader || "").toLowerCase()] || loader || "";
 }
 
+/* Кольорові іконки завантажувачів (власні спрощені малюнки, не логотипи). */
+const LOADER_ICONS = {
+  vanilla:
+    '<svg viewBox="0 0 24 24"><path fill="#6e4529" d="M21 7v10l-9 5V12z"/><path fill="#8a5a35" d="M3 7v10l9 5V12z"/><path fill="#5fb547" d="M12 2l9 5-9 5-9-5z"/><path fill="#4c9a38" d="M3 7l9 5v2.6L3 9.6z"/><path fill="#3f8530" d="M21 7l-9 5v2.6l9-5z"/></svg>',
+  fabric:
+    '<svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="2.5" transform="rotate(45 12 12)" fill="#dbd0b4" stroke="#38342a" stroke-width="1.4"/><rect x="7.3" y="7.3" width="9.4" height="9.4" rx="1.2" transform="rotate(45 12 12)" fill="none" stroke="#38342a" stroke-width="1.1" stroke-dasharray="1.6 1.4"/></svg>',
+  forge:
+    '<svg viewBox="0 0 24 24"><path fill="#8d99aa" d="M2 6h14c0 2.6 2.1 3.9 6 3.9v1.7c-3.6 0-6.4.9-8 2.4H9.2C7.6 12.4 5.2 11.2 2 10.8z"/><path fill="#6c7787" d="M9.2 14H14v3H9.2z"/><path fill="#4e5866" d="M6 17h11.2l1.6 3.2H4.4z"/></svg>',
+  neoforge:
+    '<svg viewBox="0 0 24 24"><path fill="#f0953f" d="M2 6h14c0 2.6 2.1 3.9 6 3.9v1.7c-3.6 0-6.4.9-8 2.4H9.2C7.6 12.4 5.2 11.2 2 10.8z"/><path fill="#cf6f26" d="M9.2 14H14v3H9.2z"/><path fill="#9c4f1b" d="M6 17h11.2l1.6 3.2H4.4z"/><path fill="#ffd27a" d="M19 1.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8z"/></svg>',
+  quilt:
+    '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2" fill="#9b6fe0"/><rect x="13" y="3" width="8" height="8" rx="2" fill="#7a52c9"/><rect x="3" y="13" width="8" height="8" rx="2" fill="#7a52c9"/><rect x="13" y="13" width="8" height="8" rx="4" fill="#c4a8f3"/></svg>'
+};
+
+function loaderIcon(loader, cls = "") {
+  const key = String(loader || "vanilla").toLowerCase();
+  return `<span class="ldr${cls ? " " + cls : ""}" title="${esc(loaderName(key))}">${LOADER_ICONS[key] || LOADER_ICONS.vanilla}</span>`;
+}
+
+function formatCount(n) {
+  if (n >= 1e6) return (Math.round(n / 1e5) / 10).toString().replace(".", lang === "uk" ? "," : ".") + "M";
+  if (n >= 1e3) return Math.round(n / 1e3) + "K";
+  return String(n || 0);
+}
+
 function current() {
   return S.view?.instances.find((i) => i.id === S.activeId) || null;
 }
@@ -756,6 +1149,7 @@ function idleIsland() {
   if (S.busy || S.updating || el.app.hidden) return;
   if (S.running) setIsland("ok", t("status.gameRunning"), { sticky: true });
   else if (S.viewError) setIsland("error", t("list.error"), { sticky: true });
+  else if (S.view?.local_only) setIsland("warn", t("status.localOnly"), { sticky: true });
   else if (S.view?.offline) setIsland("warn", t("status.offline"), { sticky: true });
   else if (S.view) setIsland("ok", t("status.ready"), { sticky: true });
 }
@@ -815,6 +1209,29 @@ function assetKey(candidates) {
   return assetList(candidates).join("|");
 }
 
+const RAW_RE = /^https:\/\/raw\.githubusercontent\.com\/([\w.-]+)\/([\w.-]+)\/([\w.-]+)\/(.+)$/;
+
+/** Ті самі картинки з дзеркал (jsDelivr тощо) — якщо raw.githubusercontent.com заблоковано. */
+function mirrorVariants(url) {
+  const match = RAW_RE.exec(url);
+  if (!match || !S.mirrors?.content) return [];
+  const [, owner, repo, branch, path] = match;
+  return S.mirrors.content
+    .map((template) =>
+      template.includes("{url}")
+        ? template.replace("{url}", url)
+        : template.replace("{owner}", owner).replace("{repo}", repo).replace("{branch}", branch).replace(/\/+$/, "") + "/" + path
+    )
+    .filter((candidate) => candidate !== url && candidate.startsWith("https://"));
+}
+
+/** Спершу всі варіанти з основного джерела, потім — з дзеркал. */
+function assetTries(list) {
+  const out = [...list];
+  for (const url of list) for (const mirror of mirrorVariants(url)) if (!out.includes(mirror)) out.push(mirror);
+  return out;
+}
+
 /** Перша картинка зі списку, яка справді існує (решта — 404). */
 function resolveAsset(candidates) {
   const list = assetList(candidates);
@@ -831,7 +1248,7 @@ function resolveAsset(candidates) {
     if (saved && saved.url === "" && age < ASSET_MISS_TTL) url = null;
     else if (saved?.url && age < ASSET_TTL && (await loadImage(saved.url))) url = saved.url;
     else {
-      for (const candidate of list) {
+      for (const candidate of assetTries(list)) {
         if (await loadImage(candidate)) {
           url = candidate;
           break;
@@ -959,7 +1376,7 @@ function paintHeroImage(inst) {
   const candidates = instanceBackgrounds(inst);
   const key = assetKey(candidates);
   if (assetResolved.has(key)) return showHeroImage(assetResolved.get(key));
-  showHeroImage(null);
+  // Попередній фон лишається, доки новий не готовий: кросфейд без «провалу» в темряву.
   resolveAsset(candidates).then((url) => {
     if (current()?.id === inst.id) showHeroImage(url);
   });
@@ -971,6 +1388,7 @@ const ERROR_RULES = [
   [/os error 112|not enough space|no space left|недостатньо місця/i, "err.disk"],
   [/os error 5\b|os error 32\b|access is denied|permission denied|відмовлено в доступі|being used by another process/i, "err.access"],
   [/контрольна сума|checksum|hash mismatch/i, "err.corrupt"],
+  [/\b451\b/, "err.blocked"],
   [/\b(403|429)\b|rate limit/i, "err.rateLimit"],
   [/\b404\b/, "err.notFound"],
   [/server error|\b50[0-9]\b/i, "err.server"],
@@ -995,20 +1413,25 @@ function errHuman(error) {
 
 let modalResolve = null;
 let modalReturnFocus = null;
+let modalCloseTimer = 0;
 
 function closeModal(result) {
-  if (el.modal.hidden) return;
+  if (el.modal.hidden || el.modal.classList.contains("closing")) return;
   const resolve = modalResolve;
   modalResolve = null;
+  Dropdown.closeAll();
+  hideTip();
   const finish = () => {
+    modalCloseTimer = 0;
     el.modal.hidden = true;
-    el.modal.classList.remove("closing");
+    el.modal.classList.remove("closing", "xl");
     modalReturnFocus?.focus?.();
   };
-  if (reduceMotion.matches) finish();
+  // Таймер, а не animationend: у згорнутому вікні кадри не малюються, і подія може не прийти.
+  if (reduceMotion.matches || document.hidden) finish();
   else {
     el.modal.classList.add("closing");
-    setTimeout(finish, 180);
+    modalCloseTimer = setTimeout(finish, 180);
   }
   resolve?.(result);
 }
@@ -1017,9 +1440,13 @@ function closeModal(result) {
  * openModal({icon, tone, title, html, buttons:[{id,label,kind,left,onClick}]}) → Promise<id|null>
  * onClick може повернути false, щоб вікно лишилося відкритим.
  */
-function openModal({ icon = "", tone = "", title, html, buttons, wide = false }) {
+function openModal({ icon = "", tone = "", title, html, buttons, wide = false, xl = false }) {
   if (modalResolve) closeModal(null);
-  modalReturnFocus = document.activeElement;
+  // Нове вікно під час анімації закриття попереднього: скасовуємо приховування.
+  clearTimeout(modalCloseTimer);
+  modalCloseTimer = 0;
+  el.modal.classList.remove("closing");
+  if (el.modal.hidden) modalReturnFocus = document.activeElement;
   el.modalIcon.innerHTML = ICONS[icon] || "";
   el.modalIcon.className = "modal-icon" + (tone ? " " + tone : "");
   el.modalTitle.textContent = title;
@@ -1041,8 +1468,11 @@ function openModal({ icon = "", tone = "", title, html, buttons, wide = false })
     el.modalActions.append(button);
     if (spec.kind === "primary" || spec.kind === "danger") primary = button;
   }
-  el.modal.classList.toggle("wide", wide);
+  el.modal.classList.toggle("wide", wide || xl);
+  el.modal.classList.toggle("xl", xl);
   el.modal.hidden = false;
+  el.modalText.scrollTop = 0;
+  el.modal.querySelector(".modal-card").scrollTop = 0;
   (primary || el.modalActions.lastElementChild)?.focus();
   return new Promise((resolve) => (modalResolve = resolve));
 }
@@ -1105,6 +1535,510 @@ function showError(error, extra) {
 el.modal.addEventListener("pointerdown", (event) => {
   if (event.target === el.modal) closeModal(null);
 });
+
+/* ═══════════════════════════ АНІМАЦІЇ: ДОПОМІЖНЕ ═══════════════════════════ */
+
+/** Плавне зникнення через CSS-клас; завершення — за таймером, тож у згорнутому
+ *  вікні (де кадри не малюються й animationend не приходить) нічого не «зависає». */
+function leave(node, className, ms, done) {
+  if (!node) return;
+  if (reduceMotion.matches || document.hidden) {
+    done?.();
+    return;
+  }
+  node.classList.add(className);
+  setTimeout(() => done?.(), ms);
+}
+
+/* ═══════════════════════════ ВИПАДНІ СПИСКИ ═══════════════════════════ */
+
+const BADGE_KINDS = new Set(["release", "snapshot", "beta", "alpha", "latest", "recommended", "auto"]);
+
+function badgesHtml(badges) {
+  if (!badges?.length) return "";
+  return `<span class="vbadges">${badges
+    .map((badge) => `<span class="vbadge ${BADGE_KINDS.has(badge.kind) ? badge.kind : ""}">${esc(badge.text)}</span>`)
+    .join("")}</span>`;
+}
+
+/**
+ * Стилізований список вибору замість системного <select>: пошук/фільтр, бейджі типу
+ * релізу, підсвічена активна версія, клавіатура (↑↓ Enter Esc Home End), плавне відкриття.
+ * items: [{ value, label, sub?, badges?: [{text, kind}], search? }]
+ */
+class Dropdown {
+  static current = null;
+
+  static closeAll() {
+    Dropdown.current?.close();
+  }
+
+  constructor(opts = {}) {
+    this.opts = { placeholder: "—", search: false, ...opts };
+    this.items = opts.items || [];
+    this.value = opts.value ?? "";
+    this.loading = false;
+    this.pending = false;
+    this.disabled = false;
+    this.panel = null;
+    this.active = -1;
+    this.filter = "";
+    this.root = document.createElement("div");
+    this.root.className = "dd" + (opts.className ? " " + opts.className : "");
+    this.trigger = document.createElement("button");
+    this.trigger.type = "button";
+    this.trigger.className = "dd-trigger";
+    this.trigger.setAttribute("aria-haspopup", "listbox");
+    this.trigger.setAttribute("aria-expanded", "false");
+    if (opts.label) this.trigger.setAttribute("aria-label", opts.label);
+    this.root.append(this.trigger);
+    this.trigger.addEventListener("click", () => (this.panel ? this.close() : this.open()));
+    this.trigger.addEventListener("keydown", (event) => {
+      if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key) && !this.panel) {
+        event.preventDefault();
+        this.open();
+      }
+    });
+    this.render();
+  }
+
+  mount(node) {
+    node.replaceChildren(this.root);
+    return this;
+  }
+
+  get selected() {
+    return this.items.find((item) => item.value === this.value) || null;
+  }
+
+  setItems(items, value) {
+    this.items = items || [];
+    if (value !== undefined) this.value = value;
+    else if (!this.items.some((item) => item.value === this.value)) this.value = this.items[0]?.value ?? "";
+    this.loading = false;
+    this.pending = false;
+    this.render();
+    if (this.panel) {
+      this.active = Math.max(0, this.visible().findIndex((item) => item.value === this.value));
+      this.renderList();
+      this.position();
+    }
+  }
+
+  setValue(value) {
+    this.value = value;
+    this.render();
+  }
+
+  /** Триггер у стані «завантаження» (список ще не отримано). */
+  setLoading(on) {
+    this.loading = on;
+    if (on) this.close();
+    this.render();
+  }
+
+  /** Список уже відкрито, а елементи довантажуються. */
+  setPending(on) {
+    this.pending = on;
+    if (this.panel) this.renderList();
+  }
+
+  setDisabled(on) {
+    this.disabled = on;
+    if (on) this.close();
+    this.render();
+  }
+
+  render() {
+    const item = this.selected;
+    const text = this.loading ? this.opts.loadingText || t("dd.loading") : item ? item.label : this.items.length ? this.opts.placeholder : this.opts.empty || this.opts.placeholder;
+    this.trigger.disabled = this.disabled || this.loading || (!this.items.length && !this.opts.onOpen);
+    this.root.classList.toggle("is-loading", this.loading);
+    this.trigger.innerHTML = `<span class="dd-value"><span class="dd-text">${esc(text)}</span>${item && !this.loading ? badgesHtml(item.badges) : ""}</span>${
+      this.loading ? '<span class="btn-spin" aria-hidden="true"></span>' : `<span class="dd-chev" aria-hidden="true">${ICONS.chevron}</span>`
+    }`;
+  }
+
+  visible() {
+    const query = this.filter.trim().toLowerCase();
+    if (!query) return this.items;
+    return this.items.filter((item) => [item.label, item.sub, item.search].filter(Boolean).join(" ").toLowerCase().includes(query));
+  }
+
+  open() {
+    if (this.panel || this.trigger.disabled) return;
+    Dropdown.closeAll();
+    hideTip();
+    const panel = document.createElement("div");
+    panel.className = "dd-panel" + (this.opts.className ? " " + this.opts.className + "-panel" : "");
+    panel.innerHTML =
+      (this.opts.search
+        ? `<div class="dd-search">${ICONS.search}<input type="text" spellcheck="false" autocomplete="off" aria-label="${esc(this.opts.searchPh || t("dd.search"))}" placeholder="${esc(this.opts.searchPh || t("dd.search"))}"></div>`
+        : "") + '<div class="dd-list" role="listbox" tabindex="-1"></div>';
+    document.body.append(panel);
+    this.panel = panel;
+    this.list = panel.querySelector(".dd-list");
+    this.filter = "";
+    Dropdown.current = this;
+    this.trigger.setAttribute("aria-expanded", "true");
+    this.root.classList.add("open");
+    this.opts.onOpen?.(this);
+    this.active = Math.max(0, this.visible().findIndex((item) => item.value === this.value));
+    this.renderList();
+    this.position();
+
+    const input = panel.querySelector("input");
+    if (input) {
+      input.addEventListener("input", () => {
+        this.filter = input.value;
+        this.active = 0;
+        this.renderList();
+      });
+      input.focus();
+    } else this.list.focus();
+    panel.addEventListener("keydown", (event) => this.onKey(event));
+    this.list.addEventListener("click", (event) => {
+      const option = event.target.closest("[data-index]");
+      if (option) this.pick(this.shown[Number(option.dataset.index)]);
+    });
+    this.list.addEventListener("pointermove", (event) => {
+      const option = event.target.closest("[data-index]");
+      if (!option) return;
+      const index = Number(option.dataset.index);
+      if (index !== this.active) this.highlight(index, false);
+    });
+    const selected = this.list.querySelector(".dd-opt.on");
+    if (selected) this.list.scrollTop = selected.offsetTop - this.list.clientHeight / 2 + selected.offsetHeight / 2;
+  }
+
+  position() {
+    const panel = this.panel;
+    if (!panel) return;
+    const rect = this.trigger.getBoundingClientRect();
+    const width = Math.min(Math.max(rect.width, this.opts.minWidth || 0), window.innerWidth - 16);
+    panel.style.width = width + "px";
+    panel.style.maxHeight = "";
+    const natural = panel.offsetHeight;
+    const below = window.innerHeight - rect.bottom - 10;
+    const above = rect.top - 10;
+    const up = natural > below && above > below;
+    const room = Math.max(140, up ? above : below);
+    if (natural > room) panel.style.maxHeight = room + "px";
+    const height = Math.min(natural, room);
+    let left = rect.left;
+    if (left + width > window.innerWidth - 8) left = rect.right - width;
+    left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+    panel.style.left = left + "px";
+    panel.style.top = (up ? rect.top - height - 6 : rect.bottom + 6) + "px";
+    panel.classList.toggle("up", up);
+  }
+
+  renderList() {
+    if (!this.list) return;
+    const items = this.visible();
+    this.shown = items.slice(0, 500);
+    if (this.pending && !items.length) {
+      this.list.innerHTML = `<div class="dd-empty"><span class="btn-spin" aria-hidden="true"></span>${esc(this.opts.pendingText || t("dd.loading"))}</div>`;
+      return;
+    }
+    if (!items.length) {
+      this.list.innerHTML = `<div class="dd-empty">${esc(this.opts.emptyList || t("dd.nothing"))}</div>`;
+      return;
+    }
+    this.list.innerHTML =
+      this.shown
+        .map((item, index) => {
+          const on = item.value === this.value;
+          return `<div class="dd-opt${on ? " on" : ""}${index === this.active ? " active" : ""}" role="option" aria-selected="${on}" data-index="${index}">
+            <span class="dd-opt-main"><span class="dd-opt-label">${esc(item.label)}</span>${item.sub ? `<small>${esc(item.sub)}</small>` : ""}</span>
+            ${badgesHtml(item.badges)}<span class="dd-check" aria-hidden="true">${on ? ICONS.check : ""}</span>
+          </div>`;
+        })
+        .join("") + (this.pending ? `<div class="dd-empty"><span class="btn-spin" aria-hidden="true"></span>${esc(this.opts.pendingText || t("dd.loading"))}</div>` : "");
+  }
+
+  highlight(index, scroll = true) {
+    const options = this.list.querySelectorAll(".dd-opt");
+    if (!options.length) return;
+    this.active = Math.max(0, Math.min(options.length - 1, index));
+    options.forEach((node, i) => node.classList.toggle("active", i === this.active));
+    if (!scroll) return;
+    // Прокручуємо лише сам список (scrollIntoView зачепив би й зовнішні контейнери).
+    const node = options[this.active];
+    const list = this.list;
+    if (node.offsetTop < list.scrollTop) list.scrollTop = node.offsetTop;
+    else if (node.offsetTop + node.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = node.offsetTop + node.offsetHeight - list.clientHeight;
+  }
+
+  onKey(event) {
+    const page = 8;
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        this.highlight(this.active + 1);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        this.highlight(this.active - 1);
+        break;
+      case "PageDown":
+        event.preventDefault();
+        this.highlight(this.active + page);
+        break;
+      case "PageUp":
+        event.preventDefault();
+        this.highlight(this.active - page);
+        break;
+      case "Home":
+        if (!this.opts.search) {
+          event.preventDefault();
+          this.highlight(0);
+        }
+        break;
+      case "End":
+        if (!this.opts.search) {
+          event.preventDefault();
+          this.highlight(Infinity);
+        }
+        break;
+      case "Enter":
+        event.preventDefault();
+        if (this.shown?.[this.active]) this.pick(this.shown[this.active]);
+        break;
+      case "Escape":
+        event.preventDefault();
+        event.stopPropagation();
+        this.close(true);
+        break;
+      case "Tab":
+        this.close();
+        break;
+    }
+  }
+
+  pick(item) {
+    if (!item) return;
+    const changed = item.value !== this.value;
+    this.value = item.value;
+    this.render();
+    this.close(true);
+    if (changed) this.opts.onChange?.(item.value, item);
+  }
+
+  close(focusTrigger = false) {
+    const panel = this.panel;
+    if (!panel) return;
+    this.panel = null;
+    this.list = null;
+    if (Dropdown.current === this) Dropdown.current = null;
+    this.trigger.setAttribute("aria-expanded", "false");
+    this.root.classList.remove("open");
+    leave(panel, "closing", 150, () => panel.remove());
+    if (focusTrigger) this.trigger.focus();
+  }
+}
+
+document.addEventListener(
+  "pointerdown",
+  (event) => {
+    const open = Dropdown.current;
+    if (open && !open.panel?.contains(event.target) && !open.root.contains(event.target)) open.close();
+  },
+  true
+);
+document.addEventListener(
+  "scroll",
+  (event) => {
+    const open = Dropdown.current;
+    if (open && !open.panel?.contains(event.target)) open.close();
+  },
+  true
+);
+
+/* ═══════════════════════════ ПІДКАЗКИ ═══════════════════════════ */
+
+// Системні title-підказки не анімуються, тож замінюємо їх власними: затримка, плавна поява.
+let tipTarget = null;
+let tipTimer = 0;
+
+function hideTip() {
+  clearTimeout(tipTimer);
+  tipTarget = null;
+  if (el.tip.hidden || el.tip.classList.contains("leaving")) return;
+  leave(el.tip, "leaving", 120, () => {
+    if (!tipTarget) el.tip.hidden = true;
+    el.tip.classList.remove("leaving");
+  });
+}
+
+function showTip(target) {
+  const text = target.dataset.tip;
+  if (!text || !target.isConnected) return;
+  el.tip.textContent = text;
+  el.tip.classList.remove("leaving", "below");
+  el.tip.hidden = false;
+  const rect = target.getBoundingClientRect();
+  const width = el.tip.offsetWidth;
+  const height = el.tip.offsetHeight;
+  let top = rect.top - height - 8;
+  if (top < 6) {
+    top = rect.bottom + 8;
+    el.tip.classList.add("below");
+  }
+  const left = Math.min(Math.max(6, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - 6);
+  el.tip.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+  el.tip.classList.remove("show");
+  void el.tip.offsetWidth;
+  el.tip.classList.add("show");
+}
+
+document.addEventListener("pointerover", (event) => {
+  const target = event.target.closest?.("[title], [data-tip]");
+  if (!target || target === tipTarget || target.closest(".dd-panel")) return;
+  if (target.hasAttribute("title")) {
+    const text = target.getAttribute("title");
+    target.removeAttribute("title");
+    if (!text) return;
+    target.dataset.tip = text;
+    if (!target.hasAttribute("aria-label") && !target.textContent.trim()) target.setAttribute("aria-label", text);
+  }
+  clearTimeout(tipTimer);
+  if (!el.tip.hidden) el.tip.hidden = true;
+  tipTarget = target;
+  tipTimer = setTimeout(() => tipTarget === target && showTip(target), 420);
+});
+document.addEventListener("pointerout", (event) => {
+  if (tipTarget && !tipTarget.contains(event.relatedTarget)) hideTip();
+});
+document.addEventListener("pointerdown", hideTip, true);
+document.addEventListener("keydown", hideTip, true);
+document.addEventListener("wheel", hideTip, { passive: true, capture: true });
+
+/* ═══════════════════════════ СПОВІЩЕННЯ ═══════════════════════════ */
+
+/**
+ * toast({ id, icon, tone, title, text, html, actions:[{label, kind, onClick}], timeout })
+ * onClick може повернути false, щоб сповіщення лишилось.
+ */
+function toast({ id = "", icon = "", tone = "", title = "", text = "", html = "", actions = [], timeout = 0 }) {
+  if (id) dismissToast($("toast-" + id), true);
+  const node = document.createElement("div");
+  node.className = "toast" + (tone ? " " + tone : "");
+  if (id) node.id = "toast-" + id;
+  node.setAttribute("role", "status");
+  node.innerHTML = `${icon ? `<span class="toast-icon">${ICONS[icon] || ""}</span>` : ""}
+    <div class="toast-body">${title ? `<b class="toast-title">${esc(title)}</b>` : ""}${text ? `<p class="toast-text">${esc(text)}</p>` : ""}${html}
+      ${actions.length ? '<div class="toast-actions"></div>' : ""}</div>
+    <button class="toast-x" type="button" aria-label="${esc(t("common.close"))}">${ICONS.close}</button>`;
+  const row = node.querySelector(".toast-actions");
+  for (const spec of actions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-sm " + ({ primary: "btn-primary", ghost: "btn-ghost", plain: "btn-plain" }[spec.kind] || "btn-ghost");
+    button.textContent = spec.label;
+    if (spec.id) button.dataset.id = spec.id;
+    button.addEventListener("click", async () => {
+      const keep = (await spec.onClick?.(button, node)) === false;
+      if (!keep) dismissToast(node);
+    });
+    row.append(button);
+  }
+  node.querySelector(".toast-x").addEventListener("click", () => dismissToast(node));
+  el.toasts.append(node);
+  if (timeout) node.dataset.timer = String(setTimeout(() => dismissToast(node), timeout));
+  return node;
+}
+
+function dismissToast(node, instant = false) {
+  if (!node || node.classList.contains("leaving")) return;
+  clearTimeout(Number(node.dataset.timer || 0));
+  node.dataset.dismissed = "1";
+  if (instant) {
+    node.remove();
+    return;
+  }
+  leave(node, "leaving", 260, () => node.remove());
+}
+
+/* ═══════════════════════════ MARKDOWN (CHANGELOG) ═══════════════════════════ */
+
+function mdInline(text) {
+  return esc(text)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/__([^_]+)__/g, "<b>$1</b>")
+    .replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s).,:;!?]|$)/g, "$1<i>$2</i>")
+    .replace(/~~([^~]+)~~/g, "<s>$1</s>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<span class="md-link" title="$2">$1</span>');
+}
+
+/** Безпечний рендер Markdown релізу: спершу екранування, потім лише базова розмітка. */
+function renderMarkdown(source) {
+  const lines = String(source || "").replace(/\r\n?/g, "\n").split("\n");
+  const out = [];
+  let paragraph = [];
+  let list = null;
+  let code = null;
+  const flushParagraph = () => {
+    if (paragraph.length) out.push(`<p>${paragraph.map(mdInline).join("<br>")}</p>`);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (list) out.push(`<${list.tag}>${list.items.map((item) => `<li>${mdInline(item)}</li>`).join("")}</${list.tag}>`);
+    list = null;
+  };
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, "");
+    if (code) {
+      if (/^```/.test(line.trim())) {
+        out.push(`<pre class="md-code">${esc(code.join("\n"))}</pre>`);
+        code = null;
+      } else code.push(raw);
+      continue;
+    }
+    if (/^```/.test(line.trim())) {
+      flushParagraph();
+      flushList();
+      code = [];
+      continue;
+    }
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    const bullet = /^\s*[-*+]\s+(.*)$/.exec(line);
+    const ordered = /^\s*\d+[.)]\s+(.*)$/.exec(line);
+    if (!line.trim()) {
+      flushParagraph();
+      flushList();
+    } else if (heading) {
+      flushParagraph();
+      flushList();
+      const level = Math.min(3, heading[1].length);
+      out.push(`<h${level + 3} class="md-h">${mdInline(heading[2].replace(/#+$/, ""))}</h${level + 3}>`);
+    } else if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+      flushParagraph();
+      flushList();
+      out.push("<hr>");
+    } else if (bullet || ordered) {
+      flushParagraph();
+      const tag = bullet ? "ul" : "ol";
+      if (list && list.tag !== tag) flushList();
+      if (!list) list = { tag, items: [] };
+      list.items.push((bullet || ordered)[1]);
+    } else if (/^>\s?/.test(line)) {
+      flushParagraph();
+      flushList();
+      out.push(`<blockquote>${mdInline(line.replace(/^>\s?/, ""))}</blockquote>`);
+    } else if (list && /^\s{2,}\S/.test(raw)) {
+      list.items[list.items.length - 1] += " " + line.trim();
+    } else {
+      flushList();
+      paragraph.push(line.trim());
+    }
+  }
+  if (code) out.push(`<pre class="md-code">${esc(code.join("\n"))}</pre>`);
+  flushParagraph();
+  flushList();
+  return out.join("");
+}
 
 /* ═══════════════════════════ СКІНИ ═══════════════════════════ */
 
@@ -1254,6 +2188,8 @@ function moveNavIndicator(button, smooth) {
 
 function switchTab(name, smooth = true) {
   closeMenu();
+  Dropdown.closeAll();
+  hideTip();
   S.tab = name;
   for (const view of document.querySelectorAll(".view")) {
     const on = view.dataset.view === name;
@@ -1281,9 +2217,18 @@ function switchTab(name, smooth = true) {
 
 /* ═══════════════════════════ ПАНЕЛЬ ПРОГРЕСУ ═══════════════════════════ */
 
-const STEPS = ["manifest", "files", "minecraft", "java", "loader", "libraries", "assets", "launch"];
-const STEP_OF_STAGE = { verify: "files", download: "files", client: "minecraft", java: "java", libraries: "libraries", assets: "assets" };
-const BYTE_STAGES = new Set(["client", "java", "download", "launcher-update"]);
+const STEPS = ["manifest", "files", "debug", "minecraft", "java", "loader", "libraries", "assets", "launch"];
+const STEP_OF_STAGE = {
+  verify: "files",
+  download: "files",
+  debug: "debug",
+  "debug-download": "debug",
+  client: "minecraft",
+  java: "java",
+  libraries: "libraries",
+  assets: "assets"
+};
+const BYTE_STAGES = new Set(["client", "java", "download", "debug-download", "launcher-update"]);
 const LOG_LIMIT = 120;
 let progressHideTimer = 0;
 
@@ -1313,10 +2258,10 @@ let progressLeaveTimer = 0;
 
 /** Анімація лише transform/opacity. Якщо вікно згорнуте й кадри не малюються —
  *  через тривалість анімації елемент гарантовано стає в кінцевий стан. */
-function motion(node, keyframes, duration) {
+function motion(node, keyframes, duration, delay = 0) {
   if (!node || reduceMotion.matches || document.hidden) return;
-  const animation = node.animate(keyframes, { duration, easing: EASE });
-  setTimeout(() => animation.cancel(), duration + 150);
+  const animation = node.animate(keyframes, { duration, delay, easing: EASE, fill: "backwards" });
+  setTimeout(() => animation.cancel(), delay + duration + 150);
 }
 
 /** Сусіди панелі в Hero не стрибають, а плавно «підіймаються» (FLIP, лише transform). */
@@ -1367,11 +2312,19 @@ function resetProgressPanel() {
   el.progressFill.style.transform = "scaleX(0)";
 }
 
-/** Почати показ етапів: mode = "play" | "repair". */
+function stepsFor(mode) {
+  if (mode === "repair") return STEPS.filter((step) => step !== "debug" && step !== "launch");
+  if (mode === "debug") return ["debug"];
+  // Власні збірки дебагер не чіпає.
+  if (mode === "custom") return STEPS.filter((step) => step !== "debug");
+  return STEPS;
+}
+
+/** Почати показ етапів: mode = "play" | "custom" | "repair" | "debug". */
 function startProgress(mode) {
   clearTimeout(progressHideTimer);
   S.run = {
-    steps: mode === "repair" ? STEPS.slice(0, -1) : STEPS,
+    steps: stepsFor(mode),
     step: "",
     stepStart: performance.now(),
     start: performance.now(),
@@ -1602,7 +2555,7 @@ const PLAY_ICONS = {
 /** Підпис кнопки під час встановлення — що саме зараз відбувається. */
 function busyLabel() {
   const run = S.run;
-  if (S.busy !== "play" && S.busy !== "repair") return t("play.wait");
+  if (!["play", "repair", "debug"].includes(S.busy)) return t("play.wait");
   const p = Math.round(S.percent);
   const measuring = run?.measured && run.percent < 100;
   switch (run?.step) {
@@ -1610,6 +2563,10 @@ function busyLabel() {
       if (run.stage === "download" && measuring) return t("play.downloadMods", { p });
       if (run.stage === "verify" && run.counts?.total) return t("play.verifyN", { n: run.counts.current, total: run.counts.total });
       return S.busy === "repair" ? t("play.repairing") : t("play.checking");
+    case "debug":
+      if (run.stage === "debug-download" && measuring) return t("play.debugDownload", { p });
+      if (run.stage === "debug" && run.counts?.total && measuring) return t("play.verifyN", { n: run.counts.current, total: run.counts.total });
+      return t("play.debugging");
     case "minecraft":
       return measuring ? t("play.gameFiles", { p }) : t("play.prepMinecraft");
     case "java":
@@ -1622,6 +2579,7 @@ function busyLabel() {
     case "launch":
       return t("play.launching");
     default:
+      if (S.busy === "debug") return t("play.debugging");
       return S.busy === "repair" ? t("play.repairing") : t("play.checking");
   }
 }
@@ -1661,7 +2619,7 @@ function renderPlay() {
     disabled = true;
     mode = "busy";
     label = busyLabel();
-    sub = S.busy === "play" || S.busy === "repair" ? t("play.subWait") : "";
+    sub = ["play", "repair", "debug"].includes(S.busy) ? t("play.subWait") : "";
   } else if (S.updating) {
     label = t("play.wait");
     disabled = true;
@@ -1673,19 +2631,33 @@ function renderPlay() {
     label = t("play.install");
     mode = "install";
     const size = formatSize(inst.size_bytes);
-    sub = size ? t("play.subInstall", { size: "~" + size }) : "";
-  } else if (inst.update_available) {
+    sub = S.view?.offline && !inst.custom ? t("play.subNeedNet") : size ? t("play.subInstall", { size: "~" + size }) : "";
+  } else if (inst.update_available && !S.view?.offline) {
     label = t("play.update");
     mode = "update";
     sub = t("play.subUpdate", { v: inst.remote_version });
+  } else if (S.view?.offline && !inst.custom) {
+    sub = t("play.subOffline");
   }
 
   play.disabled = disabled;
   for (const name of ["install", "update", "busy", "running"]) play.classList.toggle(name, mode === name);
   const icon = PLAY_ICONS[mode] || "";
   if (el.playIco.dataset.mode !== mode) {
+    const first = el.playIco.dataset.mode === undefined;
     el.playIco.dataset.mode = mode;
     el.playIco.innerHTML = icon;
+    // Іконка стану з'являється з легким «пружинним» масштабом (лише transform/opacity).
+    if (!first) {
+      motion(
+        el.playIco,
+        [
+          { opacity: 0, transform: "scale(0.6) rotate(-20deg)" },
+          { opacity: 1, transform: "none" }
+        ],
+        360
+      );
+    }
   }
   const shape = label.replace(/[d.,]+/g, "#");
   if (el.playLabel.dataset.shape !== shape) {
@@ -1700,6 +2672,8 @@ function renderPlay() {
   el.repairBtn.disabled = locked || !inst?.installed;
   el.folderBtn.disabled = !inst?.installed;
   el.deleteBtn.disabled = !inst?.installed || Boolean(S.busy) || S.running === inst?.id;
+  el.importBtn.hidden = !inst || inst.custom;
+  el.importBtn.disabled = !inst || Boolean(S.busy) || Boolean(S.updating) || S.running === inst?.id;
 }
 
 function renderRamNote() {
@@ -1718,8 +2692,32 @@ function renderNickNote() {
   el.nickNote.innerHTML = profile ? t("home.playingAs", { nick: esc(profile.nickname) }) : t("home.noNick");
 }
 
+let heroShownId = null;
+
+/** Інша збірка — заголовок, опис і бейджі м'яко «підіймаються» з невеликою затримкою один за одним. */
+function heroSwap(inst) {
+  const id = inst?.id || "";
+  if (heroShownId === id) return;
+  const first = heroShownId === null;
+  heroShownId = id;
+  if (first) return;
+  [el.badgeMc.parentElement, el.instName, el.instDesc, el.instMeta].forEach((node, index) =>
+    motion(
+      node,
+      [
+        { opacity: 0, transform: "translate3d(0, 8px, 0)" },
+        { opacity: 1, transform: "none" }
+      ],
+      420,
+      index * 35
+    )
+  );
+}
+
 function renderHero() {
   const inst = current();
+  heroSwap(inst);
+  el.badgeOffline.hidden = !(inst && S.view?.offline && !inst.custom);
   if (!inst) {
     el.instName.textContent = S.viewError ? t("list.error") : S.view ? t("home.empty") : "";
     el.instName.classList.toggle("small", Boolean(S.viewError));
@@ -1730,6 +2728,8 @@ function renderHero() {
     el.badgeLoader.hidden = true;
     el.badgeServer.hidden = true;
     el.ramNote.hidden = true;
+    el.modsBtn.hidden = true;
+    el.heroMark.hidden = true;
     paintHeroImage(null);
     renderPlay();
     return;
@@ -1742,11 +2742,28 @@ function renderHero() {
   el.badgeMc.hidden = !inst.minecraft_version;
   el.badgeMc.textContent = "Minecraft " + inst.minecraft_version;
   const loader = loaderName(inst.loader);
-  el.badgeLoader.hidden = !loader || loader === "Vanilla";
-  el.badgeLoader.textContent = loader + (inst.loader_version ? " " + inst.loader_version : "");
+  el.badgeLoader.hidden = !loader || (loader === "Vanilla" && !inst.custom);
+  el.badgeLoader.innerHTML = loaderIcon(inst.loader) + esc(loader + (inst.loader_version ? " " + inst.loader_version : ""));
+
+  const vanilla = !inst.loader || inst.loader === "vanilla";
+  if (inst.custom) {
+    // Підказка «що робити далі» замість опису з репозиторію.
+    const key = vanilla ? "home.customDescVanilla" : inst.installed ? "home.customDescMods" : "home.customDescNew";
+    el.instDesc.textContent = t(key, { mc: inst.minecraft_version, loader });
+    el.instDesc.hidden = false;
+  }
+  el.heroMark.hidden = !inst.custom;
+  el.heroMark.innerHTML = inst.custom ? loaderIcon(inst.loader) : "";
+  el.modsBtn.hidden = !inst.custom;
+  el.modsBtn.disabled = vanilla;
+  el.modsBtn.title = t(vanilla ? "home.modsVanilla" : "home.modsTitle");
 
   const meta = [];
-  if (inst.update_available) meta.push(t("home.updateMeta", { from: inst.local_version || "?", to: inst.remote_version }));
+  if (inst.custom) {
+    meta.push(t("home.customMeta"), inst.installed ? t("inst.installed") : t("home.notInstalledMeta"));
+    if (!vanilla) meta.push(plural(inst.mods_count || 0, "plural.mods"));
+  }
+  else if (inst.update_available) meta.push(t("home.updateMeta", { from: inst.local_version || "?", to: inst.remote_version }));
   else if (inst.installed) meta.push(t("home.installedMeta", { v: inst.local_version || "—" }));
   else meta.push(t("home.notInstalledMeta"));
   if (inst.size_bytes) meta.push(formatSize(inst.size_bytes));
@@ -1768,6 +2785,7 @@ function statusTag(inst) {
 
 function renderList() {
   const list = el.instList;
+  if (S.viewError || !S.view) list.dataset.layout = "";
   if (S.viewError) {
     list.innerHTML = `<div class="empty"><span>${esc(t("list.error"))}</span><small>${esc(S.viewError)}</small><button class="btn btn-ghost btn-sm" type="button" data-act="reload">${t("list.retry")}</button></div>`;
     el.instCount.textContent = "0";
@@ -1779,32 +2797,81 @@ function renderList() {
   }
   const items = S.view.instances;
   el.instCount.textContent = String(items.length);
-  if (!items.length) {
-    list.innerHTML = `<div class="empty">${esc(t("list.empty"))}</div>`;
-    return;
-  }
+
+  // Той самий набір збірок — оновлюємо картки на місці: так вибір іншої збірки
+  // анімується (рамка й акцентна смужка — через opacity/transform), а не «перемальовується».
+  const layout = [lang, ...items.map((inst) => (inst.custom ? "c:" : "p:") + inst.id)].join("|");
+  if (list.dataset.layout === layout && patchList(items)) return;
+
+  const projectItems = items.filter((inst) => !inst.custom);
+  const customItems = items.filter((inst) => inst.custom);
   const intro = !list.querySelector(".inst-card");
   list.classList.toggle("intro", intro);
-  list.innerHTML = items
-    .map((inst, index) => {
-      const on = inst.id === S.activeId;
-      const details = [loaderName(inst.loader), inst.minecraft_version, formatSize(inst.size_bytes)].filter(Boolean).join(" · ");
-      const icon = `<span class="inst-icon avatar" data-icon="${esc(inst.id)}"></span>`;
-      const more = inst.installed
-        ? `<button class="more" type="button" data-more="${esc(inst.id)}" aria-label="${esc(t("inst.more"))}" title="${esc(t("inst.more"))}">${ICONS.more}</button>`
-        : "";
-      return `<div class="inst-card${on ? " on" : ""}" role="option" tabindex="0" aria-selected="${on}" data-id="${esc(inst.id)}" style="animation-delay:${Math.min(index, 8) * 30}ms">
-        <span class="inst-art" data-art="${esc(inst.id)}"></span>
-        ${icon}
-        <span class="inst-info"><b>${esc(inst.name)}</b><span class="inst-sub">${statusTag(inst)}<small>${esc(details)}</small></span></span>
-        <span class="inst-side">${more}</span>
-      </div>`;
-    })
-    .join("");
+  let index = 0;
+  const card = (inst) => {
+    const on = inst.id === S.activeId;
+    const delay = Math.min(index++, 8) * 30;
+    return `<div class="inst-card${on ? " on" : ""}" role="option" tabindex="0" aria-selected="${on}" data-id="${esc(inst.id)}" style="animation-delay:${delay}ms">${cardInner(inst)}</div>`;
+  };
+  const addButton = `<button class="inst-add" type="button" data-act="create" aria-label="${esc(t("create.button"))}" title="${esc(t("create.button"))}">${ICONS.plus}</button>`;
+  const importNew = `<button class="inst-add" type="button" data-act="import-new" aria-label="${esc(t("import.newTitle"))}" title="${esc(t("import.newTitle"))}">${ICONS.archive}</button>`;
+  const cta = `<button class="inst-cta" type="button" data-act="create">${ICONS.plus}<span><b>${esc(t("create.ctaTitle"))}</b><small>${esc(t("create.ctaText"))}</small></span></button>`;
+  const projectPart =
+    `<h3 class="inst-group"><span>${esc(t("home.projectTitle"))}</span></h3>` +
+    (projectItems.length ? projectItems.map(card).join("") : `<div class="empty small">${esc(t("list.empty"))}</div>`);
+  const customPart =
+    `<h3 class="inst-group"><span>${esc(t("home.customTitle"))}</span><span class="inst-group-acts">${importNew}${customItems.length ? addButton : ""}</span></h3>` +
+    (customItems.length ? customItems.map(card).join("") : cta);
+  list.innerHTML = projectPart + customPart;
+  list.dataset.layout = layout;
+  cardSigs.clear();
   for (const inst of items) {
-    paintAvatar(list.querySelector(`[data-icon="${CSS.escape(inst.id)}"]`), initial(inst.name), instanceIcons(inst));
-    paintArt(list.querySelector(`[data-art="${CSS.escape(inst.id)}"]`), inst);
+    const node = list.querySelector(`.inst-card[data-id="${CSS.escape(inst.id)}"]`);
+    cardSigs.set(inst.id, cardInner(inst));
+    paintCard(node, inst);
   }
+}
+
+const cardSigs = new Map();
+
+function cardInner(inst) {
+  const mods = inst.custom && inst.loader && inst.loader !== "vanilla" ? plural(inst.mods_count || 0, "plural.mods") : "";
+  // Назву завантажувача показує іконка (з підказкою), тож у тексті — лише версія та розмір.
+  const details = [inst.minecraft_version, mods || formatSize(inst.size_bytes)].filter(Boolean).join(" · ");
+  const icon = inst.custom
+    ? `<span class="inst-icon avatar avatar-loader">${loaderIcon(inst.loader)}</span>`
+    : `<span class="inst-icon avatar" data-icon="${esc(inst.id)}"></span>`;
+  const more = `<button class="more" type="button" data-more="${esc(inst.id)}" aria-label="${esc(t("inst.more"))}" title="${esc(t("inst.more"))}">${ICONS.more}</button>`;
+  return `<span class="inst-art" data-art="${esc(inst.id)}"></span>
+      ${icon}
+      <span class="inst-info"><b>${esc(inst.name)}</b><span class="inst-sub">${statusTag(inst)}${inst.loader ? loaderIcon(inst.loader) : ""}<small>${esc(details)}</small></span></span>
+      <span class="inst-side">${more}</span>`;
+}
+
+function paintCard(node, inst) {
+  if (!node || inst.custom) return;
+  paintAvatar(node.querySelector("[data-icon]"), initial(inst.name), instanceIcons(inst));
+  paintArt(node.querySelector("[data-art]"), inst);
+}
+
+/** Оновлює існуючі картки; false — структура змінилась і потрібна повна перебудова. */
+function patchList(items) {
+  const list = el.instList;
+  for (const inst of items) {
+    const node = list.querySelector(`.inst-card[data-id="${CSS.escape(inst.id)}"]`);
+    if (!node) return false;
+    const inner = cardInner(inst);
+    if (cardSigs.get(inst.id) !== inner) {
+      node.innerHTML = inner;
+      cardSigs.set(inst.id, inner);
+      paintCard(node, inst);
+    }
+    const on = inst.id === S.activeId;
+    node.classList.toggle("on", on);
+    node.setAttribute("aria-selected", String(on));
+  }
+  list.classList.remove("intro");
+  return true;
 }
 
 function renderServer() {
@@ -1925,7 +2992,7 @@ async function onPlay() {
   }
   S.busy = "play";
   S.phase = "checking";
-  startProgress("play");
+  startProgress(inst.custom ? "custom" : "play");
   renderPlay();
   try {
     const result = await invoke("play", { instanceId: inst.id });
@@ -1934,16 +3001,22 @@ async function onPlay() {
     updateCalm();
     if (result.offline) setIsland("warn", t("status.offlinePlay"));
     else if (result.first_install) setIsland("ok", t("status.installed"));
+    if (result.debug && !debugClean(result.debug)) showDebugToast(inst, result.debug);
     const fresh = current();
     if (fresh) {
       fresh.installed = true;
-      fresh.update_available = false;
-      if (fresh.remote_version) fresh.local_version = fresh.remote_version;
+      if (!result.offline) {
+        fresh.update_available = false;
+        if (fresh.remote_version) fresh.local_version = fresh.remote_version;
+      }
     }
   } catch (error) {
     finishProgress(false, errHuman(error));
     setIsland("error", errHuman(error));
-    showError(error, [{ id: "retry", label: t("common.retry"), kind: "ghost", onClick: () => setTimeout(onPlay, 220) }]);
+    const extra = [{ id: "retry", label: t("common.retry"), kind: "ghost", onClick: () => setTimeout(onPlay, 220) }];
+    // Без мережі встановити збірку не вийшло — підказуємо імпорт з архіву.
+    if (!inst.custom && !inst.installed) extra.unshift({ id: "import", label: t("menu.import"), kind: "ghost", onClick: () => setTimeout(() => onImport(inst.id), 220) });
+    showError(error, extra);
   } finally {
     S.busy = null;
     S.phase = null;
@@ -2012,7 +3085,7 @@ async function onDelete(id) {
     icon: "trash",
     tone: "danger",
     title: t("delete.title", { name }),
-    html: "<p>" + esc(t("delete.lead")) + "</p>" + stats + keepBox,
+    html: "<p>" + esc(t(inst.custom ? "delete.leadCustom" : "delete.lead")) + "</p>" + stats + keepBox,
     buttons: [
       { id: "cancel", label: t("common.cancel"), kind: "ghost" },
       {
@@ -2034,7 +3107,16 @@ async function onDelete(id) {
     await invoke("delete_instance", { instanceId: id, keepPersonal: keep });
     setIsland("ok", keep ? t("delete.doneKept", { name }) : t("delete.done", { name }));
     const local = S.view?.instances.find((i) => i.id === id);
-    if (local) {
+    if (local?.custom && !keep) {
+      // Власна збірка зникає повністю — переходимо на іншу.
+      S.view.instances = S.view.instances.filter((i) => i.id !== id);
+      if (id === S.activeId) {
+        hideProgress();
+        const next = S.view.instances[0]?.id;
+        S.activeId = "";
+        if (next) selectInstance(next);
+      }
+    } else if (local) {
       local.installed = false;
       local.update_available = false;
       local.local_version = "";
@@ -2045,6 +3127,812 @@ async function onDelete(id) {
     if (S.tab === "settings") refreshSettings();
   } catch (error) {
     showError(error);
+  }
+}
+
+/* дебагер збірки проєкту */
+
+function debugClean(report) {
+  return !report.missing.length && !report.corrupt.length && !report.extra.length;
+}
+
+function statCell(label, value, tone = "") {
+  return `<div${tone ? ` class="${tone}"` : ""}><small>${esc(label)}</small><b>${esc(String(value))}</b></div>`;
+}
+
+/** Після pre-launch перевірки, якщо дебагер щось виправив, — коротке сповіщення з кнопкою «Звіт». */
+function showDebugToast(inst, report) {
+  toast({
+    id: "debug",
+    icon: "bug",
+    tone: report.failed.length ? "warn" : "",
+    title: t("step.debug"),
+    text: report.summary,
+    actions: [{ label: t("debug.report"), kind: "ghost", onClick: () => showDebugReport(inst, report) }],
+    timeout: 15000
+  });
+}
+
+function showDebugReport(inst, report) {
+  const fixed = report.downloaded.length + report.replaced.length + report.removed.length;
+  const stats = `<div class="usage">${statCell(t("debug.checked"), report.checked)}${statCell(t("debug.ok"), report.ok)}${statCell(t("debug.fixed"), fixed, fixed ? "good" : "")}${statCell(
+    t("debug.failed"),
+    report.failed.length,
+    report.failed.length ? "bad" : ""
+  )}</div>`;
+  const section = (title, list, tone) =>
+    list.length
+      ? `<section class="dbg-sec ${tone}"><h5><span>${esc(title)}</span><span class="count">${list.length}</span></h5><ul class="dbg-list">${list.map((name) => `<li>${esc(name)}</li>`).join("")}</ul></section>`
+      : "";
+  const body = debugClean(report)
+    ? `<p class="dbg-clean">${ICONS.check}<span>${esc(t("debug.clean"))}</span></p>`
+    : section(t("debug.removed", { dir: report.quarantine }), report.removed, "warn") +
+      section(t("debug.downloaded"), report.downloaded, "ok") +
+      section(t("debug.replaced"), report.replaced, "ok") +
+      section(t("debug.failedList"), report.failed, "bad") +
+      (report.offline ? `<p class="hint warn">${esc(t("debug.offline"))}</p>` : "");
+  openModal({
+    icon: "bug",
+    tone: report.failed.length ? "warn" : "",
+    title: t("debug.title", { name: inst?.name || "" }),
+    html: `<p>${esc(report.summary)}</p>${stats}<div class="dbg">${body}</div>`,
+    wide: true,
+    buttons: [
+      { id: "folder", label: t("crash.folder"), kind: "ghost", left: true, onClick: () => (openFolder(inst?.id), false) },
+      { id: "close", label: t("common.close"), kind: "primary" }
+    ]
+  });
+}
+
+/** «Перевірити збірку (Дебагер)» з меню дій збірки. */
+async function onDebug(id) {
+  const inst = S.view?.instances.find((i) => i.id === (id || S.activeId));
+  if (!inst || inst.custom || !inst.installed || S.busy || S.updating || S.running === inst.id) return;
+  if (inst.id !== S.activeId) await selectInstance(inst.id);
+  S.busy = "debug";
+  S.phase = "checking";
+  startProgress("debug");
+  renderPlay();
+  try {
+    const report = await invoke("debug_instance", { instanceId: inst.id });
+    finishProgress(true, report.summary);
+    setIsland(report.failed.length ? "warn" : "ok", report.summary);
+    showDebugReport(inst, report);
+  } catch (error) {
+    finishProgress(false, errHuman(error));
+    setIsland("error", errHuman(error));
+    showError(error);
+  } finally {
+    S.busy = null;
+    S.phase = null;
+    renderList();
+    renderHero();
+  }
+}
+
+/* імпорт збірки з .zip */
+
+function fileName(path) {
+  return String(path || "").split(/[\\/]/).pop();
+}
+
+/** targetId — збірка, в яку імпортувати; порожньо — нова власна збірка з архіву. */
+async function onImport(targetId) {
+  if (S.busy || S.updating) return;
+  const inst = targetId ? S.view?.instances.find((i) => i.id === targetId) : null;
+  if (targetId && !inst) return;
+  if (targetId && S.running === targetId) {
+    setIsland("warn", t("mods.running"));
+    return;
+  }
+  let path = null;
+  try {
+    path = await invoke("pick_zip");
+  } catch (error) {
+    showError(error);
+    return;
+  }
+  if (!path) return;
+  const ok = await confirmDialog({
+    icon: "archive",
+    title: inst ? t("import.confirmTitle", { name: inst.name }) : t("import.newTitle"),
+    html: t("import.confirmText", { file: esc(fileName(path)) }),
+    ok: t("import.go")
+  });
+  if (!ok) return;
+  S.busy = "import";
+  renderPlay();
+  setIsland("busy", t("import.running"));
+  try {
+    const report = await invoke("import_local_pack", { zipPath: path, instanceId: targetId || null, basePath: null });
+    setIsland("ok", t("import.doneTitle", { name: report.name }));
+    if (report.created) {
+      await loadProject({ quiet: true });
+      selectInstance(report.instance_id, { save: false });
+    } else {
+      try {
+        mergeInstance(await invoke("instance_details", { instanceId: report.instance_id }));
+      } catch {
+        if (inst) {
+          inst.installed = true;
+          inst.local_version = report.pack_version;
+        }
+      }
+    }
+    showImportReport(report);
+  } catch (error) {
+    setIsland("error", errHuman(error));
+    showError(error);
+  } finally {
+    S.busy = null;
+    renderList();
+    renderHero();
+    if (S.tab === "settings") refreshSettings();
+  }
+}
+
+function showImportReport(report) {
+  const stats = `<div class="usage">${statCell(t("import.files"), report.files)}${statCell(t("import.verified"), report.verified, report.verified ? "good" : "")}${statCell(t("import.skipped"), report.skipped)}</div>`;
+  const mismatched = report.mismatched.length
+    ? `<p>${esc(t("import.mismatched"))}</p><ul class="dbg-list">${report.mismatched
+        .slice(0, 40)
+        .map((path) => `<li>${esc(path)}</li>`)
+        .join("")}</ul>`
+    : "";
+  openModal({
+    icon: "archive",
+    title: t("import.doneTitle", { name: report.name }),
+    html: `<p>${esc(t("import.ready"))}</p>${stats}${mismatched}`,
+    buttons: [{ id: "close", label: t("common.close"), kind: "primary" }]
+  });
+}
+
+/* власна збірка: будь-яка версія Minecraft + завантажувач */
+
+const CUSTOM_LOADERS = ["vanilla", "fabric", "forge", "neoforge", "quilt"];
+
+/** Версії Minecraft для списку: бейджі Release/Snapshot і Latest на найновішій. */
+function mcVersionItems(list) {
+  const latest = new Set();
+  return list.map((version) => {
+    const badges = [];
+    const kinds = { release: "release", snapshot: "snapshot", old_beta: "beta", old_alpha: "alpha" };
+    const kind = kinds[version.kind] || "release";
+    badges.push({ text: t("badge." + kind), kind });
+    if ((kind === "release" || kind === "snapshot") && !latest.has(kind)) {
+      latest.add(kind);
+      badges.push({ text: t("badge.latest"), kind: "latest" });
+    }
+    return { value: version.id, label: version.id, badges, search: version.kind };
+  });
+}
+
+/** Версії завантажувача: Latest (найновіша), Recommended, Beta для нестабільних. */
+function loaderVersionItems(list) {
+  return list.map((version, index) => {
+    const badges = [];
+    if (version.recommended) badges.push({ text: t("badge.recommended"), kind: "recommended" });
+    if (index === 0) badges.push({ text: t("badge.latest"), kind: "latest" });
+    if (!version.stable) badges.push({ text: t("badge.beta"), kind: "beta" });
+    return { value: version.id, label: version.id, badges };
+  });
+}
+
+async function openCreateDialog() {
+  if (!S.view || S.busy) return;
+  const form = { loader: "fabric", snapshots: false };
+  let created = null;
+  let loaderSeq = 0;
+  let mcSeq = 0;
+  const mcDd = new Dropdown({ search: true, label: t("create.mc"), placeholder: "—", searchPh: "1.21.1, 1.20.1…", minWidth: 280 });
+  const lvDd = new Dropdown({ search: true, label: t("create.loaderVersion"), placeholder: "—", empty: t("create.noLoader"), minWidth: 280 });
+  const loaderCard = (l) =>
+    `<button type="button" role="radio" data-loader="${l}" class="ldr-card${l === form.loader ? " on" : ""}" aria-checked="${l === form.loader}">
+      ${loaderIcon(l, "ldr-lg")}
+      <span class="ldr-text"><b>${esc(loaderName(l))}${l === "fabric" ? ` <em>${esc(t("create.recommended"))}</em>` : ""}</b><small>${esc(t("loader." + l))}</small></span>
+    </button>`;
+  const html = `<p>${esc(t("create.lead"))}</p>
+    <div class="create-form">
+      <section class="create-step">
+        <span class="label">${esc(t("create.step1"))}</span>
+        <div class="create-row"><div class="dd-mount" id="cMc"></div>
+        <label class="toggle-inline" for="cSnap"><span class="switch"><input type="checkbox" id="cSnap"><span></span></span><span>${esc(t("create.snapshots"))}</span></label></div>
+        <span class="hint">${esc(t("create.mcHint"))}</span>
+      </section>
+      <section class="create-step">
+        <span class="label">${esc(t("create.step2"))}</span>
+        <div class="ldr-grid" id="cLoader" role="radiogroup">${CUSTOM_LOADERS.map(loaderCard).join("")}</div>
+        <div class="field" id="cLvField"><span class="label">${esc(t("create.loaderVersion"))}</span><div class="dd-mount" id="cLv"></div><span class="hint">${esc(t("create.loaderHint"))}</span></div>
+      </section>
+      <section class="create-step">
+        <label class="label" for="cName">${esc(t("create.step3"))}</label>
+        <input type="text" id="cName" maxlength="40" spellcheck="false" autocomplete="off" placeholder="${esc(t("create.namePh"))}">
+      </section>
+      <p class="form-error" id="cError" hidden></p>
+    </div>`;
+  const updateNamePlaceholder = () => {
+    const mc = mcDd.value;
+    const input = $("cName");
+    if (input && mc) input.placeholder = `${loaderName(form.loader)} ${mc}`;
+  };
+
+  const showError = (text) => {
+    const node = $("cError");
+    if (!node) return;
+    node.textContent = text || "";
+    node.hidden = !text;
+  };
+  const loadLoaderVersions = async () => {
+    const field = $("cLvField");
+    if (!field) return;
+    field.hidden = form.loader === "vanilla";
+    updateNamePlaceholder();
+    const mc = mcDd.value;
+    const my = ++loaderSeq;
+    if (form.loader === "vanilla" || !mc) return;
+    lvDd.setLoading(true);
+    try {
+      const list = await invoke("loader_versions", { loader: form.loader, minecraftVersion: mc });
+      if (my !== loaderSeq) return;
+      const preferred = list.find((v) => v.recommended) || list[0];
+      lvDd.setItems(loaderVersionItems(list), preferred?.id ?? "");
+    } catch (error) {
+      if (my !== loaderSeq) return;
+      lvDd.setItems([], "");
+      showError(errHuman(error));
+    }
+  };
+  const loadMc = async () => {
+    const previous = mcDd.value;
+    const my = ++mcSeq;
+    mcDd.setLoading(true);
+    try {
+      const list = await invoke("minecraft_versions", { snapshots: form.snapshots });
+      if (my !== mcSeq) return;
+      const keep = previous && list.some((v) => v.id === previous) ? previous : list.find((v) => v.kind === "release")?.id ?? list[0]?.id ?? "";
+      mcDd.setItems(mcVersionItems(list), keep);
+      showError("");
+    } catch (error) {
+      if (my !== mcSeq) return;
+      mcDd.setItems([], "");
+      showError(errHuman(error));
+    }
+    await loadLoaderVersions();
+  };
+  mcDd.opts.onChange = () => {
+    showError("");
+    loadLoaderVersions();
+  };
+
+  const choice = openModal({
+    icon: "plus",
+    title: t("create.title"),
+    html,
+    wide: true,
+    buttons: [
+      { id: "cancel", label: t("common.cancel"), kind: "ghost" },
+      {
+        id: "ok",
+        label: t("create.go"),
+        kind: "primary",
+        onClick: async (button) => {
+          const mc = mcDd.value;
+          const loaderVersion = form.loader === "vanilla" ? "" : lvDd.value;
+          if (!mc || (form.loader !== "vanilla" && !loaderVersion)) {
+            showError(t(!mc ? "create.mc" : "create.noLoader"));
+            return false;
+          }
+          const name = $("cName").value.trim() || `${loaderName(form.loader)} ${mc}`;
+          button.disabled = true;
+          try {
+            created = await invoke("create_custom_instance", {
+              spec: { name, minecraft_version: mc, loader: form.loader, loader_version: loaderVersion }
+            });
+          } catch (error) {
+            showError(errHuman(error));
+            button.disabled = false;
+            return false;
+          }
+        }
+      }
+    ]
+  });
+
+  mcDd.mount($("cMc"));
+  lvDd.mount($("cLv"));
+  $("cSnap")?.addEventListener("change", (event) => {
+    form.snapshots = event.target.checked;
+    loadMc();
+  });
+  $("cLoader")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-loader]");
+    if (!button) return;
+    form.loader = button.dataset.loader;
+    for (const node of $("cLoader").querySelectorAll("[data-loader]")) {
+      const on = node === button;
+      node.classList.toggle("on", on);
+      node.setAttribute("aria-checked", String(on));
+    }
+    showError("");
+    loadLoaderVersions();
+  });
+  loadMc();
+
+  if ((await choice) !== "ok" || !created || !S.view) return;
+  const firstCustom = S.view.instances.findIndex((i) => i.custom);
+  S.view.instances.splice(firstCustom < 0 ? S.view.instances.length : firstCustom, 0, created);
+  setIsland("ok", t("create.done", { name: created.name }));
+  selectInstance(created.id, { save: false });
+}
+
+/* менеджер модів (Modrinth / CurseForge) у стилі Prism Launcher */
+
+const MOD_PLACEHOLDER = '<span class="mod-icon mod-icon-empty" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/></svg></span>';
+
+function modIcon(url) {
+  if (typeof url !== "string" || !url.startsWith("https://")) return MOD_PLACEHOLDER;
+  return `<img class="mod-icon" src="${esc(url)}" alt="" loading="lazy" draggable="false">`;
+}
+
+const MOD_SOURCES = [
+  { id: "modrinth", label: "Modrinth" },
+  { id: "curseforge", label: "CurseForge" }
+];
+const modCategoryCache = new Map();
+
+function sourceLabel(id) {
+  return MOD_SOURCES.find((source) => source.id === (id || "modrinth"))?.label || "";
+}
+
+/** Версії файлу мода: «Найновіша сумісна (Авто)» + конкретні файли з бейджами типу релізу. */
+function modVersionItems(list) {
+  const items = [{ value: "", label: t("mods.latestCompatible"), badges: [{ text: t("badge.auto"), kind: "auto" }] }];
+  list.forEach((version, index) => {
+    const kind = ["release", "beta", "alpha"].includes(version.kind) ? version.kind : "release";
+    const badges = [{ text: t("badge." + kind), kind }];
+    if (index === 0) badges.push({ text: t("badge.latest"), kind: "latest" });
+    items.push({
+      value: version.id,
+      label: version.version_number || version.name || version.filename,
+      sub: [version.date ? changelogDate(version.date) : "", version.filename].filter(Boolean).join(" · "),
+      badges,
+      search: version.filename
+    });
+  });
+  return items;
+}
+
+const autoVersionItem = () => [{ value: "", label: t("mods.latestCompatible"), badges: [{ text: t("badge.auto"), kind: "auto" }] }];
+
+async function openModsDialog(id = S.activeId) {
+  const inst = S.view?.instances.find((i) => i.id === id);
+  if (!inst) return;
+  const vanilla = !inst.loader || inst.loader === "vanilla";
+  if (inst.custom && vanilla) return;
+  // Збірка проєкту: склад визначає manifest.json, тож лише перегляд.
+  const managed = !inst.custom;
+  const M = {
+    source: "modrinth",
+    tab: managed ? "installed" : "browse",
+    query: "",
+    category: "",
+    offset: 0,
+    total: 0,
+    hits: [],
+    installed: [],
+    busy: new Set(),
+    seq: 0,
+    versions: new Map(),
+    picked: new Map(),
+    pickers: [],
+    cf: false
+  };
+  const keyOf = (projectId) => M.source + ":" + projectId;
+  const installedKeys = () => new Set(M.installed.filter((m) => m.project_id).map((m) => (m.source || "modrinth") + ":" + m.project_id));
+  const loaderText = loaderName(inst.loader) + (inst.loader_version ? " " + inst.loader_version : "");
+  const chips = `<span class="chip">Minecraft ${esc(inst.minecraft_version)}</span><span class="chip">${loaderIcon(inst.loader)}${esc(loaderName(inst.loader))}</span>`;
+  const skeletons = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+
+  const html = managed
+    ? `<p>${esc(t("mods.managedLead"))}</p>
+      <div class="mods">
+        <div class="mods-head"><span class="chips">${chips}</span>
+          <button class="btn btn-ghost btn-sm" type="button" id="mFolder">${ICONS.folder}<span>${esc(t("mods.folder"))}</span></button></div>
+        <div id="mInstalled" class="mods-pane"><div class="mod-list" id="mList">${skeletons}</div></div>
+      </div>`
+    : `<p>${esc(t("mods.lead", { loader: loaderText, mc: inst.minecraft_version }))}</p>
+      <div class="mods">
+        <div class="mods-head">
+          <div class="seg seg-sm" id="mTabs" role="tablist">
+            <button type="button" role="tab" data-mtab="browse">${esc(t("mods.browse"))}</button>
+            <button type="button" role="tab" data-mtab="installed">${esc(t("mods.installed"))} <span class="mods-count" id="mCount"></span></button>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" id="mFolder">${ICONS.folder}<span>${esc(t("mods.folder"))}</span></button>
+        </div>
+        <div id="mBrowse" class="mods-pane">
+          <div class="mods-tools">
+            <div class="seg seg-sm seg-src" id="mSource" role="radiogroup">${MOD_SOURCES.map((s) => `<button type="button" role="radio" data-src="${s.id}">${s.label}</button>`).join("")}</div>
+            <label class="mods-search">${ICONS.search}<input type="text" id="mQuery" spellcheck="false" autocomplete="off"></label>
+            <div class="dd-mount mods-cat" id="mCat"></div>
+          </div>
+          <div class="mods-filter"><span class="mods-filter-label">${esc(t("mods.autoFilter"))}</span>${chips}</div>
+          <div class="cf-note" id="mCfNote" hidden>${ICONS.alert}<span>${esc(t("mods.cfNeedKey"))}</span><button class="btn btn-ghost btn-sm" type="button" id="mCfSettings">${esc(t("mods.cfOpenSettings"))}</button></div>
+          <span class="hint" id="mHint"></span>
+          <div class="mod-list" id="mResults"></div>
+          <button class="btn btn-ghost btn-sm mods-more" type="button" id="mMore" hidden><span class="btn-spin" aria-hidden="true"></span><span>${esc(t("mods.more"))}</span></button>
+        </div>
+        <div id="mInstalled" class="mods-pane" hidden><div class="mod-list" id="mList"></div></div>
+      </div>`;
+
+  const choice = openModal({
+    icon: "box",
+    title: managed ? t("mods.managedTitle", { name: inst.name }) : t("mods.title", { name: inst.name }),
+    html,
+    xl: true,
+    buttons: [{ id: "done", label: t("common.done"), kind: "primary" }]
+  });
+
+  const catDd = managed
+    ? null
+    : new Dropdown({
+        className: "dd-sm",
+        label: t("mods.category"),
+        placeholder: t("mods.allCategories"),
+        search: true,
+        minWidth: 240,
+        items: [{ value: "", label: t("mods.allCategories") }],
+        value: "",
+        onChange: (value) => {
+          M.category = value;
+          search(false);
+        }
+      });
+  if (catDd) catDd.mount($("mCat"));
+
+  const renderTabs = () => {
+    if (managed || !$("mTabs")) return;
+    for (const button of $("mTabs").querySelectorAll("[data-mtab]")) {
+      const on = button.dataset.mtab === M.tab;
+      button.classList.toggle("on", on);
+      button.setAttribute("aria-selected", String(on));
+    }
+    $("mBrowse").hidden = M.tab !== "browse";
+    $("mInstalled").hidden = M.tab !== "installed";
+    $("mCount").textContent = M.installed.length ? String(M.installed.length) : "";
+  };
+
+  const cfLocked = () => M.source === "curseforge" && !M.cf;
+
+  const renderSource = () => {
+    if (managed) return;
+    for (const button of $("mSource").querySelectorAll("[data-src]")) {
+      const on = button.dataset.src === M.source;
+      button.classList.toggle("on", on);
+      button.setAttribute("aria-checked", String(on));
+    }
+    const locked = cfLocked();
+    $("mQuery").placeholder = t(M.source === "curseforge" ? "mods.searchPhCurse" : "mods.searchPh");
+    $("mQuery").disabled = locked;
+    $("mCfNote").hidden = !locked;
+    $("mResults").hidden = locked;
+    $("mHint").hidden = locked;
+    if (locked) $("mMore").hidden = true;
+    catDd.setDisabled(locked);
+  };
+
+  const loadCategories = async () => {
+    const source = M.source;
+    if (managed || cfLocked()) return;
+    let list = modCategoryCache.get(source);
+    if (!list) {
+      try {
+        list = await invoke("mod_categories", { source });
+        modCategoryCache.set(source, list);
+      } catch {
+        list = [];
+      }
+    }
+    if (source !== M.source) return;
+    catDd.setItems([{ value: "", label: t("mods.allCategories") }, ...list.map((c) => ({ value: c.id, label: c.name }))], "");
+  };
+
+  const closePickers = () => {
+    for (const picker of M.pickers) picker.close();
+  };
+
+  const rowHtml = (hit, index, have) => {
+    const key = keyOf(hit.id);
+    const done = have.has(key);
+    const busy = M.busy.has(key);
+    const label = busy ? t("mods.installing") : done ? t("mods.isInstalled") : t("mods.install");
+    return `<div class="mod-row enter" data-pid="${esc(hit.id)}" style="--i:${Math.min(index, 10)}">
+        ${modIcon(hit.icon_url)}
+        <span class="mod-info"><b>${esc(hit.title)}</b><small>${esc(t("mods.by", { author: hit.author || "?" }))} · ↓ ${esc(formatCount(hit.downloads))}</small><span class="mod-desc">${esc(hit.description)}</span><span class="mod-err" hidden></span></span>
+        <span class="mod-act">
+          <span class="dd-mount" data-ver="${esc(hit.id)}"></span>
+          <button class="btn btn-sm ${done ? "btn-ghost" : "btn-primary"}${busy ? " loading" : ""}" type="button" data-install="${esc(hit.id)}" ${done || busy ? "disabled" : ""}><span class="btn-spin" aria-hidden="true"></span><span class="btn-text">${esc(label)}</span></button>
+        </span>
+      </div>`;
+  };
+
+  /** Рядки результатів; append — додати лише нові (без повторної анімації старих). */
+  const renderResults = (from = 0) => {
+    const box = $("mResults");
+    if (!box) return;
+    const have = installedKeys();
+    if (from === 0) {
+      closePickers();
+      M.pickers = [];
+      box.innerHTML = "";
+    }
+    box.insertAdjacentHTML("beforeend", M.hits.slice(from).map((hit, index) => rowHtml(hit, index, have)).join(""));
+    for (const hit of M.hits.slice(from)) {
+      const mount = box.querySelector(`[data-ver="${CSS.escape(hit.id)}"]`);
+      if (!mount) continue;
+      const key = keyOf(hit.id);
+      const known = M.versions.get(key);
+      const picker = new Dropdown({
+        className: "dd-sm dd-ver",
+        label: t("mods.version"),
+        search: true,
+        minWidth: 330,
+        items: known ? modVersionItems(known) : autoVersionItem(),
+        value: M.picked.get(key) || "",
+        pendingText: t("mods.loadingVersions"),
+        onOpen: (dd) => loadVersions(hit.id, dd),
+        onChange: (value) => M.picked.set(key, value)
+      });
+      picker.mount(mount);
+      M.pickers.push(picker);
+    }
+    $("mMore").hidden = M.hits.length >= M.total || !M.hits.length;
+  };
+
+  const refreshInstallButtons = () => {
+    const box = $("mResults");
+    if (!box) return;
+    const have = installedKeys();
+    for (const button of box.querySelectorAll("[data-install]")) {
+      const key = keyOf(button.dataset.install);
+      const done = have.has(key);
+      const busy = M.busy.has(key);
+      button.disabled = done || busy;
+      button.classList.toggle("loading", busy);
+      button.classList.toggle("btn-primary", !done);
+      button.classList.toggle("btn-ghost", done);
+      button.querySelector(".btn-text").textContent = busy ? t("mods.installing") : done ? t("mods.isInstalled") : t("mods.install");
+    }
+  };
+
+  const loadVersions = async (projectId, picker) => {
+    const key = keyOf(projectId);
+    if (M.versions.has(key)) return;
+    picker.setPending(true);
+    try {
+      const list = await invoke("mod_versions", { instanceId: id, source: M.source, projectId });
+      M.versions.set(key, list);
+      picker.setItems(modVersionItems(list), M.picked.get(key) || "");
+    } catch (error) {
+      picker.setPending(false);
+      setIsland("error", errHuman(error));
+    }
+  };
+
+  const renderInstalled = (animate = false) => {
+    const box = $("mList");
+    if (!box) return;
+    renderTabs();
+    if (!M.installed.length) {
+      box.innerHTML = `<div class="empty small">${esc(t("mods.none"))}</div>`;
+      return;
+    }
+    box.innerHTML = M.installed
+      .map((mod, index) => {
+        let sub;
+        if (mod.managed) sub = mod.enabled ? t("mods.managed") : t("mods.managedMissing");
+        else if (managed) sub = t("mods.extra");
+        else sub = mod.manual ? t("mods.manual") : [sourceLabel(mod.source), mod.version_number, mod.dependency ? t("mods.dependency") : ""].filter(Boolean).join(" · ");
+        const tone = managed ? (mod.managed ? (mod.enabled ? "" : " missing") : " extra") : mod.enabled ? "" : " off";
+        const controls = managed
+          ? `<span class="mod-state${mod.managed && mod.enabled ? " ok" : ""}" aria-hidden="true"></span>`
+          : `<label class="switch" title="${esc(t("mods.enable"))}"><input type="checkbox" data-toggle="${esc(mod.filename)}" ${mod.enabled ? "checked" : ""}><span></span></label>
+             <button class="more" type="button" data-remove="${esc(mod.filename)}" title="${esc(t("mods.remove"))}" aria-label="${esc(t("mods.remove"))}">${ICONS.trash}</button>`;
+        return `<div class="mod-row${tone}${animate ? " enter" : ""}" style="--i:${Math.min(index, 10)}">
+          ${modIcon(mod.icon_url)}
+          <span class="mod-info"><b>${esc(mod.title)}</b><small>${esc(sub || mod.filename)}</small></span>
+          ${controls}
+        </div>`;
+      })
+      .join("");
+  };
+
+  const loadInstalled = async (animate = false) => {
+    try {
+      M.installed = await invoke("list_mods", { instanceId: id });
+    } catch (error) {
+      M.installed = [];
+      setIsland("error", errHuman(error));
+    }
+    renderInstalled(animate);
+    refreshInstallButtons();
+  };
+
+  const search = async (append = false) => {
+    if (managed || cfLocked() || !$("mResults")) return;
+    const my = ++M.seq;
+    const hint = $("mHint");
+    const more = $("mMore");
+    if (!append) {
+      M.offset = 0;
+      closePickers();
+      $("mResults").innerHTML = skeletons;
+      more.hidden = true;
+    } else setLoading(more, true);
+    try {
+      const page = await invoke("search_mods", { instanceId: id, source: M.source, query: M.query, category: M.category || null, offset: M.offset });
+      if (my !== M.seq || !$("mResults")) return;
+      M.total = page.total_hits;
+      const from = append ? M.hits.length : 0;
+      M.hits = append ? M.hits.concat(page.hits) : page.hits;
+      M.offset = M.hits.length;
+      if (hint) hint.textContent = M.query || M.category ? "" : t("mods.popular");
+      renderResults(from);
+      if (!M.hits.length) $("mResults").innerHTML = `<div class="empty small">${esc(t("mods.nothing"))}</div>`;
+    } catch (error) {
+      if (my !== M.seq || !$("mResults")) return;
+      if (!append) $("mResults").innerHTML = `<div class="empty small">${esc(errHuman(error))}</div>`;
+      else setIsland("error", errHuman(error));
+    } finally {
+      if ($("mMore")) setLoading($("mMore"), false);
+    }
+  };
+
+  const install = async (projectId, row) => {
+    if (S.running === id) {
+      setIsland("warn", t("mods.running"));
+      return;
+    }
+    const key = keyOf(projectId);
+    const errorNode = row?.querySelector(".mod-err");
+    if (errorNode) errorNode.hidden = true;
+    M.busy.add(key);
+    refreshInstallButtons();
+    try {
+      const report = await invoke("install_mod", { instanceId: id, source: M.source, projectId, versionId: M.picked.get(key) || null });
+      setIsland(
+        report.missing.length ? "warn" : "ok",
+        report.missing.length ? t("mods.missing", { list: report.missing.join(", ") }) : t("mods.done", { list: report.installed.join(", ") })
+      );
+    } catch (error) {
+      setIsland("error", errHuman(error));
+      if (errorNode) {
+        errorNode.textContent = errHuman(error);
+        errorNode.hidden = false;
+      }
+    } finally {
+      M.busy.delete(key);
+      await loadInstalled();
+    }
+  };
+
+  // Іконка мода не завантажилась — показуємо заглушку (error не спливає, тому capture).
+  el.modalText.querySelector(".mods").addEventListener(
+    "error",
+    (event) => {
+      if (event.target.matches?.("img.mod-icon")) event.target.outerHTML = MOD_PLACEHOLDER;
+    },
+    true
+  );
+  $("mFolder").addEventListener("click", () => invoke("open_mods_folder", { instanceId: id }).catch((e) => setIsland("error", errText(e))));
+
+  if (!managed) {
+    $("mTabs").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-mtab]");
+      if (!button || button.dataset.mtab === M.tab) return;
+      closePickers();
+      M.tab = button.dataset.mtab;
+      renderTabs();
+      if (M.tab === "browse" && !$("mQuery").disabled) $("mQuery").focus();
+    });
+    $("mSource").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-src]");
+      if (!button || button.dataset.src === M.source) return;
+      M.source = button.dataset.src;
+      M.category = "";
+      M.hits = [];
+      renderSource();
+      loadCategories();
+      search(false);
+    });
+    $("mCfSettings").addEventListener("click", () => {
+      closeModal("settings");
+      setTimeout(() => {
+        switchTab("settings");
+        el.cfKey.focus();
+      }, 220);
+    });
+    let searchTimer = 0;
+    $("mQuery").addEventListener("input", (event) => {
+      M.query = event.target.value.trim();
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => search(false), 350);
+    });
+    $("mQuery").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        clearTimeout(searchTimer);
+        search(false);
+      }
+    });
+    $("mMore").addEventListener("click", () => search(true));
+    $("mResults").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-install]");
+      if (button && !button.disabled) install(button.dataset.install, button.closest(".mod-row"));
+    });
+    // Вмикання/вимикання: рядок одразу плавно «гасне», файл перейменовується у фоні.
+    $("mList").addEventListener("change", async (event) => {
+      const input = event.target.closest("[data-toggle]");
+      if (!input) return;
+      const row = input.closest(".mod-row");
+      const mod = M.installed.find((m) => m.filename === input.dataset.toggle);
+      const enabled = input.checked;
+      row?.classList.toggle("off", !enabled);
+      input.disabled = true;
+      try {
+        await invoke("set_mod_enabled", { instanceId: id, filename: input.dataset.toggle, enabled });
+        if (mod) mod.enabled = enabled;
+      } catch (error) {
+        input.checked = !enabled;
+        row?.classList.toggle("off", enabled);
+        setIsland("error", errHuman(error));
+      } finally {
+        input.disabled = false;
+      }
+    });
+    $("mList").addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-remove]");
+      if (!button) return;
+      const filename = button.dataset.remove;
+      const mod = M.installed.find((m) => m.filename === filename);
+      const row = button.closest(".mod-row");
+      button.disabled = true;
+      try {
+        await invoke("remove_mod", { instanceId: id, filename });
+        setIsland("ok", t("mods.removed", { name: mod?.title || filename }));
+        M.installed = M.installed.filter((m) => m.filename !== filename);
+        leave(row, "leaving", 240, () => {
+          renderInstalled();
+          refreshInstallButtons();
+        });
+      } catch (error) {
+        button.disabled = false;
+        setIsland("error", errHuman(error));
+      }
+    });
+  }
+
+  renderTabs();
+  try {
+    M.cf = Boolean((await invoke("mod_sources")).curseforge);
+  } catch {
+    M.cf = false;
+  }
+  renderSource();
+  loadCategories();
+  await loadInstalled(true);
+  if (!managed && M.installed.length) {
+    M.tab = "installed";
+    renderTabs();
+  }
+  search(false);
+
+  await choice;
+  closePickers();
+  catDd?.close();
+  try {
+    mergeInstance(await invoke("instance_details", { instanceId: id }));
+  } catch {
+    /* лічильник модів оновиться пізніше */
   }
 }
 
@@ -2059,9 +3947,12 @@ async function openFolder(id) {
 /* меню картки */
 
 function closeMenu() {
-  if (el.instMenu.hidden) return;
-  el.instMenu.hidden = true;
+  if (el.instMenu.hidden || el.instMenu.classList.contains("closing")) return;
   S.menuFor = null;
+  leave(el.instMenu, "closing", 140, () => {
+    if (S.menuFor === null) el.instMenu.hidden = true;
+    el.instMenu.classList.remove("closing");
+  });
 }
 
 function openMenu(button, id) {
@@ -2070,17 +3961,36 @@ function openMenu(button, id) {
     return;
   }
   S.menuFor = id;
-  const rect = button.getBoundingClientRect();
+  hideTip();
+  const locked = Boolean(S.busy) || Boolean(S.running) || S.updating;
+  const target = S.view?.instances.find((i) => i.id === id);
+  const item = (act) => el.instMenu.querySelector(`[data-act="${act}"]`);
+  const vanilla = !target?.loader || target.loader === "vanilla";
+  item("folder").disabled = !target?.installed && !target?.custom;
+  // Моди: власна збірка — повний менеджер; збірка проєкту — перегляд складу.
+  item("mods").hidden = vanilla;
+  item("mods").disabled = !target?.custom && !target?.installed;
+  item("repair").disabled = locked || !target?.installed;
+  item("debug").hidden = Boolean(target?.custom);
+  item("debug").disabled = Boolean(S.busy) || S.updating || S.running === id || !target?.installed;
+  item("import").disabled = Boolean(S.busy) || S.updating || S.running === id;
+  item("delete").disabled = Boolean(S.busy) || S.running === id || (!target?.installed && !target?.custom);
+
+  el.instMenu.classList.remove("closing");
   el.instMenu.hidden = false;
+  // Анімація з'являється заново при кожному відкритті.
+  el.instMenu.style.animation = "none";
+  void el.instMenu.offsetWidth;
+  el.instMenu.style.animation = "";
+  const rect = button.getBoundingClientRect();
   const width = el.instMenu.offsetWidth;
   const height = el.instMenu.offsetHeight;
-  const top = Math.min(rect.bottom + 6, window.innerHeight - height - 8);
+  const below = rect.bottom + 6 + height <= window.innerHeight - 8;
+  const top = below ? rect.bottom + 6 : Math.max(8, rect.top - height - 6);
+  el.instMenu.classList.toggle("up", !below);
   el.instMenu.style.left = Math.max(8, rect.right - width) + "px";
   el.instMenu.style.top = top + "px";
-  const locked = Boolean(S.busy) || Boolean(S.running);
-  el.instMenu.querySelector('[data-act="repair"]').disabled = locked;
-  el.instMenu.querySelector('[data-act="delete"]').disabled = Boolean(S.busy) || S.running === id;
-  el.instMenu.querySelector("button:not(:disabled)")?.focus();
+  el.instMenu.querySelector("button:not(:disabled):not([hidden])")?.focus();
 }
 
 /* ═══════════════════════════ ПРОФІЛІ ═══════════════════════════ */
@@ -2121,7 +4031,22 @@ async function renderProfiles() {
     const p = S.profiles.find((x) => x.id === canvas.dataset.head);
     loadSkin(p).then((img) => drawHead(canvas, img, p?.nickname, 40));
   }
+
+  // Активний профіль змінився: рамка «перетікає» зі старої картки на нову (лише opacity/transform).
+  const previous = profilesActiveShown;
+  profilesActiveShown = S.activeProfile;
+  if (previous && previous !== S.activeProfile) {
+    const oldRow = el.profileList.querySelector(`[data-profile="${CSS.escape(previous)}"]`);
+    const newRow = el.profileList.querySelector(`[data-profile="${CSS.escape(S.activeProfile)}"]`);
+    oldRow?.classList.add("was-on");
+    newRow?.classList.remove("on");
+    void el.profileList.offsetWidth;
+    oldRow?.classList.remove("was-on");
+    newRow?.classList.add("on");
+  }
 }
+
+let profilesActiveShown = null;
 
 let skinTarget = null;
 
@@ -2170,8 +4095,11 @@ async function onProfileAction(row, action) {
       }
       const ok = await confirmDialog({ icon: "trash", tone: "danger", title: t("profiles.removeTitle", { nick: profile.nickname }), html: t("profiles.removeText"), ok: t("delete.go"), danger: true });
       if (!ok) return;
+      const view = await invoke("remove_profile", { profileId: id });
       S.skins.delete(id);
-      applyProfiles(await invoke("remove_profile", { profileId: id }));
+      // Картка спершу плавно зникає, потім список перебудовується.
+      await new Promise((resolve) => leave(row, "leaving", 240, resolve));
+      applyProfiles(view);
     }
   } catch (error) {
     setIsland("error", errText(error));
@@ -2216,7 +4144,7 @@ function renderProject() {
   el.projName.textContent = name;
   paintAvatar(el.projBrand, initial(name), projectIcons());
   el.projCode.textContent = S.binding?.code || "—";
-  el.projCount.textContent = S.view ? plural(S.view.instances.length, "plural.packs") : "";
+  el.projCount.textContent = S.view ? plural(S.view.instances.filter((i) => !i.custom).length, "plural.packs") : "";
   el.projState.textContent = S.view ? (S.view.offline ? t("project.offline") : t("project.online")) : S.viewError || "";
 }
 
@@ -2298,7 +4226,7 @@ function openChangeItem(repo, item) {
   const meta = [changelogTag(item), changelogMeta(item)].filter(Boolean).join(" · ");
   openModal({
     title: item.title,
-    html: `<p class="cl-meta">${esc(repo)}<br>${esc(meta)}</p><p class="cl-full selectable">${esc(item.body || t("cl.noBody"))}</p>`,
+    html: `<p class="cl-meta">${esc(repo)}<br>${esc(meta)}</p><div class="md cl-full selectable">${item.body ? renderMarkdown(item.body) : `<p>${esc(t("cl.noBody"))}</p>`}</div>`,
     wide: true,
     buttons: [
       { id: "github", label: t("cl.github"), kind: "ghost", left: true, onClick: () => (openOnGithub(repo, item), false) },
@@ -2406,19 +4334,94 @@ function renderPreset() {
   el.applyPreset.textContent = inst?.installed ? t("settings.applyPreset", { name: inst.name }) : t("settings.applyPresetNone");
 }
 
+const GAME_LANGS = [
+  ["uk_ua", "Українська"],
+  ["en_us", "English (US)"],
+  ["en_gb", "English (UK)"],
+  ["pl_pl", "Polski"],
+  ["de_de", "Deutsch"],
+  ["fr_fr", "Français"],
+  ["es_es", "Español"],
+  ["cs_cz", "Čeština"],
+  ["be_by", "Беларуская"],
+  ["ru_ru", "Русский"]
+];
+
+const gameLangDd = new Dropdown({
+  className: "dd-sm",
+  minWidth: 200,
+  items: GAME_LANGS.map(([value, label]) => ({ value, label, sub: value })),
+  onChange: (value) => {
+    S.settings.game_lang = value;
+    invoke("save_settings", { patch: { game_lang: value } }).catch((e) => setIsland("error", errText(e)));
+  }
+});
+
 async function refreshSettings() {
   renderRamHint();
   renderPreset();
-  el.gameLang.value = S.settings.game_lang;
+  if (!el.gameLangDd.firstChild) gameLangDd.mount(el.gameLangDd);
+  gameLangDd.trigger.setAttribute("aria-label", t("settings.gameLang"));
+  gameLangDd.setValue(S.settings.game_lang);
   el.dataDir.textContent = S.settings.data_dir;
   el.resetDir.hidden = S.settings.data_dir === S.settings.default_data_dir;
   el.aboutText.textContent = t("settings.about", { v: S.launcherVersion });
+  el.versionText.textContent = "v" + S.launcherVersion;
+  el.autoUpdate.checked = Boolean(S.settings.auto_update_launcher);
+  renderCurseForge();
+  renderMirrors();
+  invoke("mirrors_info")
+    .then((info) => {
+      S.mirrors = info;
+      renderMirrors();
+    })
+    .catch(() => {});
   try {
     S.disk = await invoke("list_installed");
   } catch {
     S.disk = [];
   }
   renderDisk();
+}
+
+function renderCurseForge() {
+  const s = S.settings;
+  const dot = el.cfState.querySelector(".src-dot");
+  const text = el.cfState.lastElementChild;
+  const ready = s.curseforge_key_set || s.curseforge_key_env;
+  dot.classList.toggle("ok", ready);
+  text.textContent = s.curseforge_key_set ? t("settings.cfSet", { hint: s.curseforge_key_hint }) : s.curseforge_key_env ? t("settings.cfEnv") : t("settings.cfNone");
+  el.cfClear.hidden = !s.curseforge_key_set;
+}
+
+function hostOf(template) {
+  return String(template).replace(/^https:\/\//, "").split("/")[0];
+}
+
+function renderMirrors() {
+  const info = S.mirrors;
+  if (!info) {
+    el.mirrorSource.textContent = "";
+    el.mirrorList.innerHTML = "";
+    el.mirrorCustom.textContent = "";
+    return;
+  }
+  el.mirrorSource.textContent = t("mirrors.source." + info.source);
+  const down = new Set(info.down || []);
+  const group = (label, list) => {
+    const hosts = [...new Set(list.map(hostOf))];
+    return `<div class="mirror-group"><small>${esc(label)}</small><div class="mirror-chips">${hosts
+      .map((host) => `<span class="mirror${down.has(host) ? " down" : ""}" title="${esc(down.has(host) ? t("mirrors.down") : host)}"><i></i>${esc(host)}</span>`)
+      .join("")}</div></div>`;
+  };
+  el.mirrorList.innerHTML = group(t("mirrors.content"), info.content) + group(t("mirrors.update"), info.update);
+  el.mirrorCustom.textContent = t("mirrors.custom", { file: info.custom_file, format: '{"content": [...], "update": [...]}' });
+}
+
+async function saveSettingsPatch(patch) {
+  const view = await invoke("save_settings", { patch });
+  if (view) S.settings = { ...S.settings, ...view };
+  return view;
 }
 
 function renderDisk() {
@@ -2625,7 +4628,15 @@ function setLang(next) {
   if (!DICT[next] || next === lang) return;
   lang = next;
   if (S.settings) S.settings.ui_lang = next;
+  Dropdown.closeAll();
+  hideTip();
   applyI18n();
+  // Сповіщення про оновлення — новою мовою (якщо зараз нічого не завантажується).
+  const updateToast = $("toast-update");
+  if (updateToast && S.update?.release && S.busy !== "update") {
+    dismissToast(updateToast, true);
+    showUpdateToast(S.update);
+  }
   if (!el.onboarding.hidden) renderProjectList();
   renderAll();
   invoke("save_settings", { patch: { ui_lang: next } }).catch(() => {});
@@ -2656,7 +4667,11 @@ async function registerListeners() {
     onLauncherStatus(String(event.payload));
   });
   await listen("play-step", (event) => setStep(String(event.payload)));
-  await listen("sync-progress", (event) => setProgress(event.payload));
+  await listen("sync-progress", (event) => {
+    // Оновлення лаунчера показуємо у його сповіщенні, а не в панелі збірки.
+    if (event.payload?.stage === "launcher-update") onUpdateProgress(event.payload);
+    else setProgress(event.payload);
+  });
   await listen("play-phase", (event) => {
     S.phase = String(event.payload);
     renderPlay();
@@ -2740,6 +4755,14 @@ function bindEvents() {
       loadProject();
       return;
     }
+    if (event.target.closest('[data-act="create"]')) {
+      openCreateDialog();
+      return;
+    }
+    if (event.target.closest('[data-act="import-new"]')) {
+      onImport("");
+      return;
+    }
     const card = event.target.closest(".inst-card");
     if (card) selectInstance(card.dataset.id);
   });
@@ -2752,8 +4775,9 @@ function bindEvents() {
       selectInstance(card.dataset.id);
     } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      const sibling = event.key === "ArrowDown" ? card.nextElementSibling : card.previousElementSibling;
-      sibling?.focus();
+      const cards = [...el.instList.querySelectorAll(".inst-card")];
+      const index = cards.indexOf(card) + (event.key === "ArrowDown" ? 1 : -1);
+      cards[index]?.focus();
     }
   });
 
@@ -2762,14 +4786,20 @@ function bindEvents() {
     if (!button || button.disabled) return;
     const id = S.menuFor;
     closeMenu();
-    if (button.dataset.act === "folder") openFolder(id);
-    else if (button.dataset.act === "repair") onRepair(id);
-    else if (button.dataset.act === "delete") onDelete(id);
+    const act = button.dataset.act;
+    if (act === "folder") openFolder(id);
+    else if (act === "mods") openModsDialog(id);
+    else if (act === "repair") onRepair(id);
+    else if (act === "debug") onDebug(id);
+    else if (act === "import") onImport(id);
+    else if (act === "delete") onDelete(id);
   });
 
   el.play.addEventListener("click", onPlay);
   el.repairBtn.addEventListener("click", () => onRepair());
+  el.modsBtn.addEventListener("click", () => openModsDialog());
   el.folderBtn.addEventListener("click", () => openFolder());
+  el.importBtn.addEventListener("click", () => onImport(S.activeId));
   el.deleteBtn.addEventListener("click", () => onDelete(S.activeId));
 
   el.obForm.addEventListener("submit", onOnboardingSubmit);
@@ -2870,9 +4900,54 @@ function bindEvents() {
     const button = event.target.closest("[data-lang]");
     if (button) setLang(button.dataset.lang);
   });
-  el.gameLang.addEventListener("change", () => {
-    S.settings.game_lang = el.gameLang.value;
-    invoke("save_settings", { patch: { game_lang: S.settings.game_lang } }).catch((e) => setIsland("error", errText(e)));
+  el.autoUpdate.addEventListener("change", async () => {
+    const on = el.autoUpdate.checked;
+    try {
+      await saveSettingsPatch({ auto_update_launcher: on });
+      setIsland("ok", t(on ? "update.autoOn" : "update.autoOff"));
+      // Увімкнули автооновлення, а нова версія вже відома — ставимо її одразу.
+      if (on && S.update?.available && !S.busy && !S.running) startUpdateInstall();
+    } catch (error) {
+      el.autoUpdate.checked = !on;
+      setIsland("error", errText(error));
+    }
+  });
+  el.checkUpdateBtn.addEventListener("click", async () => {
+    setLoading(el.checkUpdateBtn, true);
+    S.updateDismissed = false;
+    await checkUpdate({ manual: true });
+    setLoading(el.checkUpdateBtn, false);
+  });
+  el.cfForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const key = el.cfKey.value.trim();
+    if (!key) {
+      el.cfKey.classList.add("invalid");
+      el.cfKey.focus();
+      return;
+    }
+    try {
+      await saveSettingsPatch({ curseforge_api_key: key });
+      el.cfKey.value = "";
+      el.cfKey.classList.remove("invalid");
+      modCategoryCache.delete("curseforge");
+      renderCurseForge();
+      setIsland("ok", t("settings.cfSaved"));
+    } catch (error) {
+      el.cfKey.classList.add("invalid");
+      setIsland("error", errText(error));
+    }
+  });
+  el.cfKey.addEventListener("input", () => el.cfKey.classList.remove("invalid"));
+  el.cfClear.addEventListener("click", async () => {
+    try {
+      await saveSettingsPatch({ curseforge_api_key: "" });
+      modCategoryCache.delete("curseforge");
+      renderCurseForge();
+      setIsland("ok", t("settings.cfCleared"));
+    } catch (error) {
+      setIsland("error", errText(error));
+    }
   });
   el.changeDir.addEventListener("click", onChangeDir);
   el.openDir.addEventListener("click", () => invoke("open_data_folder").catch((e) => setIsland("error", errText(e))));
@@ -2888,41 +4963,187 @@ function bindEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
-    if (!el.modal.hidden) closeModal(null);
+    if (Dropdown.current) Dropdown.closeAll();
+    else if (!el.modal.hidden) closeModal(null);
     else closeMenu();
   });
   window.addEventListener("resize", () => {
     closeMenu();
+    Dropdown.closeAll();
+    hideTip();
     const active = el.nav.querySelector(".nav-item.on");
     requestAnimationFrame(() => moveNavIndicator(active, false));
   });
   el.instList.addEventListener("scroll", closeMenu, { passive: true });
   document.addEventListener("visibilitychange", () => {
     updateCalm();
+    if (document.hidden) {
+      Dropdown.closeAll();
+      hideTip();
+    }
     if (!document.hidden && S.tab === "home") pingServer();
   });
 }
 
 /* ═══════════════════════════ СТАРТ ═══════════════════════════ */
 
-async function checkUpdate() {
+/* ═══ оновлення лаунчера: сповіщення, Changelog, встановлення ═══ */
+
+function showRestarting() {
+  el.bootText.textContent = t("update.restarting");
+  el.boot.classList.remove("gone");
+}
+
+/**
+ * Перевірка при запуску (і кнопкою в Налаштуваннях). Автооновлення бекенд ставить сам;
+ * інакше — сповіщення «v0.2.5 → v0.3.0» з кнопками «Пізніше», «Що нового», «Завантажити».
+ */
+async function checkUpdate({ manual = false } = {}) {
   S.updating = true;
   renderPlay();
   let result = null;
   try {
     result = await invoke("check_launcher_update");
+    S.update = result;
     if (result.restarting) {
-      el.bootText.textContent = t("status.restarting");
-      el.boot.classList.remove("gone");
+      showRestarting();
       return;
     }
-    if (result.error && !el.app.hidden && !S.busy) setIsland("warn", t("status.updateFailed"));
-  } catch {
-    /* оновлення — не критично */
+    if (result.available && result.release && (manual || !S.updateDismissed)) showUpdateToast(result);
+    else if (!result.available && !result.error) dismissToast($("toast-update"));
+    if (result.error) {
+      if (manual && !result.available) setIsland("warn", t("update.checkFailed"));
+      else if (!el.app.hidden && !S.busy) setIsland("warn", result.available ? t("update.failed") : t("status.updateFailed"));
+    } else if (manual && !result.available) setIsland("ok", t("update.upToDate", { v: S.launcherVersion }));
+  } catch (error) {
+    if (manual) setIsland("error", errText(error));
   }
   S.updating = false;
   renderPlay();
-  if (!el.app.hidden && S.view && !S.busy && !S.running && !result?.error) idleIsland();
+  if (!manual && !el.app.hidden && S.view && !S.busy && !S.running && !result?.error) idleIsland();
+}
+
+function updateVersionLine(check) {
+  const release = check.release;
+  const date = release.date ? changelogDate(release.date) : "";
+  return `<p class="toast-ver"><span class="mono">v${esc(check.current)}</span><span class="toast-arrow" aria-hidden="true">→</span><span class="mono toast-new">v${esc(release.version)}</span>${
+    date ? `<span class="toast-date">${esc(t("update.released", { date }))}</span>` : ""
+  }</p>`;
+}
+
+function showUpdateToast(check) {
+  const existing = $("toast-update");
+  if (existing && !existing.classList.contains("leaving") && existing.dataset.version === check.release.version) return existing;
+  const node = toast({
+    id: "update",
+    icon: "sparkle",
+    tone: "accent",
+    title: t("update.title"),
+    html:
+      updateVersionLine(check) +
+      `<div class="toast-progress" hidden><div class="progress-track"><div class="progress-fill"></div></div><small class="toast-progress-text"></small></div><p class="toast-err" hidden></p>`,
+    actions: [
+      { id: "later", label: t("update.later"), kind: "plain", onClick: () => void (S.updateDismissed = true) },
+      { id: "changelog", label: t("update.changelog"), kind: "ghost", onClick: () => (openUpdateChangelog(check), false) },
+      { id: "download", label: t("update.download"), kind: "primary", onClick: () => (startUpdateInstall(), false) }
+    ]
+  });
+  node.classList.add("toast-update");
+  node.dataset.version = check.release.version;
+  node.querySelector(".toast-x").addEventListener("click", () => (S.updateDismissed = true));
+  return node;
+}
+
+/** Повний форматований опис релізу з кнопками «Закрити» та «Завантажити оновлення». */
+function openUpdateChangelog(check) {
+  const release = check.release;
+  const date = release.date ? changelogDate(release.date) : "";
+  const meta = [`v${check.current} → v${release.version}`, date ? t("update.released", { date }) : "", release.name && release.name !== release.tag ? release.name : ""]
+    .filter(Boolean)
+    .join(" · ");
+  openModal({
+    icon: "sparkle",
+    title: t("update.modalTitle", { v: release.version }),
+    html: `<p class="cl-meta">${esc(meta)}</p><div class="md md-release selectable">${release.notes ? renderMarkdown(release.notes) : `<p>${esc(t("update.noNotes"))}</p>`}</div>`,
+    xl: true,
+    buttons: [
+      { id: "close", label: t("common.close"), kind: "ghost" },
+      { id: "download", label: t("update.downloadFull"), kind: "primary", onClick: () => void setTimeout(startUpdateInstall, 0) }
+    ]
+  });
+}
+
+function ensureUpdateToast() {
+  const existing = $("toast-update");
+  if (existing && !existing.classList.contains("leaving")) return existing;
+  if (S.update?.release) return showUpdateToast(S.update);
+  const node = toast({
+    id: "update",
+    icon: "sparkle",
+    tone: "accent",
+    title: t("update.downloading"),
+    html: `<div class="toast-progress" hidden><div class="progress-track"><div class="progress-fill"></div></div><small class="toast-progress-text"></small></div><p class="toast-err" hidden></p>`
+  });
+  node.classList.add("toast-update");
+  return node;
+}
+
+function setUpdateToastState(node, downloading, error = "") {
+  node.classList.toggle("busy", downloading);
+  const actions = node.querySelector(".toast-actions");
+  if (actions) actions.hidden = downloading;
+  node.querySelector(".toast-progress").hidden = !downloading;
+  const err = node.querySelector(".toast-err");
+  err.hidden = !error;
+  err.textContent = error;
+  if (downloading) {
+    node.querySelector(".progress-track").classList.add("indeterminate");
+    node.querySelector(".toast-progress-text").textContent = t("update.downloading");
+  }
+}
+
+function onUpdateProgress(payload) {
+  const node = ensureUpdateToast();
+  if (!node.classList.contains("busy")) setUpdateToastState(node, true);
+  const percent = Math.max(0, Math.min(100, Number(payload.percent) || 0));
+  const track = node.querySelector(".progress-track");
+  track.classList.remove("indeterminate");
+  node.querySelector(".progress-fill").style.transform = `scaleX(${percent / 100})`;
+  const amount = payload.total > 1 ? ` · ${megabytes(payload.current)} / ${megabytes(payload.total)} ${t("unit.mb")}` : "";
+  node.querySelector(".toast-progress-text").textContent = `${t("update.downloading")} ${Math.floor(percent)}%${amount}`;
+}
+
+async function startUpdateInstall() {
+  if (S.busy === "update") return;
+  if (S.running) {
+    setIsland("warn", t("update.gameRunning"));
+    return;
+  }
+  if (S.busy) {
+    setIsland("warn", t("play.wait"));
+    return;
+  }
+  S.busy = "update";
+  renderPlay();
+  const node = ensureUpdateToast();
+  setUpdateToastState(node, true);
+  try {
+    const result = await invoke("install_launcher_update");
+    if (result.restarting) {
+      showRestarting();
+      return;
+    }
+    dismissToast(node);
+    setIsland("ok", t("update.upToDate", { v: S.launcherVersion }));
+  } catch (error) {
+    setUpdateToastState(node, false, errHuman(error));
+    setIsland("error", t("update.failed"));
+  } finally {
+    if (S.busy === "update") {
+      S.busy = null;
+      renderPlay();
+    }
+  }
 }
 
 async function init() {
@@ -2946,6 +5167,12 @@ async function init() {
   el.ram.value = String(info.settings.ram_mb);
   applyI18n();
   updateCalm();
+  // Шаблони дзеркал — щоб фони й іконки збірок вантажились і тоді, коли GitHub заблоковано.
+  invoke("mirrors_info")
+    .then((mirrors) => {
+      S.mirrors = mirrors;
+    })
+    .catch(() => {});
 
   if (!info.project || info.profiles.length === 0) showOnboarding();
   else showApp();

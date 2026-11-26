@@ -124,6 +124,8 @@ async fn decide(entry: &Entry, deep: bool) -> Decision {
 
 /// Синхронізує файли збірки строго в межах `instances/<id>/`.
 /// `deep = true` — режим "Ремонт": SHA-256 кожного файлу без швидких перевірок.
+/// `prune = true` — одразу видалити зайві .jar з mods/. Під час запуску гри цим займається
+/// дебагер збірки (з детальним звітом і карантином), тож там `prune = false`.
 pub async fn sync_instance(
     app: &AppHandle,
     client: &Client,
@@ -131,6 +133,7 @@ pub async fn sync_instance(
     id: &str,
     manifest: &Manifest,
     deep: bool,
+    prune: bool,
 ) -> Result<SyncReport> {
     instance::ensure_dirs(paths, id).await?;
     let root = paths.instance_dir(id);
@@ -264,9 +267,11 @@ pub async fn sync_instance(
     }
 
     if first_error.is_none() {
-        let keep_root = root.clone();
-        report.removed =
-            tokio::task::spawn_blocking(move || remove_unlisted(&keep_root, &keep)).await??;
+        if prune {
+            let keep_root = root.clone();
+            report.removed =
+                tokio::task::spawn_blocking(move || remove_unlisted(&keep_root, &keep)).await??;
+        }
         if report.removed > 0 {
             status(
                 app,

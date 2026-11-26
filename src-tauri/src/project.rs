@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 
 use futures_util::future::join_all;
 use reqwest::{Client, StatusCode};
@@ -13,7 +13,10 @@ use crate::constants::{
 };
 use crate::error::{fail, AppError, Result};
 use crate::i18n::tr;
+use crate::instance;
 use crate::manifest::{self, Manifest};
+pub use crate::mirrors::FetchError;
+use crate::mirrors;
 use crate::paths::Paths;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
@@ -77,12 +80,6 @@ pub struct ProjectIndex {
     pub instances: Vec<InstanceEntry>,
 }
 
-pub enum FetchError {
-    Offline,
-    NotFound,
-    Other(String),
-}
-
 impl FetchError {
     pub fn into_app(self) -> AppError {
         match self {
@@ -113,37 +110,13 @@ fn classify(error: reqwest::Error) -> FetchError {
     }
 }
 
-fn stamp() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
-}
-
-fn bust(url: &str) -> String {
-    let separator = if url.contains('?') { '&' } else { '?' };
-    format!("{url}{separator}t={}", stamp())
-}
-
+/// JSON із репозиторію проєкту: оригінальне посилання, а якщо воно недоступне
+/// (мережа, таймаут, 403/404/429/451/5xx, сторінка-заглушка) — дзеркала.
 async fn get_json<T: DeserializeOwned>(
     client: &Client,
     url: &str,
 ) -> std::result::Result<T, FetchError> {
-    let response = client
-        .get(bust(url))
-        .timeout(REQUEST_TIMEOUT)
-        .send()
-        .await
-        .map_err(classify)?;
-    if response.status() == StatusCode::NOT_FOUND {
-        return Err(FetchError::NotFound);
-    }
-    let response = response
-        .error_for_status()
-        .map_err(|e| FetchError::Other(e.to_string()))?;
-    let text = response.text().await.map_err(classify)?;
-    serde_json::from_str(&text)
-        .map_err(|e| FetchError::Other(format!("некоректний JSON ({url}): {e}")))
+    mirrors::get_json(client, url, true).await
 }
 
 pub fn is_safe_id(id: &str) -> bool {
@@ -883,6 +856,46 @@ pub async fn load_index(
             Some(index) => Ok((index, true)),
             None => Err(error.into_app()),
         },
+    }
+}
+
+/// Індекс зі збірок цього проєкту, що вже встановлені на диску. Потрібен, коли недоступні
+/// і всі дзеркала, і кеш індексу: встановлені збірки все одно можна запустити офлайн.
+pub async fn local_index(paths: &Paths, binding: &ProjectBinding) -> ProjectIndex {
+    let mut instances = Vec::new();
+    if let Ok(mut entries) = tokio::fs::read_dir(&paths.instances).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let id = entry.file_name().to_string_lossy().to_string();
+            if !is_safe_id(&id) {
+                continue;
+            }
+            let state = instance::load_state(paths, &id).await;
+            if !state.installed || !state.project.eq_ignore_ascii_case(&binding.code) {
+                continue;
+            }
+            let Some(manifest) = manifest::load_cached(&instance::manifest_cache(paths, &id)).await
+            else {
+                continue;
+            };
+            instances.push(InstanceEntry {
+                name: if state.name.trim().is_empty() {
+                    id.clone()
+                } else {
+                    state.name.clone()
+                },
+                id,
+                recommended_ram_mb: manifest.recommended_ram_mb,
+                minecraft_version: manifest.minecraft_version.clone(),
+                loader: manifest.loader.kind.clone(),
+                ..InstanceEntry::default()
+            });
+        }
+    }
+    instances.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    ProjectIndex {
+        name: binding.name.clone(),
+        description: String::new(),
+        instances,
     }
 }
 

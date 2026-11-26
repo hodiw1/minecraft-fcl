@@ -100,6 +100,13 @@ fn expand(argument: &Argument, vars: &HashMap<&'static str, String>) -> Vec<Stri
     }
 }
 
+/// Запуск клієнта.
+///
+/// Minecraft Usage Guidelines: лаунчер не модифікує оригінальні бібліотеки Mojang —
+/// `authlib` та решта завантажуються з libraries.minecraft.net з перевіркою SHA-1 і
+/// потрапляють у classpath як є; жодних `-javaagent`, authlib-injector чи патчів класів.
+/// Офлайн-вхід працює виключно через стандартні аргументи запуску клієнта:
+/// `--username`, `--uuid` (офлайн-UUID з ніка), `--accessToken 0`, `--userType legacy`.
 fn spawn_game(
     paths: &Paths,
     game_dir: &Path,
