@@ -5,14 +5,14 @@
 **Кастомний ігровий лаунчер та платформа керування збірками для проєктів команди HDT**
 
 <p>
-  <img src="https://img.shields.io/badge/Status-Beta_0.2.5-f59e0b?style=for-the-badge&logo=github&logoColor=white" alt="Status Beta" />
+  <img src="https://img.shields.io/badge/Status-Beta_0.3.0-f59e0b?style=for-the-badge&logo=github&logoColor=white" alt="Status Beta" />
   <img src="https://img.shields.io/badge/Core-Rust-dea584?style=for-the-badge&logo=rust&logoColor=black" alt="Rust" />
   <img src="https://img.shields.io/badge/Engine-Tauri_v2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri v2" />
   <img src="https://img.shields.io/badge/UI-WebView2-0078D7?style=for-the-badge&logo=microsoftedge&logoColor=white" alt="WebView2" />
   <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows" />
 </p>
 
-> ⚠️ **Увага:** Це тестова бета-версія лаунчера (`v0.2.5-beta`). Функціонал активно тестується та доповнюється перед релізом `1.0.0`.
+> ⚠️ **Увага:** Це тестова бета-версія лаунчера (`v0.3.0-beta`). Функціонал активно тестується та доповнюється перед релізом `1.0.0`.
 
 </div>
 
@@ -50,8 +50,8 @@
 ## 🗺️ Roadmap розробки
 
 * ✅ **`v0.1.x`** — Ескіз лаунчера, базовий каркас проєкту.
-* 🔄 **`v0.2.x`** *(поточний етап)* — Дороблення інтерфейсу та основного функціоналу.
-* ⏳ **`v0.3.x`** — Перші робочі версії з повноцінною можливістю грати та створювати збірки.
+* ✅ **`v0.2.x`** — Дороблення інтерфейсу та основного функціоналу.
+* 🔄 **`v0.3.x`** *(поточний етап)* — Перші робочі версії з повноцінною можливістю грати та створювати збірки.
 * 📋 **`v0.4.x`** — Виправлені багів та продовження покращеннь.
 * 🔮 **`v0.5.x – v1.x.x`** — Плани на стадії формування *(ще не усталено)*.
 
