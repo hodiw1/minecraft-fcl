@@ -1199,7 +1199,7 @@ button.brand:active {
 .play {
   position: relative;
   min-width: 15rem;
-  height: 3.75rem;
+  height: var(--play-h, 3.75rem);
   padding: 0 1.6rem 0 1.3rem;
   display: inline-flex;
   align-items: center;
@@ -1333,6 +1333,191 @@ button.brand:active {
 .play.busy:disabled,
 .play.running:disabled {
   opacity: 1;
+}
+
+/*
+ * Розділена кнопка запуску (лише transform / opacity):
+ *   стан 1 — одна кнопка .play;
+ *   стан 2 (.split) — [Гра запущена | бар'єр]: справа додається квадрат «Закрити гру»;
+ *   стан 3 (.split.confirm) — [Закрити гру? ✓ ✕ | бар'єр]: зелена кнопка тане,
+ *   на її місці з'являються менші квадрати підтвердження. Між станами 2 і 3 розміри
+ *   контейнера не змінюються — підтвердження накладається точно на місце кнопки.
+ */
+.play-wrap {
+  --play-h: 3.75rem;
+  --play-gap: 0.45rem;
+  --play-cut: calc(var(--play-h) + var(--play-gap));
+  position: relative;
+  display: inline-flex;
+}
+
+.play-wrap.split {
+  padding-right: var(--play-cut);
+}
+
+.play-sq {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: var(--r);
+  transition: transform var(--fast) var(--ease), color var(--fast) linear, background-color var(--fast) linear, border-color var(--fast) linear;
+}
+
+.play-sq svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  stroke-width: 2.2;
+}
+
+.play-sq:active {
+  transform: scale(0.93);
+}
+
+/* Бар'єр: квадрат висотою з головну кнопку */
+.play-stop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--play-h);
+  height: var(--play-h);
+  color: var(--muted);
+  background: rgba(20, 23, 28, 0.86);
+  border: 1px solid var(--line-2);
+  opacity: 0;
+  transform: translate3d(-0.9rem, 0, 0) scale(0.82);
+  pointer-events: none;
+  transition: opacity var(--mid) var(--ease), transform var(--slow) var(--ease), color var(--fast) linear, background-color var(--fast) linear, border-color var(--fast) linear;
+}
+
+.play-stop svg {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.play-wrap.split .play-stop {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* Вихід зі стану 2: бар'єр спершу тане на місці, потім контейнер повертає ширину */
+.play-wrap.split.closing .play-stop {
+  opacity: 0;
+  transform: scale(0.82);
+  pointer-events: none;
+  transition-duration: 160ms;
+}
+
+.play-wrap.split .play-stop:hover,
+.play-wrap.confirm .play-stop {
+  color: #ffb3ae;
+  background: var(--danger-soft);
+  border-color: var(--danger-line);
+}
+
+.play-wrap.split .play-stop:active {
+  transform: scale(0.93);
+}
+
+/* Стан 3: зелена кнопка тане, на її місці — питання і ✓ / ✕ */
+.play-wrap.confirm > .play {
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+}
+
+.play-confirm {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: var(--play-cut);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.45rem 0 1.3rem;
+  border-radius: var(--r);
+  color: var(--text);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  opacity: 0;
+  transform: translate3d(0.9rem, 0, 0);
+  pointer-events: none;
+  transition: opacity var(--mid) var(--ease), transform var(--slow) var(--ease);
+}
+
+.play-wrap.confirm .play-confirm {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.play-ask {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+/* ✓ і ✕ — менші за бар'єр квадрати; з'являються з легкою затримкою один за одним */
+.play-confirm .play-sq {
+  width: calc(var(--play-h) - 0.9rem);
+  height: calc(var(--play-h) - 0.9rem);
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity var(--mid) var(--ease), transform var(--slow) var(--ease), color var(--fast) linear, background-color var(--fast) linear, border-color var(--fast) linear;
+}
+
+.play-wrap.confirm .play-confirm .play-sq {
+  opacity: 1;
+  transform: none;
+  transition-delay: 60ms;
+}
+
+.play-wrap.confirm .play-confirm .play-no {
+  transition-delay: 110ms;
+}
+
+.play-wrap.confirm .play-confirm .play-sq:active {
+  transform: scale(0.93);
+  transition-delay: 0ms;
+}
+
+.play-yes {
+  color: #fff;
+  background: var(--danger);
+}
+
+.play-yes:hover:not(:disabled) {
+  background: #ef6b63;
+}
+
+.play-no {
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--line-2);
+}
+
+.play-no:hover:not(:disabled) {
+  background: #2b313a;
+}
+
+.play-sq:disabled {
+  opacity: 0.55;
+}
+
+/* Поки гра закривається — на ✓ крутиться індикатор */
+.play-yes .btn-spin {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
 }
 
 .icon-btn {
@@ -3659,6 +3844,11 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   color: var(--text);
 }
 
+/* Обгортка блоку CurseForge у налаштуваннях не впливає на розкладку картки */
+.cf-settings {
+  display: contents;
+}
+
 .src-row {
   display: flex;
   align-items: center;
@@ -4391,8 +4581,8 @@ body.calm .progress-steps li.active::after {
     padding-block: 0.85rem;
   }
 
-  .play {
-    height: 4.1rem;
+  .play-wrap {
+    --play-h: 4.1rem;
   }
 }
 

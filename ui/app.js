@@ -7,6 +7,9 @@ const listen = tauri.event.listen;
 const NICK_RE = /^[A-Za-z0-9_]{3,16}$/;
 const MB = 1024 * 1024;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+/** CurseForge тимчасово прихований з інтерфейсу (код збережено). Має збігатися з
+ *  `ENABLE_CURSEFORGE` у src-tauri/src/constants.rs. */
+const ENABLE_CURSEFORGE = false;
 
 /* ═══════════════════════════ ПЕРЕКЛАДИ ═══════════════════════════ */
 
@@ -68,6 +71,7 @@ const DICT = {
     "plural.mods": ["мод", "моди", "модів"],
     "create.ctaTitle": "Створити власну збірку",
     "create.ctaText": "Будь-яка версія Minecraft, Fabric, Forge, NeoForge або Quilt і моди з Modrinth та CurseForge",
+    "create.ctaTextModrinth": "Будь-яка версія Minecraft, Fabric, Forge, NeoForge або Quilt і моди з Modrinth",
     "create.step1": "1. Версія гри",
     "create.step2": "2. Завантажувач модів",
     "create.step3": "3. Назва",
@@ -134,7 +138,11 @@ const DICT = {
     "play.otherRunning": "Запущена інша збірка",
     "play.wait": "Зачекай…",
     "play.repairing": "Ремонт…",
-    "play.subRunning": "закрий гру, щоб запустити знову",
+    "play.subRunning": "зараз граємо",
+    "play.stop": "Закрити гру",
+    "play.stopAsk": "Закрити гру?",
+    "play.stopYes": "Так, закрити гру",
+    "play.stopNo": "Скасувати",
     "play.subUpdate": "нова версія {v}",
     "play.subFirst": "перший запуск довший — качаються Minecraft і Java",
     "stage.launcher-update": "Оновлення лаунчера",
@@ -491,6 +499,7 @@ const DICT = {
     "plural.mods": ["mod", "mods", "mods"],
     "create.ctaTitle": "Create a custom modpack",
     "create.ctaText": "Any Minecraft version, Fabric, Forge, NeoForge or Quilt and mods from Modrinth and CurseForge",
+    "create.ctaTextModrinth": "Any Minecraft version, Fabric, Forge, NeoForge or Quilt and mods from Modrinth",
     "create.step1": "1. Game version",
     "create.step2": "2. Mod loader",
     "create.step3": "3. Name",
@@ -557,7 +566,11 @@ const DICT = {
     "play.otherRunning": "Another modpack is running",
     "play.wait": "Please wait…",
     "play.repairing": "Repairing…",
-    "play.subRunning": "close the game to start again",
+    "play.subRunning": "now playing",
+    "play.stop": "Close game",
+    "play.stopAsk": "Close the game?",
+    "play.stopYes": "Yes, close the game",
+    "play.stopNo": "Cancel",
     "play.subUpdate": "new version {v}",
     "play.subFirst": "first launch takes longer — Minecraft and Java are downloaded",
     "stage.launcher-update": "Updating launcher",
@@ -934,6 +947,11 @@ const el = {
   instDesc: $("instDesc"),
   instMeta: $("instMeta"),
   play: $("play"),
+  playWrap: $("playWrap"),
+  playConfirm: $("playConfirm"),
+  stopBtn: $("stopBtn"),
+  stopYes: $("stopYes"),
+  stopNo: $("stopNo"),
   playLabel: $("playLabel"),
   playSub: $("playSub"),
   playIco: $("playIco"),
@@ -995,6 +1013,7 @@ const el = {
   cfKey: $("cfKey"),
   cfState: $("cfState"),
   cfClear: $("cfClear"),
+  cfBlock: $("cfBlock"),
   mirrorSource: $("mirrorSource"),
   mirrorList: $("mirrorList"),
   mirrorCustom: $("mirrorCustom"),
@@ -1060,6 +1079,10 @@ const S = {
   phase: null,
   percent: 0,
   running: null,
+  /** Стан 3 розділеної кнопки: показано «Закрити гру? ✓ ✕». */
+  stopConfirm: false,
+  /** Гра закривається через «✓» (чекаємо stop_instance / подію game-state). */
+  stopping: false,
   updating: false,
   disk: [],
   skins: new Map(),
@@ -2595,7 +2618,127 @@ function schedulePlay() {
   }
 }
 
+/* Розділена кнопка під час гри:
+ *   стан 1 — одна кнопка «Встановити / Оновити / Грати»;
+ *   стан 2 — [Гра запущена | бар'єр «Закрити гру»];
+ *   стан 3 — [Закрити гру? ✓ ✕ | бар'єр]: ✓ викликає stop_instance, ✕ повертає у стан 2.
+ * Якщо гра закрилася сама (подія game-state: exited), кнопка повертається у стан 1. */
+const STOP_YES_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+let splitTimer = 0;
+
+/** Сусідні кнопки рядка дій не стрибають, коли головна кнопка змінює ширину (FLIP, лише transform). */
+function flipActions(change) {
+  const nodes = [...el.playWrap.parentElement.children].filter((node) => node !== el.playWrap && !node.hidden);
+  const before = nodes.map((node) => node.getBoundingClientRect());
+  change();
+  nodes.forEach((node, index) => {
+    const rect = node.getBoundingClientRect();
+    const dx = before[index].left - rect.left;
+    const dy = before[index].top - rect.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    motion(node, [{ transform: `translate3d(${dx}px, ${dy}px, 0)` }, { transform: "none" }], 420);
+  });
+}
+
 function renderPlay() {
+  const wrap = el.playWrap;
+  const split = Boolean(S.running);
+  const shown = wrap.classList.contains("split") && !wrap.classList.contains("closing");
+  // Поява / зникнення бар'єра змінює ширину рядка дій — сусідів зсуваємо плавно.
+  if (split !== shown) flipActions(renderPlayNow);
+  else renderPlayNow();
+}
+
+function renderPlayNow() {
+  renderPlayButton();
+  renderSplit();
+}
+
+function renderSplit() {
+  const wrap = el.playWrap;
+  const split = Boolean(S.running);
+  if (!split) {
+    S.stopConfirm = false;
+    S.stopping = false;
+  }
+  const confirm = split && S.stopConfirm;
+  wrap.classList.toggle("confirm", confirm);
+  el.playConfirm.inert = !confirm;
+  el.stopBtn.inert = !split;
+  el.stopBtn.setAttribute("aria-label", t("play.stop"));
+  el.stopBtn.setAttribute("aria-expanded", String(confirm));
+  el.stopYes.setAttribute("aria-label", t("play.stopYes"));
+  el.stopNo.setAttribute("aria-label", t("play.stopNo"));
+  el.stopYes.disabled = S.stopping;
+  el.stopNo.disabled = S.stopping;
+  el.stopBtn.disabled = S.stopping;
+  const yesMode = S.stopping ? "busy" : "idle";
+  if (el.stopYes.dataset.mode !== yesMode) {
+    el.stopYes.dataset.mode = yesMode;
+    el.stopYes.innerHTML = S.stopping ? '<span class="btn-spin" aria-hidden="true"></span>' : STOP_YES_ICON;
+  }
+  el.stopYes.setAttribute("aria-busy", String(S.stopping));
+
+  const shown = wrap.classList.contains("split") && !wrap.classList.contains("closing");
+  if (split === shown) return;
+  clearTimeout(splitTimer);
+  if (split) {
+    wrap.classList.remove("closing");
+    wrap.classList.add("split");
+  } else {
+    // Спершу бар'єр тане на місці, потім контейнер повертає звичайну ширину.
+    wrap.classList.add("closing");
+    splitTimer = setTimeout(() => {
+      if (!wrap.classList.contains("closing")) return;
+      flipActions(() => wrap.classList.remove("split", "closing"));
+    }, reduceMotion.matches ? 0 : 170);
+  }
+}
+
+/** Бар'єр: відкрити / сховати підтвердження «Закрити гру?». */
+function onStopToggle() {
+  if (!S.running || S.stopping) return;
+  S.stopConfirm = !S.stopConfirm;
+  renderPlay();
+  if (S.stopConfirm) el.stopNo.focus({ preventScroll: true });
+  else if (el.playConfirm.contains(document.activeElement)) el.stopBtn.focus({ preventScroll: true });
+}
+
+function onStopCancel() {
+  if (!S.stopConfirm || S.stopping) return;
+  const refocus = el.playConfirm.contains(document.activeElement);
+  S.stopConfirm = false;
+  renderPlay();
+  if (refocus) el.stopBtn.focus({ preventScroll: true });
+}
+
+/** ✓ — примусово закрити запущену гру (stop_instance завершує дерево процесів). */
+async function onStopConfirm() {
+  const id = S.running;
+  if (!id || !S.stopConfirm || S.stopping) return;
+  S.stopping = true;
+  renderPlay();
+  try {
+    await invoke("stop_instance", { instanceId: id });
+    // Бекенд уже звільнив стан гри; подія game-state: exited може прийти трохи пізніше.
+    if (S.running === id) {
+      S.running = null;
+      updateCalm();
+      renderList();
+      if (S.tab === "settings") renderDisk();
+    }
+    S.stopConfirm = false;
+  } catch (error) {
+    // Гра не закрилася — залишаємось у стані 2, щоб можна було спробувати ще раз.
+    S.stopConfirm = false;
+    setIsland("error", errHuman(error));
+  } finally {
+    S.stopping = false;
+    renderPlay();
+  }
+}
+
+function renderPlayButton() {
   const inst = current();
   const play = el.play;
   let label = t("play.play");
@@ -2815,7 +2958,7 @@ function renderList() {
   };
   const addButton = `<button class="inst-add" type="button" data-act="create" aria-label="${esc(t("create.button"))}" title="${esc(t("create.button"))}">${ICONS.plus}</button>`;
   const importNew = `<button class="inst-add" type="button" data-act="import-new" aria-label="${esc(t("import.newTitle"))}" title="${esc(t("import.newTitle"))}">${ICONS.archive}</button>`;
-  const cta = `<button class="inst-cta" type="button" data-act="create">${ICONS.plus}<span><b>${esc(t("create.ctaTitle"))}</b><small>${esc(t("create.ctaText"))}</small></span></button>`;
+  const cta = `<button class="inst-cta" type="button" data-act="create">${ICONS.plus}<span><b>${esc(t("create.ctaTitle"))}</b><small>${esc(t(ENABLE_CURSEFORGE ? "create.ctaText" : "create.ctaTextModrinth"))}</small></span></button>`;
   const projectPart =
     `<h3 class="inst-group"><span>${esc(t("home.projectTitle"))}</span></h3>` +
     (projectItems.length ? projectItems.map(card).join("") : `<div class="empty small">${esc(t("list.empty"))}</div>`);
@@ -3474,14 +3617,17 @@ function modIcon(url) {
   return `<img class="mod-icon" src="${esc(url)}" alt="" loading="lazy" draggable="false">`;
 }
 
-const MOD_SOURCES = [
+const ALL_MOD_SOURCES = [
   { id: "modrinth", label: "Modrinth" },
   { id: "curseforge", label: "CurseForge" }
 ];
+/** Платформи в перемикачі менеджера модів (CurseForge — лише з ENABLE_CURSEFORGE). */
+const MOD_SOURCES = ALL_MOD_SOURCES.filter((source) => ENABLE_CURSEFORGE || source.id !== "curseforge");
 const modCategoryCache = new Map();
 
+/** Підпис джерела мода (і для вже встановлених раніше модів з CurseForge). */
 function sourceLabel(id) {
-  return MOD_SOURCES.find((source) => source.id === (id || "modrinth"))?.label || "";
+  return ALL_MOD_SOURCES.find((source) => source.id === (id || "modrinth"))?.label || "";
 }
 
 /** Версії файлу мода: «Найновіша сумісна (Авто)» + конкретні файли з бейджами типу релізу. */
@@ -4385,6 +4531,8 @@ async function refreshSettings() {
 }
 
 function renderCurseForge() {
+  el.cfBlock.hidden = !ENABLE_CURSEFORGE;
+  if (!ENABLE_CURSEFORGE) return;
   const s = S.settings;
   const dot = el.cfState.querySelector(".src-dot");
   const text = el.cfState.lastElementChild;
@@ -4796,6 +4944,9 @@ function bindEvents() {
   });
 
   el.play.addEventListener("click", onPlay);
+  el.stopBtn.addEventListener("click", onStopToggle);
+  el.stopYes.addEventListener("click", onStopConfirm);
+  el.stopNo.addEventListener("click", onStopCancel);
   el.repairBtn.addEventListener("click", () => onRepair());
   el.modsBtn.addEventListener("click", () => openModsDialog());
   el.folderBtn.addEventListener("click", () => openFolder());
@@ -4965,6 +5116,7 @@ function bindEvents() {
     if (event.key !== "Escape") return;
     if (Dropdown.current) Dropdown.closeAll();
     else if (!el.modal.hidden) closeModal(null);
+    else if (S.stopConfirm) onStopCancel();
     else closeMenu();
   });
   window.addEventListener("resize", () => {

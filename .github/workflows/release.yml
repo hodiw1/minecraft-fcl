@@ -15,28 +15,72 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check tag matches Cargo version
+      - name: Check tag matches Cargo.toml and tauri.conf.json versions
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}".TrimStart('v', 'V')
           $line = Select-String -Path "src-tauri/Cargo.toml" -Pattern '^version\s*=\s*"(.+)"' | Select-Object -First 1
-          $version = $line.Matches[0].Groups[1].Value
-          if ($tag -ne $version) {
-            Write-Error "Тег ($tag) не збігається з версією в src-tauri/Cargo.toml ($version)"
+          $cargo = $line.Matches[0].Groups[1].Value
+          $conf = (Get-Content "src-tauri/tauri.conf.json" -Raw -Encoding utf8 | ConvertFrom-Json).version
+          if ($tag -ne $cargo) {
+            Write-Error "Тег ($tag) не збігається з версією в src-tauri/Cargo.toml ($cargo)"
+            exit 1
+          }
+          if ($tag -ne $conf) {
+            Write-Error "Тег ($tag) не збігається з версією в src-tauri/tauri.conf.json ($conf)"
             exit 1
           }
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install Node.js (Tauri CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Build launcher
-        run: cargo build --release -p launcher
+      # Tauri CLI збирає release-бінарник (перейменований у mainBinaryName = Terrapolis.exe)
+      # і NSIS-інсталятор `bundle/nsis/Terrapolis_<версія>_x64-setup.exe`.
+      - name: Build portable exe and NSIS installer
+        working-directory: src-tauri
+        run: npx --yes @tauri-apps/cli@2 build --bundles nsis
 
-      - name: Publish release
+      - name: Rename release files
+        shell: pwsh
+        run: |
+          # Каталог target спільний для workspace (корінь репозиторію) — беремо його з cargo.
+          $target = (cargo metadata --format-version 1 --no-deps | ConvertFrom-Json).target_directory
+          $release = Join-Path $target "release"
+
+          $portable = Join-Path $release "Terrapolis.exe"
+          if (-not (Test-Path $portable)) {
+            Write-Error "Не знайдено портативний бінарник: $portable"
+            exit 1
+          }
+          $setup = @(Get-ChildItem -Path (Join-Path $release "bundle/nsis") -Filter "*-setup.exe")
+          if ($setup.Count -ne 1) {
+            Write-Error "Очікувався рівно один *-setup.exe у $release/bundle/nsis, знайдено: $($setup.Count)"
+            exit 1
+          }
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item $portable "dist/terrapolis-portable.exe" -Force
+          Copy-Item $setup[0].FullName "dist/terrapolis-installer.exe" -Force
+          Get-ChildItem dist | ForEach-Object {
+            "{0}  {1:N0} B  sha256:{2}" -f $_.Name, $_.Length, (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+          }
+
+      # Портативний файл завантажується першим: лаунчери до v0.3.0 беруть перший .exe у релізі.
+      - name: Publish release (portable)
         uses: softprops/action-gh-release@v2
         with:
-          files: target/release/launcher.exe
+          files: dist/terrapolis-portable.exe
           generate_release_notes: true
+
+      - name: Publish release (installer)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/terrapolis-installer.exe

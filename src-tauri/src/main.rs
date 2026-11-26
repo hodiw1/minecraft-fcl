@@ -4,6 +4,8 @@ mod changelog;
 mod commands;
 mod config;
 mod constants;
+// CurseForge вимкнено прапорцем `constants::ENABLE_CURSEFORGE`, але код збережено для відновлення.
+#[allow(dead_code)]
 mod curseforge;
 mod custom;
 mod error;
@@ -72,6 +74,7 @@ fn main() {
             commands::clear_skin,
             commands::get_skin,
             commands::play,
+            commands::stop_instance,
             commands::repair_instance,
             commands::debug_instance,
             commands::pick_zip,

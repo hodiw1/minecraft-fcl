@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
+use crate::constants::ENABLE_CURSEFORGE;
 use crate::error::{fail, Result};
 use crate::i18n::tr;
 use crate::manifest::{is_mod_path, Manifest};
@@ -30,7 +31,11 @@ impl Source {
     pub fn parse(raw: &str) -> Result<Self> {
         match raw.trim().to_lowercase().as_str() {
             "" | "modrinth" => Ok(Source::Modrinth),
-            "curseforge" => Ok(Source::CurseForge),
+            "curseforge" if ENABLE_CURSEFORGE => Ok(Source::CurseForge),
+            "curseforge" => fail(tr(
+                "CurseForge тимчасово вимкнено — шукай моди на Modrinth",
+                "CurseForge is temporarily disabled — search mods on Modrinth",
+            )),
             _ => fail("unknown mod source"),
         }
     }

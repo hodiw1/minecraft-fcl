@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, State, WebviewWindow};
 
 use std::path::PathBuf;
 
 use crate::changelog::{self, Changelog};
+use crate::constants::ENABLE_CURSEFORGE;
 use crate::config::{
     self, new_id, validate_api_key, validate_nickname, Config, Profile, ProjectBinding, GAME_LANGS,
     PRESETS, UI_LANGS,
@@ -74,6 +75,19 @@ fn running_error() -> AppError {
         )
         .to_string(),
     )
+}
+
+/// HWND вікна лаунчера для нативних діалогів (як `isize`, щоб передати в окремий потік).
+fn window_handle(window: &WebviewWindow) -> Option<isize> {
+    #[cfg(windows)]
+    {
+        window.hwnd().ok().map(|hwnd| hwnd.0 as isize)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = window;
+        None
+    }
 }
 
 fn check_id(id: &str) -> Result<()> {
@@ -732,11 +746,14 @@ pub async fn apply_graphics_preset(
 }
 
 #[tauri::command]
-pub async fn pick_folder() -> Result<Option<String>> {
-    system::pick_folder(tr(
-        "Обери папку для лаунчера та збірок",
-        "Choose a folder for the launcher and modpacks",
-    ))
+pub async fn pick_folder(window: WebviewWindow) -> Result<Option<String>> {
+    system::pick_folder(
+        window_handle(&window),
+        tr(
+            "Обери папку для лаунчера та збірок",
+            "Choose a folder for the launcher and modpacks",
+        ),
+    )
     .await
 }
 
@@ -1209,6 +1226,7 @@ async fn start_game(
         app,
         paths,
         state.game.clone(),
+        state.processes.clone(),
         &prepared,
         &LaunchRequest {
             instance_id,
@@ -1216,6 +1234,46 @@ async fn start_game(
             ram_mb: ram,
         },
     )
+}
+
+/// «Закрити гру» (кнопка-бар'єр поруч із «Гра запущена»): примусово завершує дерево процесів
+/// запущеної збірки й чекає, доки лаунчер звільнить стан гри. Інтерфейс, як і при звичайному
+/// виході з гри, отримує подію `game-state` зі станом `exited` (без ознаки вильоту).
+#[tauri::command]
+pub async fn stop_instance(state: State<'_, AppState>, instance_id: String) -> Result<()> {
+    check_id(&instance_id)?;
+    let is_running = |state: &AppState| state.running_game().as_deref() == Some(instance_id.as_str());
+    if !is_running(&state) {
+        return Ok(());
+    }
+    // Запис прибираємо до taskkill: так фонове очікування процесу в launch::spawn знає,
+    // що гру закрив гравець, і не показує вікно вильоту.
+    let pid = state
+        .processes
+        .lock()
+        .ok()
+        .and_then(|mut map| map.remove(&instance_id));
+    let killed = match pid {
+        Some(pid) => launch::kill_tree(pid).await,
+        None => Ok(()),
+    };
+    for _ in 0..50 {
+        if !is_running(&state) {
+            return Ok(());
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    // Гра досі працює — повертаємо PID, щоб можна було спробувати ще раз.
+    if let Some(pid) = pid {
+        if let Ok(mut map) = state.processes.lock() {
+            map.entry(instance_id.clone()).or_insert(pid);
+        }
+    }
+    killed?;
+    fail(tr(
+        "Гра не відповідає — спробуй закрити її ще раз",
+        "The game is not responding — try closing it again",
+    ))
 }
 
 /// "Ремонт": повна перевірка SHA-256, докачування пошкодженого, видалення зайвих .jar.
@@ -1292,8 +1350,9 @@ pub async fn debug_instance(
 }
 
 #[tauri::command]
-pub async fn pick_zip() -> Result<Option<String>> {
+pub async fn pick_zip(window: WebviewWindow) -> Result<Option<String>> {
     system::pick_zip(
+        window_handle(&window),
         tr("Обери .zip архів збірки", "Choose the modpack .zip archive"),
         tr("Архів збірки", "Modpack archive"),
     )
@@ -1546,6 +1605,7 @@ fn ensure_not_running(state: &AppState, instance_id: &str) -> Result<()> {
 pub struct ModSources {
     pub modrinth: bool,
     /// Є ключ CurseForge (у налаштуваннях або змінній середовища).
+    /// Завжди `false`, поки CurseForge вимкнено прапорцем `ENABLE_CURSEFORGE`.
     pub curseforge: bool,
 }
 
@@ -1554,7 +1614,7 @@ pub async fn mod_sources(app: AppHandle) -> Result<ModSources> {
     let (config, _) = load_ctx(&app).await?;
     Ok(ModSources {
         modrinth: true,
-        curseforge: config.curseforge_key().is_some(),
+        curseforge: ENABLE_CURSEFORGE && config.curseforge_key().is_some(),
     })
 }
 

@@ -56,86 +56,134 @@ pub fn open_github(repo: &str, kind: &str, tag: &str) -> Result<()> {
     Ok(())
 }
 
+/// Нативний діалог Windows (`IFileOpenDialog`) у власному STA-потоці.
+/// Раніше діалоги відкривалися через дочірній `powershell.exe` із прихованим вікном —
+/// такий патерн евристики антивірусів (зокрема Windows Defender) вважають підозрілим.
+#[cfg(windows)]
+mod native_dialog {
+    use std::ffi::c_void;
+
+    use windows::core::{w, HRESULT, HSTRING, PCWSTR};
+    use windows::Win32::Foundation::{ERROR_CANCELLED, HWND};
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_INPROC_SERVER,
+        COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE,
+    };
+    use windows::Win32::UI::Shell::Common::COMDLG_FILTERSPEC;
+    use windows::Win32::UI::Shell::{
+        FileOpenDialog, IFileOpenDialog, FOS_FILEMUSTEXIST, FOS_FORCEFILESYSTEM, FOS_NOCHANGEDIR,
+        FOS_PATHMUSTEXIST, FOS_PICKFOLDERS, SIGDN_FILESYSPATH,
+    };
+
+    pub enum Kind {
+        Folder,
+        Zip { label: String },
+    }
+
+    /// Показує діалог і чекає вибору. `owner` — HWND вікна лаунчера (діалог модальний до нього).
+    /// `Ok(None)` — користувач натиснув «Скасувати».
+    pub fn show(owner: Option<isize>, title: &str, kind: Kind) -> windows::core::Result<Option<String>> {
+        unsafe {
+            CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE).ok()?;
+            let result = run(owner, title, kind);
+            CoUninitialize();
+            result
+        }
+    }
+
+    unsafe fn run(owner: Option<isize>, title: &str, kind: Kind) -> windows::core::Result<Option<String>> {
+        unsafe {
+            let dialog: IFileOpenDialog = CoCreateInstance(&FileOpenDialog, None, CLSCTX_INPROC_SERVER)?;
+            let mut options = dialog.GetOptions()? | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR;
+            dialog.SetTitle(&HSTRING::from(title))?;
+            match kind {
+                Kind::Folder => options |= FOS_PICKFOLDERS,
+                Kind::Zip { label } => {
+                    options |= FOS_FILEMUSTEXIST;
+                    let name = HSTRING::from(format!("{label} (*.zip)"));
+                    let spec = HSTRING::from("*.zip");
+                    let filters = [COMDLG_FILTERSPEC {
+                        pszName: PCWSTR(name.as_ptr()),
+                        pszSpec: PCWSTR(spec.as_ptr()),
+                    }];
+                    dialog.SetFileTypes(&filters)?;
+                    dialog.SetFileTypeIndex(1)?;
+                    dialog.SetDefaultExtension(w!("zip"))?;
+                }
+            }
+            dialog.SetOptions(options)?;
+
+            let owner = owner.map(|raw| HWND(raw as *mut c_void));
+            if let Err(error) = dialog.Show(owner) {
+                if error.code() == HRESULT::from_win32(ERROR_CANCELLED.0) {
+                    return Ok(None);
+                }
+                return Err(error);
+            }
+            let item = dialog.GetResult()?;
+            let raw = item.GetDisplayName(SIGDN_FILESYSPATH)?;
+            let path = raw.to_string();
+            CoTaskMemFree(Some(raw.0 as *const c_void));
+            Ok(path.ok().filter(|path| !path.trim().is_empty()))
+        }
+    }
+}
+
+/// Запускає нативний діалог в окремому потоці (COM потребує STA), не блокуючи async-рантайм.
+#[cfg(windows)]
+async fn run_dialog(owner: Option<isize>, title: &str, kind: native_dialog::Kind, error_text: &str) -> Result<Option<String>> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let title = title.to_string();
+    std::thread::Builder::new()
+        .name("file-dialog".into())
+        .spawn(move || {
+            let _ = tx.send(native_dialog::show(owner, &title, kind).map_err(|e| e.message()));
+        })
+        .ctx(error_text)?;
+    match rx.await {
+        Ok(Ok(selected)) => Ok(selected),
+        Ok(Err(error)) => fail(format!("{error_text}: {error}")),
+        Err(error) => fail(format!("{error_text}: {error}")),
+    }
+}
+
 /// Стандартний діалог вибору папки Windows без додаткових плагінів Tauri.
-pub async fn pick_folder(title: &str) -> Result<Option<String>> {
+/// `owner` — HWND головного вікна (як `isize`), щоб діалог був модальним і поверх лаунчера.
+pub async fn pick_folder(owner: Option<isize>, title: &str) -> Result<Option<String>> {
     #[cfg(windows)]
     {
-        let title = title.replace('\'', "''");
-        let script = format!(
-            "[Console]::OutputEncoding=[Text.Encoding]::UTF8;\
-             Add-Type -AssemblyName System.Windows.Forms;\
-             $owner=New-Object System.Windows.Forms.Form -Property @{{TopMost=$true}};\
-             $dialog=New-Object System.Windows.Forms.FolderBrowserDialog;\
-             $dialog.Description='{title}';\
-             $dialog.ShowNewFolderButton=$true;\
-             if($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK){{[Console]::Write($dialog.SelectedPath)}}"
-        );
-        let mut command = tokio::process::Command::new("powershell.exe");
-        command.args([
-            "-NoProfile",
-            "-STA",
-            "-NonInteractive",
-            "-Command",
-            script.as_str(),
-        ]);
-        crate::util::hide_window(&mut command);
-        let output = command.output().await.ctx(tr(
-            "не вдалося відкрити вибір папки",
-            "failed to open the folder picker",
-        ))?;
-        let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        Ok(if selected.is_empty() {
-            None
-        } else {
-            Some(selected)
-        })
+        run_dialog(
+            owner,
+            title,
+            native_dialog::Kind::Folder,
+            tr("не вдалося відкрити вибір папки", "failed to open the folder picker"),
+        )
+        .await
     }
     #[cfg(not(windows))]
     {
-        let _ = title;
+        let _ = (owner, title);
         Ok(None)
     }
 }
 
 /// Стандартний діалог вибору .zip-файлу Windows (як і вибір папки — без плагінів Tauri).
-pub async fn pick_zip(title: &str, filter_label: &str) -> Result<Option<String>> {
+pub async fn pick_zip(owner: Option<isize>, title: &str, filter_label: &str) -> Result<Option<String>> {
     #[cfg(windows)]
     {
-        let title = title.replace('\'', "''");
-        let filter_label = filter_label.replace(['\'', '|'], "");
-        let script = format!(
-            "[Console]::OutputEncoding=[Text.Encoding]::UTF8;\
-             Add-Type -AssemblyName System.Windows.Forms;\
-             $owner=New-Object System.Windows.Forms.Form -Property @{{TopMost=$true}};\
-             $dialog=New-Object System.Windows.Forms.OpenFileDialog;\
-             $dialog.Title='{title}';\
-             $dialog.Filter='{filter_label} (*.zip)|*.zip';\
-             $dialog.Multiselect=$false;\
-             if($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK){{[Console]::Write($dialog.FileName)}}"
-        );
-        let mut command = tokio::process::Command::new("powershell.exe");
-        command.args([
-            "-NoProfile",
-            "-STA",
-            "-NonInteractive",
-            "-Command",
-            script.as_str(),
-        ]);
-        crate::util::hide_window(&mut command);
-        let output = command.output().await.ctx(tr(
-            "не вдалося відкрити вибір файлу",
-            "failed to open the file picker",
-        ))?;
-        let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        Ok(if selected.is_empty() {
-            None
-        } else {
-            Some(selected)
-        })
+        run_dialog(
+            owner,
+            title,
+            native_dialog::Kind::Zip {
+                label: filter_label.replace(['|', '\0'], ""),
+            },
+            tr("не вдалося відкрити вибір файлу", "failed to open the file picker"),
+        )
+        .await
     }
     #[cfg(not(windows))]
     {
-        let _ = (title, filter_label);
+        let _ = (owner, title, filter_label);
         Ok(None)
     }
 }

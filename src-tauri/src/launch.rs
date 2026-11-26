@@ -382,6 +382,7 @@ pub fn spawn(
     app: &AppHandle,
     paths: &Paths,
     slot: Arc<Mutex<Option<String>>>,
+    processes: Arc<Mutex<HashMap<String, u32>>>,
     prepared: &Prepared,
     request: &LaunchRequest,
 ) -> Result<()> {
@@ -426,6 +427,17 @@ pub fn spawn(
     };
 
     let instance_id = request.instance_id.to_string();
+    // PID потрібен для «Закрити гру» (taskkill усього дерева процесів).
+    let tracked = match child.id() {
+        Some(pid) => match processes.lock() {
+            Ok(mut map) => {
+                map.insert(instance_id.clone(), pid);
+                true
+            }
+            Err(_) => false,
+        },
+        None => false,
+    };
     let _ = app.emit(
         "game-state",
         GameState {
@@ -447,7 +459,16 @@ pub fn spawn(
             Ok(exit) => exit.code(),
             Err(_) => None,
         };
+        // Запис PID уже прибрала `stop_instance` — гру закрив гравець, це не виліт.
+        let stopped = tracked
+            && processes
+                .lock()
+                .map(|mut map| map.remove(&instance_id).is_none())
+                .unwrap_or(false);
         let (crashed, hint) = tokio::task::spawn_blocking(move || {
+            if stopped {
+                return (false, None);
+            }
             let report = newest_crash_report(&game_dir, started);
             let failed = matches!(code, Some(c) if c != 0) || report.is_some();
             if !failed {
@@ -487,4 +508,44 @@ pub fn spawn(
         );
     });
     Ok(())
+}
+
+/// Примусово завершує процес гри разом із дочірніми процесами.
+/// Windows: `taskkill /PID <pid> /T /F` без вікна консолі (`CREATE_NO_WINDOW`).
+pub async fn kill_tree(pid: u32) -> Result<()> {
+    #[cfg(windows)]
+    let mut command = {
+        // Повний шлях до системного taskkill.exe — щоб не підхопити однойменний файл
+        // з папки лаунчера чи PATH.
+        let program = std::env::var_os("SystemRoot")
+            .map(|root| PathBuf::from(root).join("System32").join("taskkill.exe"))
+            .filter(|path| path.is_file())
+            .unwrap_or_else(|| PathBuf::from("taskkill.exe"));
+        let mut command = Command::new(program);
+        command.args(["/PID", &pid.to_string(), "/T", "/F"]);
+        command
+    };
+    #[cfg(not(windows))]
+    let mut command = {
+        let mut command = Command::new("kill");
+        command.args(["-KILL", &pid.to_string()]);
+        command
+    };
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    hide_window(&mut command);
+    let status = command
+        .status()
+        .await
+        .ctx(tr("не вдалося закрити гру", "failed to close the game"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        fail(tr(
+            "не вдалося закрити гру — спробуй ще раз",
+            "failed to close the game — try again",
+        ))
+    }
 }

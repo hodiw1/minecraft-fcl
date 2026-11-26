@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use reqwest::Client;
@@ -13,6 +14,9 @@ pub struct AppState {
     pub config_lock: tokio::sync::Mutex<()>,
     /// id збірки, гра з якої зараз запущена (захист від кількох копій Minecraft).
     pub game: Arc<Mutex<Option<String>>>,
+    /// Запущені процеси гри: id збірки → PID процесу Java (для «Закрити гру»).
+    /// Запис зникає, коли процес завершився сам або його закрила `stop_instance`.
+    pub processes: Arc<Mutex<HashMap<String, u32>>>,
     /// Зміни в mods/ власних збірок — по одній за раз.
     pub mods_lock: tokio::sync::Mutex<()>,
     /// Остання знайдена нова версія лаунчера (щоб «Завантажити» не перевіряло все заново).
@@ -26,6 +30,7 @@ impl AppState {
             busy: tokio::sync::Mutex::new(()),
             config_lock: tokio::sync::Mutex::new(()),
             game: Arc::new(Mutex::new(None)),
+            processes: Arc::new(Mutex::new(HashMap::new())),
             mods_lock: tokio::sync::Mutex::new(()),
             update: Mutex::new(None),
         }

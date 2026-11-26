@@ -126,13 +126,29 @@
             <p class="ram-note" id="ramNote" hidden></p>
 
             <div class="actions">
-              <button class="play" id="play" type="button" disabled>
-                <span class="play-ico" id="playIco" aria-hidden="true"></span>
-                <span class="play-text">
-                  <span class="play-label" id="playLabel">…</span>
-                  <span class="play-sub" id="playSub"></span>
-                </span>
-              </button>
+              <!-- Головна кнопка. Коли гра запущена, ділиться: [Гра запущена | бар'єр];
+                   після натискання бар'єра: [Закрити гру? ✓ ✕ | бар'єр] -->
+              <div class="play-wrap" id="playWrap">
+                <button class="play" id="play" type="button" disabled>
+                  <span class="play-ico" id="playIco" aria-hidden="true"></span>
+                  <span class="play-text">
+                    <span class="play-label" id="playLabel">…</span>
+                    <span class="play-sub" id="playSub"></span>
+                  </span>
+                </button>
+                <div class="play-confirm" id="playConfirm" role="group" aria-labelledby="playAsk" inert>
+                  <span class="play-ask" id="playAsk" data-i18n="play.stopAsk">Закрити гру?</span>
+                  <button class="play-sq play-yes" id="stopYes" type="button" data-i18n-title="play.stopYes" title="Так, закрити гру">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+                  </button>
+                  <button class="play-sq play-no" id="stopNo" type="button" data-i18n-title="play.stopNo" title="Скасувати">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+                  </button>
+                </div>
+                <button class="play-sq play-stop" id="stopBtn" type="button" data-i18n-title="play.stop" title="Закрити гру" inert>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.64 5.64 12.72 12.72"/></svg>
+                </button>
+              </div>
               <button class="icon-btn icon-btn-accent" id="modsBtn" type="button" hidden data-i18n-title="home.modsTitle" title="Знайти, встановити й керувати модами цієї збірки">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>
                 <span data-i18n="home.mods">Моди</span>
@@ -333,6 +349,8 @@
           <div class="card glass">
             <h3 data-i18n="settings.modSources">Джерела модів</h3>
             <p class="src-row"><span class="src-dot ok"></span><span data-i18n="settings.modrinthOk">Modrinth — працює без ключа</span></p>
+            <!-- CurseForge приховано прапорцем ENABLE_CURSEFORGE (ui/app.js) — розмітку збережено -->
+            <div class="cf-settings" id="cfBlock" hidden>
             <div class="field">
               <label for="cfKey" data-i18n="settings.cfKey">Ключ CurseForge API</label>
               <form class="add-row" id="cfForm" novalidate autocomplete="off">
@@ -343,6 +361,7 @@
             <p class="src-row" id="cfState"><span class="src-dot"></span><span></span></p>
             <p class="hint" data-i18n="settings.cfHint">Безкоштовний ключ видає CurseForge for Studios (console.curseforge.com → API keys).</p>
             <button class="btn btn-ghost btn-sm" id="cfClear" type="button" data-i18n="settings.cfClear" hidden>Видалити ключ</button>
+            </div>
           </div>
 
           <div class="card glass">

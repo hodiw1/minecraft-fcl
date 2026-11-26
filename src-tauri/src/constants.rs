@@ -19,6 +19,12 @@ pub const DEFAULT_GAME_LANG: &str = "uk_ua";
 pub const DEFAULT_UI_LANG: &str = "uk";
 pub const DEFAULT_PRESET: &str = "medium";
 
+/// CurseForge тимчасово прибрано з інтерфейсу й активного потоку менеджера модів.
+/// Увесь код (API-клієнт `curseforge.rs`, парсери, `Source::CurseForge`, ключ у config.json)
+/// залишено в репозиторії — щоб повернути платформу, досить змінити прапорець на `true`
+/// (і `ENABLE_CURSEFORGE` у `ui/app.js`).
+pub const ENABLE_CURSEFORGE: bool = false;
+
 // ───────────────────────────── дзеркала ─────────────────────────────
 //
 // Шаблон дзеркала — https-адреса з плейсхолдерами:
