@@ -1,5 +1,5 @@
 pub const GITHUB_OWNER: &str = "hodiw1";
-pub const GITHUB_REPO: &str = "minecraft-fcl";
+pub const GITHUB_REPO: &str = "terrapolis";
 pub const GITHUB_BRANCH: &str = "main";
 pub const LAUNCHER_NAME: &str = "CustomLauncher";
 

@@ -119,6 +119,15 @@ const DICT = {
     "project.sub": "Проєкт — це сервер чи спільнота, до якої прив'язаний лаунчер. Від нього залежить список збірок.",
     "project.code": "Код:",
     "project.refresh": "Оновити список",
+    "project.changelog": "Changelog",
+    "cl.title": "Що нового",
+    "cl.launcher": "Лаунчер",
+    "cl.project": "Проєкт",
+    "cl.loading": "Завантаження…",
+    "cl.empty": "Записів поки немає",
+    "cl.noRepo": "Для цього проєкту історія змін недоступна",
+    "cl.release": "Реліз",
+    "cl.commit": "Коміт",
     "project.switchTitle": "Підключити інший проєкт",
     "project.connect": "Підключити",
     "project.switchHint": "Встановлені збірки залишаться на диску. Видалити їх можна в Налаштуваннях.",
@@ -312,6 +321,15 @@ const DICT = {
     "project.sub": "A project is the server or community the launcher is linked to. It decides which modpacks you see.",
     "project.code": "Code:",
     "project.refresh": "Refresh list",
+    "project.changelog": "Changelog",
+    "cl.title": "What's new",
+    "cl.launcher": "Launcher",
+    "cl.project": "Project",
+    "cl.loading": "Loading…",
+    "cl.empty": "No entries yet",
+    "cl.noRepo": "Change history is not available for this project",
+    "cl.release": "Release",
+    "cl.commit": "Commit",
     "project.switchTitle": "Connect another project",
     "project.connect": "Connect",
     "project.switchHint": "Installed modpacks stay on disk. You can delete them in Settings.",
@@ -500,6 +518,7 @@ const el = {
   projCount: $("projCount"),
   projState: $("projState"),
   projRefresh: $("projRefresh"),
+  projChangelog: $("projChangelog"),
   switchForm: $("switchForm"),
   switchCode: $("switchCode"),
   switchSubmit: $("switchSubmit"),
@@ -655,7 +674,7 @@ function closeModal(result) {
  * openModal({icon, tone, title, html, buttons:[{id,label,kind,left,onClick}]}) → Promise<id|null>
  * onClick може повернути false, щоб вікно лишилося відкритим.
  */
-function openModal({ icon = "", tone = "", title, html, buttons }) {
+function openModal({ icon = "", tone = "", title, html, buttons, wide = false }) {
   if (modalResolve) closeModal(null);
   modalReturnFocus = document.activeElement;
   el.modalIcon.innerHTML = ICONS[icon] || "";
@@ -679,6 +698,7 @@ function openModal({ icon = "", tone = "", title, html, buttons }) {
     el.modalActions.append(button);
     if (spec.kind === "primary" || spec.kind === "danger") primary = button;
   }
+  el.modal.classList.toggle("wide", wide);
   el.modal.hidden = false;
   (primary || el.modalActions.lastElementChild)?.focus();
   return new Promise((resolve) => (modalResolve = resolve));
@@ -1458,6 +1478,50 @@ function setLoading(button, on) {
   button.disabled = on;
 }
 
+let changelogToken = 0;
+
+function changelogDate(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(lang === "en" ? "en-GB" : "uk-UA", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function changelogItem(item) {
+  const release = item.kind === "release";
+  const meta = [changelogDate(item.date), item.author].filter(Boolean).map(esc).join(" · ");
+  const body = item.body ? `<div class="cl-body">${esc(item.body)}</div>` : "";
+  return `<article class="cl-item${release ? " release" : ""}"><div class="cl-top"><span class="cl-tag">${esc(release ? t("cl.release") : t("cl.commit"))} · ${esc(item.tag)}</span><span class="cl-date">${meta}</span></div><div class="cl-title">${esc(item.title)}</div>${body}</article>`;
+}
+
+function changelogColumn(title, column) {
+  let body;
+  if (column.error) body = `<div class="cl-state">${esc(column.error)}</div>`;
+  else if (!column.repo) body = `<div class="cl-state">${esc(t("cl.noRepo"))}</div>`;
+  else if (!column.items.length) body = `<div class="cl-state">${esc(t("cl.empty"))}</div>`;
+  else body = column.items.map(changelogItem).join("");
+  return `<section class="cl-col"><header><h4>${esc(title)}</h4><span class="mono">${esc(column.repo)}</span></header><div class="cl-list">${body}</div></section>`;
+}
+
+async function openChangelog() {
+  const token = ++changelogToken;
+  let alive = true;
+  openModal({
+    title: t("cl.title"),
+    html: `<p>${esc(t("cl.loading"))}</p>`,
+    wide: true,
+    buttons: [{ id: "close", label: t("common.close"), kind: "primary" }]
+  }).then(() => {
+    alive = false;
+  });
+  try {
+    const data = await invoke("load_changelog");
+    if (!alive || token !== changelogToken) return;
+    el.modalText.innerHTML = `<div class="cl-grid">${changelogColumn(t("cl.launcher"), data.launcher)}${changelogColumn(t("cl.project"), data.project)}</div>`;
+  } catch (error) {
+    if (alive && token === changelogToken) el.modalText.innerHTML = `<p>${esc(errText(error))}</p>`;
+  }
+}
+
 async function onSwitchProject(event) {
   event.preventDefault();
   const code = el.switchCode.value.trim();
@@ -2014,6 +2078,7 @@ function bindEvents() {
     el.switchError.hidden = true;
   });
   el.leaveBtn.addEventListener("click", onLeave);
+  el.projChangelog.addEventListener("click", openChangelog);
   el.projRefresh.addEventListener("click", async () => {
     setLoading(el.projRefresh, true);
     await loadProject();

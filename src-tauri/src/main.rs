@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod changelog;
 mod commands;
 mod config;
 mod constants;
@@ -35,6 +36,7 @@ fn main() {
             commands::connect_project,
             commands::leave_project,
             commands::list_projects,
+            commands::load_changelog,
             commands::load_project,
             commands::instance_details,
             commands::server_status,
