@@ -1,0 +1,12 @@
+{
+  "content": [
+    "https://raw.githubusercontent.com/{owner}/{repo}/{branch}",
+    "https://cdn.jsdelivr.net/gh/{owner}/{repo}@{branch}",
+    "https://fastly.jsdelivr.net/gh/{owner}/{repo}@{branch}"
+  ],
+  "update": [
+    "https://api.github.com/repos/{owner}/{repo}/releases/latest",
+    "https://raw.githubusercontent.com/{owner}/{repo}/{branch}/update.json",
+    "https://cdn.jsdelivr.net/gh/{owner}/{repo}@{branch}/update.json"
+  ]
+}

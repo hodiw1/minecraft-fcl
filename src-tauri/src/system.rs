@@ -97,6 +97,49 @@ pub async fn pick_folder(title: &str) -> Result<Option<String>> {
     }
 }
 
+/// Стандартний діалог вибору .zip-файлу Windows (як і вибір папки — без плагінів Tauri).
+pub async fn pick_zip(title: &str, filter_label: &str) -> Result<Option<String>> {
+    #[cfg(windows)]
+    {
+        let title = title.replace('\'', "''");
+        let filter_label = filter_label.replace(['\'', '|'], "");
+        let script = format!(
+            "[Console]::OutputEncoding=[Text.Encoding]::UTF8;\
+             Add-Type -AssemblyName System.Windows.Forms;\
+             $owner=New-Object System.Windows.Forms.Form -Property @{{TopMost=$true}};\
+             $dialog=New-Object System.Windows.Forms.OpenFileDialog;\
+             $dialog.Title='{title}';\
+             $dialog.Filter='{filter_label} (*.zip)|*.zip';\
+             $dialog.Multiselect=$false;\
+             if($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK){{[Console]::Write($dialog.FileName)}}"
+        );
+        let mut command = tokio::process::Command::new("powershell.exe");
+        command.args([
+            "-NoProfile",
+            "-STA",
+            "-NonInteractive",
+            "-Command",
+            script.as_str(),
+        ]);
+        crate::util::hide_window(&mut command);
+        let output = command.output().await.ctx(tr(
+            "не вдалося відкрити вибір файлу",
+            "failed to open the file picker",
+        ))?;
+        let selected = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Ok(if selected.is_empty() {
+            None
+        } else {
+            Some(selected)
+        })
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (title, filter_label);
+        Ok(None)
+    }
+}
+
 pub fn is_dir_empty(path: &Path) -> bool {
     std::fs::read_dir(path)
         .map(|mut entries| entries.next().is_none())

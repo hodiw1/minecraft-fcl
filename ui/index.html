@@ -51,6 +51,7 @@
         <span class="btn-text" data-i18n="ob.submit">Підключитися</span>
       </button>
     </form>
+    <p class="legal ob-legal" data-i18n="legal.notice">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</p>
   </div>
 </section>
 
@@ -111,11 +112,13 @@
       <section class="view view-home" data-view="home">
         <div class="hero" id="hero">
           <div class="hero-media" id="heroMedia" aria-hidden="true"><div class="hero-bg"></div><div class="hero-bg"></div></div>
+          <span class="hero-mark" id="heroMark" aria-hidden="true" hidden></span>
           <div class="hero-body">
             <div class="badges">
               <span class="badge" id="badgeMc" hidden></span>
               <span class="badge badge-accent" id="badgeLoader" hidden></span>
               <span class="badge badge-server" id="badgeServer" hidden><i></i><span id="serverText"></span></span>
+              <span class="badge badge-offline" id="badgeOffline" hidden><i></i><span data-i18n="home.offlineBadge">Офлайн-режим</span></span>
             </div>
             <h1 id="instName">—</h1>
             <p class="hero-desc" id="instDesc"></p>
@@ -130,6 +133,10 @@
                   <span class="play-sub" id="playSub"></span>
                 </span>
               </button>
+              <button class="icon-btn icon-btn-accent" id="modsBtn" type="button" hidden data-i18n-title="home.modsTitle" title="Знайти, встановити й керувати модами цієї збірки">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>
+                <span data-i18n="home.mods">Моди</span>
+              </button>
               <button class="icon-btn" id="repairBtn" type="button" data-i18n-title="home.repairTitle" title="Перевірити та відновити пошкоджені файли збірки">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg>
                 <span data-i18n="home.repair">Ремонт</span>
@@ -137,6 +144,10 @@
               <button class="icon-btn" id="folderBtn" type="button" data-i18n-title="home.folderTitle" title="Відкрити папку збірки зі скріншотами та світами">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
                 <span data-i18n="home.folder">Папка</span>
+              </button>
+              <button class="icon-btn" id="importBtn" type="button" hidden data-i18n-title="import.buttonTitle" title="Встановити цю збірку з .zip архіву — без інтернету">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3z"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M12 11v6M9.5 14.5 12 17l2.5-2.5"/></svg>
+                <span data-i18n="import.button">Імпорт</span>
               </button>
               <button class="icon-btn danger" id="deleteBtn" type="button" data-i18n-title="home.deleteTitle" title="Видалити збірку з комп'ютера">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>
@@ -168,7 +179,7 @@
 
         <aside class="inst-panel">
           <div class="panel-head">
-            <h2 data-i18n="home.listTitle">Збірки проєкту</h2>
+            <h2 data-i18n="home.listTitle">Збірки</h2>
             <span class="count" id="instCount">0</span>
           </div>
           <div class="inst-list" id="instList" role="listbox" aria-label="Збірки"></div>
@@ -295,21 +306,43 @@
               </div>
             </div>
             <div class="setting-row">
-              <label for="gameLang" data-i18n="settings.gameLang">Мова Minecraft</label>
-              <select id="gameLang">
-                <option value="uk_ua">Українська</option>
-                <option value="en_us">English (US)</option>
-                <option value="en_gb">English (UK)</option>
-                <option value="pl_pl">Polski</option>
-                <option value="de_de">Deutsch</option>
-                <option value="fr_fr">Français</option>
-                <option value="es_es">Español</option>
-                <option value="cs_cz">Čeština</option>
-                <option value="be_by">Беларуская</option>
-                <option value="ru_ru">Русский</option>
-              </select>
+              <span id="gameLangLabel" data-i18n="settings.gameLang">Мова Minecraft</span>
+              <div class="dd-mount" id="gameLangDd"></div>
             </div>
             <p class="hint" data-i18n="settings.gameLangHint">Змінюється у всіх встановлених збірках. У грі мову теж можна змінити будь-коли.</p>
+          </div>
+
+          <div class="card glass">
+            <div class="row-between">
+              <h3 data-i18n="settings.updates">Оновлення лаунчера</h3>
+              <span class="muted mono" id="versionText"></span>
+            </div>
+            <label class="toggle-row" for="autoUpdate">
+              <span class="toggle-text">
+                <b data-i18n="settings.autoUpdate">Автоматично завантажувати та встановлювати оновлення лаунчера</b>
+                <small data-i18n="settings.autoUpdateHint">Якщо вимкнено — лаунчер лише покаже сповіщення з описом змін, а встановиш, коли буде зручно.</small>
+              </span>
+              <span class="switch"><input type="checkbox" id="autoUpdate"><span></span></span>
+            </label>
+            <button class="btn btn-ghost btn-sm" id="checkUpdateBtn" type="button">
+              <span class="btn-spin" aria-hidden="true"></span>
+              <span class="btn-text" data-i18n="settings.checkUpdate">Перевірити оновлення</span>
+            </button>
+          </div>
+
+          <div class="card glass">
+            <h3 data-i18n="settings.modSources">Джерела модів</h3>
+            <p class="src-row"><span class="src-dot ok"></span><span data-i18n="settings.modrinthOk">Modrinth — працює без ключа</span></p>
+            <div class="field">
+              <label for="cfKey" data-i18n="settings.cfKey">Ключ CurseForge API</label>
+              <form class="add-row" id="cfForm" novalidate autocomplete="off">
+                <input id="cfKey" type="password" spellcheck="false" autocomplete="off" maxlength="200" data-i18n-ph="settings.cfKeyPh" placeholder="Встав ключ із console.curseforge.com">
+                <button class="btn btn-primary" type="submit" data-i18n="settings.cfSave">Зберегти</button>
+              </form>
+            </div>
+            <p class="src-row" id="cfState"><span class="src-dot"></span><span></span></p>
+            <p class="hint" data-i18n="settings.cfHint">Безкоштовний ключ видає CurseForge for Studios (console.curseforge.com → API keys).</p>
+            <button class="btn btn-ghost btn-sm" id="cfClear" type="button" data-i18n="settings.cfClear" hidden>Видалити ключ</button>
           </div>
 
           <div class="card glass">
@@ -332,7 +365,21 @@
             <button class="btn btn-danger btn-sm" id="deleteAll" type="button" data-i18n="settings.deleteAll">Видалити всі збірки</button>
           </div>
 
-          <p class="about muted" id="aboutText"></p>
+          <div class="card glass">
+            <div class="row-between">
+              <h3 data-i18n="settings.network">Мережа та дзеркала</h3>
+              <span class="muted" id="mirrorSource"></span>
+            </div>
+            <p class="hint" data-i18n="settings.networkHint">Якщо основне джерело недоступне, лаунчер сам переходить на наступне дзеркало.</p>
+            <div class="mirror-list" id="mirrorList"></div>
+            <p class="hint selectable" id="mirrorCustom"></p>
+          </div>
+
+          <div class="card glass about-card">
+            <h3 data-i18n="settings.aboutTitle">Про лаунчер</h3>
+            <p class="muted" id="aboutText"></p>
+            <p class="legal" data-i18n="legal.notice">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</p>
+          </div>
         </div>
       </section>
     </div>
@@ -342,7 +389,10 @@
 <!-- Спливаюче меню картки збірки -->
 <div class="menu glass" id="instMenu" role="menu" hidden>
   <button type="button" role="menuitem" data-act="folder"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span data-i18n="menu.folder">Відкрити папку</span></button>
+  <button type="button" role="menuitem" data-act="mods"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg><span data-i18n="menu.mods">Моди збірки</span></button>
   <button type="button" role="menuitem" data-act="repair"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg><span data-i18n="menu.repair">Перевірити файли</span></button>
+  <button type="button" role="menuitem" data-act="debug"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v4M14 3v4"/><rect x="6" y="7" width="12" height="13" rx="6"/><path d="M12 11v5M3 13h3M18 13h3M4 7l2.5 2M20 7l-2.5 2M4 20l2.5-2M20 20l-2.5-2"/></svg><span data-i18n="menu.debug">Перевірити збірку (Дебагер)</span></button>
+  <button type="button" role="menuitem" data-act="import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3z"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M12 11v6M9.5 14.5 12 17l2.5-2.5"/></svg><span data-i18n="menu.import">Імпортувати з .zip…</span></button>
   <hr>
   <button type="button" role="menuitem" data-act="delete" class="danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg><span data-i18n="menu.delete">Видалити збірку…</span></button>
 </div>
@@ -356,6 +406,12 @@
     <div class="modal-actions" id="modalActions"></div>
   </div>
 </div>
+
+<!-- Сповіщення (оновлення лаунчера, звіт дебагера) -->
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<!-- Підказка, що замінює системний title -->
+<div class="tip" id="tip" role="tooltip" hidden></div>
 
 <script src="app.js"></script>
 </body>

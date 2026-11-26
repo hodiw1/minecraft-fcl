@@ -71,6 +71,12 @@ pub struct Config {
     pub ui_lang: String,
     #[serde(default = "default_game_lang")]
     pub game_lang: String,
+    /// Автоматично завантажувати й встановлювати оновлення лаунчера (інакше — лише сповіщення).
+    #[serde(default)]
+    pub auto_update_launcher: bool,
+    /// Ключ CurseForge Core API (https://console.curseforge.com). Без нього працює лише Modrinth.
+    #[serde(default)]
+    pub curseforge_api_key: String,
 }
 
 impl Default for Config {
@@ -86,6 +92,8 @@ impl Default for Config {
             graphics_preset: default_preset(),
             ui_lang: default_ui_lang(),
             game_lang: default_game_lang(),
+            auto_update_launcher: false,
+            curseforge_api_key: String::new(),
         }
     }
 }
@@ -122,6 +130,30 @@ impl Config {
     pub fn active_profile(&self) -> Option<&Profile> {
         self.profiles.iter().find(|p| p.id == self.active_profile)
     }
+
+    /// Ключ CurseForge: з налаштувань, а якщо там порожньо — зі змінної середовища.
+    pub fn curseforge_key(&self) -> Option<String> {
+        let saved = self.curseforge_api_key.trim();
+        if !saved.is_empty() {
+            return Some(saved.to_string());
+        }
+        ["TERRAPOLIS_CURSEFORGE_KEY", "CURSEFORGE_API_KEY"]
+            .iter()
+            .filter_map(|name| std::env::var(name).ok())
+            .map(|value| value.trim().to_string())
+            .find(|value| !value.is_empty())
+    }
+}
+
+/// Ключ API: друковані ASCII-символи без пробілів (інакше заголовок HTTP буде некоректним).
+pub fn validate_api_key(key: &str) -> Result<()> {
+    if key.len() > 200 || !key.chars().all(|c| c.is_ascii_graphic()) {
+        return fail(tr(
+            "Ключ CurseForge виглядає некоректно — скопіюй його ще раз без пробілів",
+            "The CurseForge key looks invalid — copy it again without spaces",
+        ));
+    }
+    Ok(())
 }
 
 pub fn new_id() -> String {

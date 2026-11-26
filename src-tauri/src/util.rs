@@ -5,24 +5,28 @@ use futures_util::StreamExt;
 use reqwest::Client;
 use serde::de::DeserializeOwned;
 use sha1::Sha1;
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha512};
 use tokio::io::AsyncWriteExt;
 
 use crate::constants::LAUNCHER_NAME;
-use crate::error::{fail, Result};
+use crate::error::{fail, AppError, Result};
+use crate::mirrors;
 
 #[derive(Clone, Debug)]
 pub enum Checksum {
     None,
     Sha1(String),
     Sha256(String),
+    Sha512(String),
 }
 
 impl Checksum {
     pub fn expected(&self) -> Option<&str> {
         match self {
             Checksum::None => None,
-            Checksum::Sha1(value) | Checksum::Sha256(value) => Some(value.as_str()),
+            Checksum::Sha1(value) | Checksum::Sha256(value) | Checksum::Sha512(value) => {
+                Some(value.as_str())
+            }
         }
     }
 }
@@ -31,6 +35,7 @@ enum Hasher {
     None,
     Sha1(Sha1),
     Sha256(Sha256),
+    Sha512(Sha512),
 }
 
 impl Hasher {
@@ -39,6 +44,7 @@ impl Hasher {
             Checksum::None => Hasher::None,
             Checksum::Sha1(_) => Hasher::Sha1(Sha1::new()),
             Checksum::Sha256(_) => Hasher::Sha256(Sha256::new()),
+            Checksum::Sha512(_) => Hasher::Sha512(Sha512::new()),
         }
     }
 
@@ -47,6 +53,7 @@ impl Hasher {
             Hasher::None => {}
             Hasher::Sha1(hasher) => hasher.update(data),
             Hasher::Sha256(hasher) => hasher.update(data),
+            Hasher::Sha512(hasher) => hasher.update(data),
         }
     }
 
@@ -55,6 +62,7 @@ impl Hasher {
             Hasher::None => None,
             Hasher::Sha1(hasher) => Some(hex::encode(hasher.finalize())),
             Hasher::Sha256(hasher) => Some(hex::encode(hasher.finalize())),
+            Hasher::Sha512(hasher) => Some(hex::encode(hasher.finalize())),
         }
     }
 }
@@ -64,20 +72,20 @@ pub fn noop(_: u64) {}
 pub fn http_client() -> Result<Client> {
     let client = Client::builder()
         .user_agent(format!("{}/{}", LAUNCHER_NAME, env!("CARGO_PKG_VERSION")))
-        .connect_timeout(Duration::from_secs(20))
+        // Заблокований хост часто «висить» без відповіді — не чекаємо його довго,
+        // а переходимо до наступного дзеркала.
+        .connect_timeout(Duration::from_secs(10))
+        // Потік, що завис на пів дорозі, теж вважається збоєм дзеркала.
+        .read_timeout(Duration::from_secs(45))
         .build()?;
     Ok(client)
 }
 
+/// JSON за посиланням; для файлів із GitHub-репозиторіїв — з перебором дзеркал.
 pub async fn fetch_json<T: DeserializeOwned>(client: &Client, url: &str) -> Result<T> {
-    let value = client
-        .get(url)
-        .send()
-        .await?
-        .error_for_status()?
-        .json::<T>()
-        .await?;
-    Ok(value)
+    mirrors::get_json(client, url, false)
+        .await
+        .map_err(|error| error.into_plain(url))
 }
 
 pub fn hide_window(command: &mut tokio::process::Command) {
@@ -121,6 +129,11 @@ pub fn hash_file(path: &Path, checksum: &Checksum) -> Result<Option<String>> {
     Ok(hasher.finish())
 }
 
+/// SHA-256 файлу у нижньому регістрі.
+pub fn sha256_file(path: &Path) -> Result<String> {
+    Ok(hash_file(path, &Checksum::Sha256(String::new()))?.unwrap_or_default())
+}
+
 pub fn verify_file(path: &Path, checksum: &Checksum) -> bool {
     let Some(expected) = checksum.expected() else {
         return path.is_file();
@@ -154,12 +167,32 @@ async fn try_download(
         tokio::fs::create_dir_all(parent).await?;
     }
     let temp = part_path(dest);
-    let response = client.get(url).send().await?.error_for_status()?;
+    let response = client.get(url).send().await.map_err(|error| {
+        if mirrors::is_network(&error) {
+            mirrors::mark_down(url);
+        }
+        AppError::from(error)
+    })?;
+    let status = response.status();
+    if !status.is_success() {
+        if mirrors::is_host_failure(status) {
+            mirrors::mark_down(url);
+        }
+        return fail(format!("HTTP {status}: {url}"));
+    }
     let mut stream = response.bytes_stream();
     let mut file = tokio::fs::File::create(&temp).await?;
     let mut hasher = Hasher::new(checksum);
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
+        let chunk = match chunk {
+            Ok(chunk) => chunk,
+            Err(error) => {
+                mirrors::mark_down(url);
+                drop(file);
+                let _ = tokio::fs::remove_file(&temp).await;
+                return Err(error.into());
+            }
+        };
         hasher.update(&chunk);
         file.write_all(&chunk).await?;
         on_bytes(chunk.len() as u64);
@@ -176,6 +209,17 @@ async fn try_download(
     Ok(())
 }
 
+fn is_disk_full(message: &str) -> bool {
+    let lower = message.to_lowercase();
+    lower.contains("os error 112")
+        || lower.contains("not enough space")
+        || lower.contains("no space left")
+}
+
+/// Завантажує файл із перевіркою контрольної суми. Для файлів із GitHub-репозиторіїв
+/// (і будь-яких посилань, якщо в конфігу є проксі `{url}`) автоматично перебирає дзеркала:
+/// мережева помилка, таймаут, 403/404/429/451/5xx чи битий файл → наступне дзеркало,
+/// включно з підміною домену для посилань із manifest.json.
 pub async fn download_file(
     client: &Client,
     url: &str,
@@ -183,14 +227,27 @@ pub async fn download_file(
     checksum: &Checksum,
     on_bytes: &(dyn Fn(u64) + Send + Sync),
 ) -> Result<()> {
+    let candidates = mirrors::content_candidates(url);
+    let rounds: u64 = if candidates.len() > 1 { 2 } else { 3 };
     let mut last_error = String::new();
-    for attempt in 1..=3u64 {
-        match try_download(client, url, dest, checksum, on_bytes).await {
-            Ok(()) => return Ok(()),
-            Err(error) => {
-                last_error = error.0;
-                tokio::time::sleep(Duration::from_millis(500 * attempt)).await;
+    for round in 1..=rounds {
+        for candidate in &candidates {
+            match try_download(client, candidate, dest, checksum, on_bytes).await {
+                Ok(()) => {
+                    mirrors::mark_up(candidate);
+                    return Ok(());
+                }
+                Err(error) => {
+                    // Диск переповнений — інші дзеркала не допоможуть.
+                    if is_disk_full(&error.0) {
+                        return Err(error);
+                    }
+                    last_error = error.0;
+                }
             }
+        }
+        if round < rounds {
+            tokio::time::sleep(Duration::from_millis(500 * round)).await;
         }
     }
     fail(format!("не вдалося завантажити {url}: {last_error}"))

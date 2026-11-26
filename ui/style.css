@@ -274,6 +274,7 @@ label,
 }
 
 input[type="text"],
+input[type="password"],
 select {
   height: 2.9rem;
   width: 100%;
@@ -288,18 +289,26 @@ select {
   transition: border-color var(--fast) linear;
 }
 
-input[type="text"]::placeholder {
+input[type="text"]::placeholder,
+input[type="password"]::placeholder {
   color: var(--faint);
 }
 
 input[type="text"]:hover,
+input[type="password"]:hover,
 select:hover {
   border-color: rgba(255, 255, 255, 0.22);
 }
 
 input[type="text"]:focus,
+input[type="password"]:focus,
 select:focus {
   border-color: var(--accent);
+}
+
+input[type="text"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 select {
@@ -979,7 +988,7 @@ button.brand:active {
     max-width: 92rem;
   }
 
-  .view-settings .about,
+  .view-settings .about-card,
   .view-project .project-card {
     grid-column: 1 / -1;
   }
@@ -1200,7 +1209,7 @@ button.brand:active {
   text-align: left;
   color: var(--accent-ink);
   background: var(--accent);
-  transition: transform var(--fast) var(--ease), opacity var(--fast) linear, background-color var(--fast) linear;
+  transition: transform var(--fast) var(--ease), opacity var(--mid) var(--ease), background-color var(--mid) var(--ease), color var(--mid) var(--ease);
 }
 
 .play-ico {
@@ -1690,6 +1699,523 @@ button.brand:active {
   overflow-y: auto;
 }
 
+.inst-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.1rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.inst-group:first-child {
+  margin-top: 0;
+}
+
+.inst-add {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: calc(var(--r) - 3px);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  transition: color var(--fast) linear, border-color var(--fast) linear, transform var(--fast) var(--ease);
+}
+
+.inst-add:hover {
+  color: var(--text);
+  border-color: var(--line-2);
+}
+
+.inst-add:active {
+  transform: scale(0.94);
+}
+
+.inst-add svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* ───────── іконки завантажувачів ───────── */
+
+.ldr {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.ldr svg {
+  width: 100%;
+  height: 100%;
+  stroke: none;
+}
+
+.ldr-lg {
+  width: 2.1rem;
+  height: 2.1rem;
+}
+
+.inst-sub .ldr {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.avatar-loader {
+  background: var(--surface-2);
+}
+
+.avatar-loader .ldr {
+  width: 62%;
+  height: 62%;
+}
+
+.badge .ldr {
+  margin-left: -0.15rem;
+}
+
+/* великий напівпрозорий знак завантажувача на фоні власної збірки */
+.hero-mark {
+  position: absolute;
+  top: 50%;
+  right: 7%;
+  width: min(18rem, 32%);
+  aspect-ratio: 1;
+  transform: translateY(-58%) rotate(-8deg);
+  opacity: 0.09;
+  pointer-events: none;
+}
+
+.hero-mark .ldr {
+  width: 100%;
+  height: 100%;
+}
+
+/* ───────── кнопка-заклик «створити збірку» ───────── */
+
+.inst-cta {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  text-align: left;
+  border-radius: var(--r);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px dashed var(--accent-line);
+  transition: background-color var(--fast) linear, border-color var(--fast) linear, transform var(--fast) var(--ease);
+}
+
+.inst-cta:hover {
+  background: var(--accent-soft);
+  border-style: solid;
+}
+
+.inst-cta:active {
+  transform: scale(0.98);
+}
+
+.inst-cta > svg {
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0.55rem;
+  border-radius: var(--r-sm);
+  color: var(--accent);
+  background: var(--accent-soft);
+  stroke-width: 2.2;
+}
+
+.inst-cta b {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.inst-cta small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.icon-btn-accent:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+/* ───────── діалог створення ───────── */
+
+.create-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.95rem;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.ldr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+/* 5 завантажувачів: чиста гра — на всю ширину, решта — парами */
+.ldr-grid .ldr-card[data-loader="vanilla"] {
+  grid-column: 1 / -1;
+}
+
+.ldr-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+  border-radius: var(--r);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  transition: border-color var(--fast) linear, background-color var(--fast) linear, transform var(--fast) var(--ease);
+}
+
+.ldr-card:hover {
+  border-color: var(--line-2);
+}
+
+.ldr-card:active {
+  transform: scale(0.98);
+}
+
+.ldr-card.on {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+
+.ldr-text {
+  min-width: 0;
+}
+
+.ldr-text b {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+
+.ldr-text em {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.05rem 0.4rem;
+  border-radius: 5px;
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.ldr-text small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ───────── менеджер модів ───────── */
+
+.mods {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+  text-align: left;
+}
+
+.mods-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.mods-head .btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.mods-count:not(:empty) {
+  margin-left: 0.2rem;
+  padding: 0 0.4rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.mods-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.mods-pane[hidden] {
+  display: none;
+}
+
+.mod-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 22rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.mod-list .skeleton {
+  height: 4.2rem;
+}
+
+.mod-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition: opacity var(--mid) var(--ease), background-color var(--fast) linear;
+}
+
+.mod-row:hover {
+  background: var(--surface-2);
+}
+
+/* Поява рядків результатів — каскадом, лише при першому показі */
+.mod-row.enter {
+  animation: rise var(--mid) var(--ease) backwards;
+  animation-delay: calc(var(--i, 0) * 22ms);
+}
+
+.mod-row.leaving {
+  pointer-events: none;
+  animation: row-out 240ms var(--ease) both;
+}
+
+.mod-row.off > :not(.switch):not(.more) {
+  opacity: 0.45;
+  transition: opacity var(--mid) var(--ease);
+}
+
+.mod-row > * {
+  transition: opacity var(--mid) var(--ease);
+}
+
+.mod-row.missing {
+  border-style: dashed;
+}
+
+.mod-row.missing .mod-info small {
+  color: var(--warn);
+}
+
+.mod-row.extra {
+  border-color: var(--danger-line);
+}
+
+.mod-row.extra .mod-info small {
+  color: #ff8f87;
+}
+
+.mod-icon {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  background: var(--surface-3);
+}
+
+.mod-icon-empty {
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+}
+
+.mod-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mod-info b {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.mod-info small {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--faint);
+}
+
+.mod-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 0.15rem;
+  font-size: 0.83rem;
+  color: var(--muted);
+}
+
+.mod-row .btn {
+  flex: none;
+  min-width: 7.5rem;
+}
+
+.mods-more {
+  align-self: center;
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 2.4rem;
+  height: 1.35rem;
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.switch > span {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--line-2);
+  pointer-events: none;
+}
+
+/* Заливка «увімкнено» — окремий шар, що проявляється через opacity (GPU), а не background-color */
+.switch > span::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--mid) var(--ease);
+}
+
+.switch > span::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.35rem - 6px);
+  height: calc(1.35rem - 6px);
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform var(--mid) var(--ease), background-color var(--mid) linear;
+}
+
+.switch input:checked + span::before {
+  opacity: 1;
+}
+
+.switch input:checked + span::after {
+  transform: translate3d(1.05rem, 0, 0);
+  background: var(--accent-ink);
+}
+
+.switch input:active:not(:disabled) + span::after {
+  transform: scale(0.88);
+}
+
+.switch input:checked:active:not(:disabled) + span::after {
+  transform: translate3d(1.05rem, 0, 0) scale(0.88);
+}
+
+.switch input:disabled + span {
+  opacity: 0.55;
+}
+
+.switch input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+  text-align: left;
+}
+
+.create-form input[type="text"] {
+  height: 2.6rem;
+}
+
+.create-form .field[hidden] {
+  display: none;
+}
+
+.create-form select {
+  width: 100%;
+}
+
+.create-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.create-row select,
+.create-row .dd-mount {
+  flex: 1;
+  min-width: 0;
+}
+
+.create-form .field .dd-mount {
+  width: 100%;
+}
+
+.setting-row .dd-mount {
+  flex: none;
+  width: 14rem;
+}
+
+.check.check-inline {
+  flex: none;
+  align-items: center;
+  padding: 0.45rem 0.7rem;
+}
+
+.check.check-inline input {
+  margin-top: 0;
+}
+
 .inst-card {
   position: relative;
   display: grid;
@@ -1923,10 +2449,26 @@ button.brand:active {
   transform-origin: top right;
 }
 
+.menu.up {
+  transform-origin: bottom right;
+}
+
+.menu.closing {
+  pointer-events: none;
+  animation: menu-out 140ms var(--ease) both;
+}
+
 @keyframes menu-in {
   from {
     opacity: 0;
     transform: scale(0.96) translate3d(0, -4px, 0);
+  }
+}
+
+@keyframes menu-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97) translate3d(0, -3px, 0);
   }
 }
 
@@ -2076,16 +2618,50 @@ form.add-row.glass {
   cursor: pointer;
   background: var(--surface);
   border: 1px solid var(--line);
-  transition: background-color var(--fast) linear;
+  transition: background-color var(--fast) linear, transform var(--fast) var(--ease);
 }
 
 .profile-row:hover {
   background: var(--surface-2);
 }
 
-.profile-row.on {
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
+.profile-row:active {
+  transform: scale(0.99);
+}
+
+/* Рамка активного профілю — окремий шар з opacity: «перетікає» між картками */
+.profile-row::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(90deg, var(--accent-soft), rgba(60, 196, 111, 0.04) 80%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mid) var(--ease);
+}
+
+.profile-row.on::after,
+.profile-row.was-on::after {
+  opacity: 1;
+}
+
+.profile-row > * {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-row.leaving {
+  pointer-events: none;
+  animation: row-out 240ms var(--ease) both;
+}
+
+@keyframes row-out {
+  to {
+    opacity: 0;
+    transform: translate3d(-10px, 0, 0) scale(0.98);
+  }
 }
 
 .profile-row .head {
@@ -2634,6 +3210,1171 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   padding-right: 0.4rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* ───────── поява вмісту вкладок ─────────
+   Коли вкладка стає активною, її блоки м'яко «підіймаються» каскадом.
+   fill-mode: backwards — після анімації не блокує transform/opacity інших правил. */
+
+.view.on > .view-head,
+.view.on > .cards > *,
+.view.on > .profiles-grid > *,
+.view.on .cl-grid > *,
+.view-home.on > .hero,
+.view-home.on > .inst-panel {
+  animation: rise var(--slow) var(--ease) backwards;
+}
+
+.view.on > .cards > :nth-child(1),
+.view.on > .profiles-grid > :nth-child(1),
+.view.on .cl-grid > :nth-child(1),
+.view-home.on > .inst-panel {
+  animation-delay: 40ms;
+}
+
+.view.on > .cards > :nth-child(2),
+.view.on > .profiles-grid > :nth-child(2),
+.view.on .cl-grid > :nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.view.on > .cards > :nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.view.on > .cards > :nth-child(4) {
+  animation-delay: 150ms;
+}
+
+.view.on > .cards > :nth-child(n + 5) {
+  animation-delay: 180ms;
+}
+
+/* ───────── стилізовані списки вибору (версії, мова, категорії) ───────── */
+
+.dd {
+  position: relative;
+  min-width: 0;
+}
+
+.dd-mount {
+  min-width: 0;
+}
+
+.dd-trigger {
+  width: 100%;
+  min-width: 12rem;
+  height: 2.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.65rem 0 0.9rem;
+  border-radius: var(--r);
+  text-align: left;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  transition: border-color var(--fast) linear, background-color var(--fast) linear, transform var(--fast) var(--ease);
+}
+
+.dd-trigger:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: #101317;
+}
+
+.dd-trigger:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.dd.open .dd-trigger {
+  border-color: var(--accent);
+}
+
+.dd-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dd.is-loading .dd-trigger:disabled {
+  opacity: 1;
+  color: var(--muted);
+}
+
+.dd-value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dd-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.dd-chev {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  transition: transform var(--mid) var(--ease);
+}
+
+.dd-chev svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.dd.open .dd-chev {
+  transform: rotate(180deg);
+}
+
+.dd-trigger .btn-spin {
+  width: 1rem;
+  height: 1rem;
+  border-width: 2px;
+  border-top-color: var(--accent);
+}
+
+.dd-sm .dd-trigger {
+  height: 2.35rem;
+  min-width: 10rem;
+  font-size: 0.9rem;
+}
+
+.dd-ver .dd-trigger {
+  min-width: 11.5rem;
+  max-width: 15rem;
+}
+
+.dd-panel {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  max-height: min(22rem, 70vh);
+  padding: 0.3rem;
+  border-radius: var(--r);
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+  transform-origin: top center;
+  animation: dd-in var(--mid) var(--ease) both;
+}
+
+.dd-panel.up {
+  transform-origin: bottom center;
+  animation-name: dd-in-up;
+}
+
+.dd-panel.closing {
+  pointer-events: none;
+  animation: dd-out 150ms var(--ease) both;
+}
+
+@keyframes dd-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0) scale(0.98);
+  }
+}
+
+@keyframes dd-in-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.98);
+  }
+}
+
+@keyframes dd-out {
+  to {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+.dd-search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.1rem 0.1rem 0.35rem;
+  padding: 0 0.6rem;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  transition: border-color var(--fast) linear;
+}
+
+.dd-search:focus-within {
+  border-color: var(--accent-line);
+}
+
+.dd-search svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--faint);
+}
+
+.dd-search input[type="text"] {
+  height: 2.2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.9rem;
+}
+
+.dd-list {
+  position: relative;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+/* Тонкий кастомний скролбар списку */
+.dd-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dd-list::-webkit-scrollbar-thumb {
+  border: 0;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.dd-list::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.dd-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.55rem 0.35rem 0.7rem;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.dd-opt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-3);
+  opacity: 0;
+  transition: opacity var(--fast) linear;
+}
+
+.dd-opt.active::before {
+  opacity: 1;
+}
+
+.dd-opt.on {
+  color: var(--accent);
+}
+
+.dd-opt.on::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 25%;
+  width: 3px;
+  height: 50%;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.dd-opt > * {
+  position: relative;
+}
+
+.dd-opt-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.dd-opt-label {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.dd-opt small {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.76rem;
+  color: var(--faint);
+}
+
+.dd-check {
+  flex: none;
+  width: 1rem;
+  display: grid;
+  place-items: center;
+}
+
+.dd-check svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  stroke-width: 2.4;
+  color: var(--accent);
+}
+
+.dd-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0.75rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.dd-empty .btn-spin {
+  width: 1rem;
+  height: 1rem;
+  border-width: 2px;
+}
+
+/* бейджі типу релізу */
+.vbadges {
+  flex: none;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.vbadge {
+  padding: 0.05rem 0.4rem;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--muted);
+  background: var(--surface-3);
+  border: 1px solid transparent;
+}
+
+.vbadge.release {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.vbadge.snapshot,
+.vbadge.beta {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.vbadge.alpha {
+  color: #ff8f87;
+  background: var(--danger-soft);
+}
+
+.vbadge.latest {
+  color: var(--text);
+  background: transparent;
+  border-color: var(--line-2);
+}
+
+.vbadge.recommended {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.vbadge.auto {
+  color: var(--muted);
+  background: transparent;
+  border-color: var(--line);
+}
+
+.dd-trigger .vbadges {
+  overflow: hidden;
+}
+
+/* ───────── перемикачі в налаштуваннях ───────── */
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--r);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+  transition: border-color var(--fast) linear;
+}
+
+.toggle-row:hover {
+  border-color: var(--line-2);
+}
+
+.toggle-text b {
+  display: block;
+  font-weight: 600;
+}
+
+.toggle-text small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.toggle-inline {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0 0.3rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+}
+
+.src-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.92rem;
+}
+
+.src-dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--faint);
+  transition: background-color var(--mid) linear;
+}
+
+.src-dot.ok {
+  background: var(--accent);
+}
+
+#cfState {
+  color: var(--muted);
+}
+
+.mirror-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.mirror-group small {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.mirror-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.mirror {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--r-sm);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.mirror i {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.mirror.down i {
+  background: var(--danger);
+}
+
+.mirror.down {
+  color: #ff8f87;
+}
+
+#mirrorCustom {
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+/* напис згідно з Minecraft Usage Guidelines */
+.legal {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.55;
+  color: var(--faint);
+}
+
+.ob-legal {
+  margin-top: 0.4rem;
+  text-align: center;
+}
+
+.about-card {
+  gap: 0.5rem;
+}
+
+/* ───────── підказки ───────── */
+
+.tip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 70;
+  max-width: 20rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--r-sm);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text);
+  background: #262b33;
+  border: 1px solid var(--line-2);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.tip.show {
+  animation: tip-in 180ms var(--ease) both;
+}
+
+.tip.below.show {
+  animation-name: tip-in-below;
+}
+
+.tip.leaving,
+.tip.below.leaving {
+  animation: tip-out 120ms linear both;
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+@keyframes tip-in-below {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+@keyframes tip-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ───────── сповіщення ───────── */
+
+.toasts {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 45;
+  width: min(25rem, calc(100vw - 2.5rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+.toast {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.8rem;
+  padding: 0.95rem 2.4rem 0.95rem 0.95rem;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  animation: toast-in var(--slow) var(--ease) both;
+}
+
+.toast.accent {
+  border-color: var(--accent-line);
+}
+
+.toast.accent::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 18%;
+  width: 3px;
+  height: 64%;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.toast.warn {
+  border-color: rgba(233, 168, 59, 0.4);
+}
+
+.toast.leaving {
+  pointer-events: none;
+  animation: toast-out 260ms var(--ease) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(24px, 0, 0) scale(0.98);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0) scale(0.98);
+  }
+}
+
+.toast-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.toast.warn .toast-icon {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.toast-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.toast-title {
+  font-size: 0.97rem;
+  line-height: 1.3;
+}
+
+.toast-text {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.toast-ver {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.toast-new {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.toast-arrow {
+  color: var(--faint);
+}
+
+.toast-date {
+  width: 100%;
+  font-size: 0.8rem;
+  color: var(--faint);
+}
+
+.toast-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.toast-actions .btn {
+  height: 2.15rem;
+  padding: 0 0.8rem;
+  font-size: 0.87rem;
+}
+
+.btn-plain {
+  color: var(--muted);
+}
+
+.btn-plain:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.toast-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.toast-progress .progress-track {
+  height: 0.4rem;
+}
+
+.toast-progress small {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.toast-err {
+  font-size: 0.82rem;
+  color: #ff8f87;
+}
+
+.toast-x {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  width: 1.8rem;
+  height: 1.8rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  color: var(--faint);
+  transition: background-color var(--fast) linear, color var(--fast) linear;
+}
+
+.toast-x:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.toast-x svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.toast.busy .toast-x {
+  display: none;
+}
+
+/* ───────── опис релізу (Markdown) ───────── */
+
+.modal.xl .modal-card {
+  width: min(60rem, 100%);
+}
+
+.md {
+  color: var(--muted);
+  font-size: 0.93rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.md > * + * {
+  margin-top: 0.65rem;
+}
+
+.md .md-h {
+  color: var(--text);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.md h4.md-h {
+  font-size: 1.12rem;
+  margin-top: 1.1rem;
+}
+
+.md h5.md-h {
+  font-size: 1rem;
+  margin-top: 0.95rem;
+}
+
+.md h6.md-h {
+  font-size: 0.92rem;
+  margin-top: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md ul,
+.md ol {
+  padding-left: 1.25rem;
+}
+
+.md li + li {
+  margin-top: 0.2rem;
+}
+
+.md ul li::marker {
+  color: var(--accent);
+}
+
+.md b {
+  color: var(--text);
+}
+
+.md code {
+  padding: 0.05rem 0.35rem;
+  border-radius: 5px;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.85em;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.md .md-code {
+  padding: 0.6rem 0.75rem;
+  overflow-x: auto;
+  border-radius: var(--r-sm);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.md blockquote {
+  padding-left: 0.8rem;
+  border-left: 2px solid var(--line-2);
+}
+
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.md-link {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-line);
+  text-underline-offset: 3px;
+}
+
+.md-release {
+  max-height: calc(100vh - 17rem);
+  overflow-y: auto;
+  margin-top: 0.6rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+/* ───────── бейдж офлайн-режиму в Hero ───────── */
+
+.badge-offline {
+  color: var(--warn);
+  border-color: rgba(233, 168, 59, 0.35);
+  animation: rise var(--mid) var(--ease) backwards;
+}
+
+.badge-offline i {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--warn);
+}
+
+.inst-group-acts {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+/* ───────── звіт дебагера й імпорту ───────── */
+
+.usage .good b {
+  color: var(--accent);
+}
+
+.usage .bad b {
+  color: #ff8f87;
+}
+
+.dbg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dbg-sec {
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.dbg-sec.ok {
+  border-color: var(--accent-line);
+}
+
+.dbg-sec.warn {
+  border-color: rgba(233, 168, 59, 0.35);
+}
+
+.dbg-sec.bad {
+  border-color: var(--danger-line);
+}
+
+.dbg-sec h5 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.dbg-list {
+  max-height: 9.5rem;
+  overflow-y: auto;
+  padding-left: 1.1rem;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.dbg-clean {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--r);
+  color: var(--text);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+
+.dbg-clean svg {
+  color: var(--accent);
+  stroke-width: 2.4;
+}
+
+/* ───────── менеджер модів: Modrinth / CurseForge ───────── */
+
+.mods-pane {
+  animation: rise var(--mid) var(--ease) backwards;
+}
+
+.mods-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.seg-src button {
+  min-width: 6.2rem;
+}
+
+.mods-search {
+  flex: 1;
+  min-width: 13rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+  border-radius: var(--r);
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+  cursor: text;
+  transition: border-color var(--fast) linear;
+}
+
+.mods-search:focus-within {
+  border-color: var(--accent);
+}
+
+.mods-search svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--faint);
+}
+
+.mods-search input[type="text"] {
+  height: 2.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.93rem;
+}
+
+.mods-cat {
+  flex: none;
+  width: 13rem;
+}
+
+.mods-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mods-filter-label {
+  margin-right: 0.15rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--r-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.chip .ldr,
+.chip .ldr svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.cf-note {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: var(--r);
+  font-size: 0.9rem;
+  color: var(--text);
+  background: var(--warn-soft);
+  border: 1px solid rgba(233, 168, 59, 0.35);
+  animation: rise var(--mid) var(--ease) backwards;
+}
+
+.cf-note > svg {
+  color: var(--warn);
+}
+
+.cf-note span {
+  flex: 1;
+}
+
+.modal.xl .mod-list {
+  max-height: min(26rem, calc(100vh - 22rem));
+}
+
+.mod-act {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.mod-act .btn {
+  min-width: 7.5rem;
+}
+
+.mod-err {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: #ff8f87;
+  animation: rise var(--mid) var(--ease) backwards;
+}
+
+.mod-err[hidden] {
+  display: none;
+}
+
+.mod-state {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.3rem;
+  border-radius: 50%;
+  background: var(--warn);
+}
+
+.mod-state.ok {
+  background: var(--accent);
+}
+
+.mod-row.extra .mod-state {
+  background: var(--danger);
+}
+
+/* Нескінченні декоративні анімації не працюють, коли гра запущена або вікно згорнуте */
+body.calm .skeleton::after,
+body.calm .play.busy::after,
+body.calm .island.is-busy .island-dot,
+body.calm .progress-steps li.active::after {
+  animation-play-state: paused;
 }
 
 /* ───────── адаптивність ───────── */
