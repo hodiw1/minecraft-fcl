@@ -11,6 +11,29 @@ const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
  *  `ENABLE_CURSEFORGE` у src-tauri/src/constants.rs. */
 const ENABLE_CURSEFORGE = false;
 
+/* ═══════════════════════════ ПОВЕДІНКА ВІКНА ═══════════════════════════ */
+
+/** Типи <input>, у яких немає тексту для вставки — там меню ПКМ не потрібне. */
+const NON_TEXT_INPUTS = new Set(["range", "checkbox", "radio", "file", "button", "submit", "reset", "image", "color", "hidden"]);
+
+/** Текстове поле, де гравцеві зручно вставити код проєкту чи нікнейм через ПКМ. */
+function isTextField(node) {
+  if (!(node instanceof Element)) return false;
+  if (node.closest("textarea")) return true;
+  const input = node.closest("input");
+  return Boolean(input) && !NON_TEXT_INPUTS.has((input.getAttribute("type") || "text").toLowerCase());
+}
+
+// Лаунчер — десктопний застосунок, а не сторінка: стандартне меню WebView2 («Назад»,
+// «Перезавантажити», «Перевірити елемент») не показуємо ніде, крім текстових полів.
+document.addEventListener(
+  "contextmenu",
+  (event) => {
+    if (!isTextField(event.target)) event.preventDefault();
+  },
+  { capture: true }
+);
+
 /* ═══════════════════════════ ПЕРЕКЛАДИ ═══════════════════════════ */
 
 const DICT = {

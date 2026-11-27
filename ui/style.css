@@ -69,13 +69,19 @@ body {
   line-height: 1.5;
   background: var(--bg);
   color: var(--text);
+  /* інтерфейс поводиться як нативний: кнопки, картки й заголовки не виділяються мишею */
+  -webkit-user-select: none;
   user-select: none;
   -webkit-font-smoothing: antialiased;
 }
 
+/* виділяти можна лише те, що гравцеві справді треба скопіювати: поля вводу, шлях до папки, журнали */
 input,
+textarea,
 select,
-.selectable {
+.selectable,
+.path {
+  -webkit-user-select: text;
   user-select: text;
 }
 
