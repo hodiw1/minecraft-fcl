@@ -8,6 +8,9 @@ use crate::error::{fail, Result};
 use crate::i18n::tr;
 
 pub const PRESETS: [&str; 4] = ["low", "medium", "high", "ultra"];
+/// Кольорові палітри (акцент інтерфейсу). Самі кольори — у `ui/app.js` (THEMES).
+pub const THEMES: [&str; 6] = ["emerald", "cobalt", "amber", "ruby", "amethyst", "graphite"];
+pub const DEFAULT_THEME: &str = "emerald";
 pub const UI_LANGS: [&str; 2] = ["uk", "en"];
 pub const GAME_LANGS: [&str; 10] = [
     "uk_ua", "en_us", "en_gb", "pl_pl", "de_de", "fr_fr", "es_es", "cs_cz", "ru_ru", "be_by",
@@ -27,6 +30,10 @@ fn default_ui_lang() -> String {
 
 fn default_game_lang() -> String {
     DEFAULT_GAME_LANG.to_string()
+}
+
+fn default_theme() -> String {
+    DEFAULT_THEME.to_string()
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -77,6 +84,12 @@ pub struct Config {
     /// Ключ CurseForge Core API (https://console.curseforge.com). Без нього працює лише Modrinth.
     #[serde(default)]
     pub curseforge_api_key: String,
+    /// Акцентна палітра інтерфейсу (див. [`THEMES`]).
+    #[serde(default = "default_theme")]
+    pub theme: String,
+    /// Гравець пройшов майстер першого запуску (нік + палітра → проєкт або «Пропустити»).
+    #[serde(default)]
+    pub onboarded: bool,
 }
 
 impl Default for Config {
@@ -94,6 +107,8 @@ impl Default for Config {
             game_lang: default_game_lang(),
             auto_update_launcher: false,
             curseforge_api_key: String::new(),
+            theme: default_theme(),
+            onboarded: false,
         }
     }
 }
@@ -124,6 +139,27 @@ impl Config {
         }
         if !GAME_LANGS.contains(&self.game_lang.as_str()) {
             self.game_lang = default_game_lang();
+        }
+        if !THEMES.contains(&self.theme.as_str()) {
+            self.theme = default_theme();
+        }
+        // Конфіг старших версій: у кого вже є профіль, той майстер першого запуску не бачить.
+        if !self.profiles.is_empty() {
+            self.onboarded = true;
+        }
+    }
+
+    /// Скидання «технічних» налаштувань (Danger Zone): лишаються профілі, проєкт,
+    /// мова інтерфейсу та палітра — усе інше повертається до стандартних значень.
+    pub fn reset_technical(&self) -> Config {
+        Config {
+            profiles: self.profiles.clone(),
+            active_profile: self.active_profile.clone(),
+            project: self.project.clone(),
+            ui_lang: self.ui_lang.clone(),
+            theme: self.theme.clone(),
+            onboarded: self.onboarded,
+            ..Config::default()
         }
     }
 
@@ -166,7 +202,8 @@ pub fn new_id() -> String {
 
 pub async fn load(root: &Path) -> Config {
     let mut config = match tokio::fs::read_to_string(root.join("config.json")).await {
-        Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
+        // Пошкоджений config.json (обірваний запис, BOM) не валить лаунчер — стартуємо зі стандартних.
+        Ok(text) => serde_json::from_str(text.trim_start_matches('\u{feff}')).unwrap_or_default(),
         Err(_) => Config::default(),
     };
     config.normalize();
@@ -201,4 +238,54 @@ pub fn validate_nickname(nickname: &str) -> Result<()> {
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_config_with_profile_skips_onboarding() {
+        let mut config: Config =
+            serde_json::from_str(r#"{"profiles":[{"id":"p1","nickname":"Steve"}]}"#).unwrap();
+        config.normalize();
+        assert!(config.onboarded);
+        assert_eq!(config.theme, DEFAULT_THEME);
+    }
+
+    #[test]
+    fn unknown_theme_falls_back() {
+        let mut config: Config = serde_json::from_str(r#"{"theme":"neon-pink"}"#).unwrap();
+        config.normalize();
+        assert_eq!(config.theme, DEFAULT_THEME);
+        assert!(!config.onboarded);
+    }
+
+    #[test]
+    fn technical_reset_keeps_identity() {
+        let mut config = Config::default();
+        config.profiles.push(Profile {
+            id: "p1".into(),
+            nickname: "Alex".into(),
+            has_skin: true,
+        });
+        config.active_profile = "p1".into();
+        config.project = Some(ProjectBinding {
+            code: "X".into(),
+            name: "X".into(),
+            index_url: "https://example.com/x".into(),
+        });
+        config.ram_mb = 12288;
+        config.data_dir = "D:\\Games".into();
+        config.theme = "ruby".into();
+        config.curseforge_api_key = "key".into();
+        let reset = config.reset_technical();
+        assert_eq!(reset.profiles.len(), 1);
+        assert_eq!(reset.active_profile, "p1");
+        assert!(reset.project.is_some());
+        assert_eq!(reset.theme, "ruby");
+        assert_eq!(reset.ram_mb, 4096);
+        assert!(reset.data_dir.is_empty());
+        assert!(reset.curseforge_api_key.is_empty());
+    }
 }

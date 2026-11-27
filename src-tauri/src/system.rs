@@ -1,22 +1,91 @@
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use crate::error::{fail, Context, Result};
 use crate::i18n::tr;
 
 /// Відкриває папку у Провіднику Windows (або файловому менеджері на інших ОС).
+///
+/// Раніше тут запускався окремий процес `explorer.exe <шлях>`: новий екземпляр Провідника
+/// шукає вже запущену оболонку через широкомовний DDE-запит до всіх вікон верхнього рівня
+/// й передає їй шлях — саме це давало ~2–3 с затримки до появи вікна. Тепер шлях передається
+/// оболонці напряму (`ShellExecuteExW`, дієслово `open`, COM без DDE) у власному STA-потоці,
+/// тож команда повертається миттєво й не блокує ні async-рантайм, ні головний потік вікна.
 pub fn open_folder(path: &Path) -> Result<()> {
     std::fs::create_dir_all(path)?;
-    #[cfg(windows)]
-    let program = "explorer.exe";
+    shell_open(path.as_os_str().to_owned())
+}
+
+/// Відкриває вже перевірене посилання https у браузері за замовчуванням.
+pub fn open_url(url: &str) -> Result<()> {
+    if !url.starts_with("https://") {
+        return fail(tr("некоректне посилання", "invalid link"));
+    }
+    shell_open(OsString::from(url))
+}
+
+#[cfg(windows)]
+fn shell_open(target: OsString) -> Result<()> {
+    std::thread::Builder::new()
+        .name("shell-open".into())
+        .spawn(move || {
+            if native_shell::open(&target).is_err() {
+                // Запасний шлях (вимкнена оболонка, політики): старий спосіб без очікування.
+                let _ = std::process::Command::new("explorer.exe").arg(&target).spawn();
+            }
+        })
+        .ctx(tr("не вдалося відкрити папку", "failed to open the folder"))?;
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn shell_open(target: OsString) -> Result<()> {
     #[cfg(target_os = "macos")]
     let program = "open";
-    #[cfg(all(unix, not(target_os = "macos")))]
+    #[cfg(not(target_os = "macos"))]
     let program = "xdg-open";
     std::process::Command::new(program)
-        .arg(path)
+        .arg(target)
         .spawn()
         .ctx(tr("не вдалося відкрити папку", "failed to open the folder"))?;
     Ok(())
+}
+
+#[cfg(windows)]
+mod native_shell {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+
+    use windows::core::{w, PCWSTR};
+    use windows::Win32::System::Com::{
+        CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE,
+    };
+    use windows::Win32::UI::Shell::{
+        ShellExecuteExW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SHELLEXECUTEINFOW,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    /// `ShellExecuteExW("open", target)`. Виклик іде в окремому потоці, тому `SEE_MASK_NOASYNC`
+    /// (дочекатися передачі запиту оболонці до завершення потоку) — рекомендований режим.
+    pub fn open(target: &OsStr) -> windows::core::Result<()> {
+        let wide: Vec<u16> = target.encode_wide().chain(std::iter::once(0)).collect();
+        unsafe {
+            let init = CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+            let mut info = SHELLEXECUTEINFOW {
+                cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+                fMask: SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI,
+                lpVerb: w!("open"),
+                lpFile: PCWSTR(wide.as_ptr()),
+                nShow: SW_SHOWNORMAL.0,
+                ..Default::default()
+            };
+            let result = ShellExecuteExW(&mut info);
+            if init.is_ok() {
+                CoUninitialize();
+            }
+            result
+        }
+    }
 }
 
 fn is_url_part(value: &str) -> bool {
@@ -43,17 +112,13 @@ pub fn open_github(repo: &str, kind: &str, tag: &str) -> Result<()> {
         "commit" if is_url_part(tag) => url.push_str(&format!("/commit/{tag}")),
         _ => {}
     }
-    #[cfg(windows)]
-    let program = "explorer.exe";
-    #[cfg(target_os = "macos")]
-    let program = "open";
-    #[cfg(all(unix, not(target_os = "macos")))]
-    let program = "xdg-open";
-    std::process::Command::new(program)
-        .arg(url)
-        .spawn()
-        .ctx(tr("не вдалося відкрити браузер", "failed to open the browser"))?;
-    Ok(())
+    open_url(&url)
+}
+
+/// Тип файлу для діалогу вибору: підпис фільтра й розширення (без крапки).
+pub struct FileFilter {
+    pub label: String,
+    pub extension: &'static str,
 }
 
 /// Нативний діалог Windows (`IFileOpenDialog`) у власному STA-потоці.
@@ -63,7 +128,7 @@ pub fn open_github(repo: &str, kind: &str, tag: &str) -> Result<()> {
 mod native_dialog {
     use std::ffi::c_void;
 
-    use windows::core::{w, HRESULT, HSTRING, PCWSTR};
+    use windows::core::{HRESULT, HSTRING, PCWSTR};
     use windows::Win32::Foundation::{ERROR_CANCELLED, HWND};
     use windows::Win32::System::Com::{
         CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_INPROC_SERVER,
@@ -75,16 +140,19 @@ mod native_dialog {
         FOS_PATHMUSTEXIST, FOS_PICKFOLDERS, SIGDN_FILESYSPATH,
     };
 
+    use super::FileFilter;
+
     pub enum Kind {
         Folder,
-        Zip { label: String },
+        File(FileFilter),
     }
 
     /// Показує діалог і чекає вибору. `owner` — HWND вікна лаунчера (діалог модальний до нього).
     /// `Ok(None)` — користувач натиснув «Скасувати».
     pub fn show(owner: Option<isize>, title: &str, kind: Kind) -> windows::core::Result<Option<String>> {
         unsafe {
-            CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE).ok()?;
+            let init = CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+            init.ok()?;
             let result = run(owner, title, kind);
             CoUninitialize();
             result
@@ -98,17 +166,18 @@ mod native_dialog {
             dialog.SetTitle(&HSTRING::from(title))?;
             match kind {
                 Kind::Folder => options |= FOS_PICKFOLDERS,
-                Kind::Zip { label } => {
+                Kind::File(filter) => {
                     options |= FOS_FILEMUSTEXIST;
-                    let name = HSTRING::from(format!("{label} (*.zip)"));
-                    let spec = HSTRING::from("*.zip");
+                    let label = filter.label.replace(['|', '\0'], "");
+                    let name = HSTRING::from(format!("{label} (*.{})", filter.extension));
+                    let spec = HSTRING::from(format!("*.{}", filter.extension));
                     let filters = [COMDLG_FILTERSPEC {
                         pszName: PCWSTR(name.as_ptr()),
                         pszSpec: PCWSTR(spec.as_ptr()),
                     }];
                     dialog.SetFileTypes(&filters)?;
                     dialog.SetFileTypeIndex(1)?;
-                    dialog.SetDefaultExtension(w!("zip"))?;
+                    dialog.SetDefaultExtension(&HSTRING::from(filter.extension))?;
                 }
             }
             dialog.SetOptions(options)?;
@@ -129,7 +198,8 @@ mod native_dialog {
     }
 }
 
-/// Запускає нативний діалог в окремому потоці (COM потребує STA), не блокуючи async-рантайм.
+/// Запускає нативний діалог в окремому STA-потоці (COM потребує STA), не блокуючи
+/// ні async-рантайм Tauri, ні головний потік вікна: інтерфейс лишається живим, поки діалог відкрито.
 #[cfg(windows)]
 async fn run_dialog(owner: Option<isize>, title: &str, kind: native_dialog::Kind, error_text: &str) -> Result<Option<String>> {
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -167,23 +237,21 @@ pub async fn pick_folder(owner: Option<isize>, title: &str) -> Result<Option<Str
     }
 }
 
-/// Стандартний діалог вибору .zip-файлу Windows (як і вибір папки — без плагінів Tauri).
-pub async fn pick_zip(owner: Option<isize>, title: &str, filter_label: &str) -> Result<Option<String>> {
+/// Стандартний діалог вибору файлу (.zip збірки, .png скіна) — як і вибір папки, без плагінів Tauri.
+pub async fn pick_file(owner: Option<isize>, title: &str, filter: FileFilter) -> Result<Option<String>> {
     #[cfg(windows)]
     {
         run_dialog(
             owner,
             title,
-            native_dialog::Kind::Zip {
-                label: filter_label.replace(['|', '\0'], ""),
-            },
+            native_dialog::Kind::File(filter),
             tr("не вдалося відкрити вибір файлу", "failed to open the file picker"),
         )
         .await
     }
     #[cfg(not(windows))]
     {
-        let _ = (owner, title, filter_label);
+        let _ = (owner, title, filter);
         Ok(None)
     }
 }

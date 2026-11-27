@@ -4,10 +4,11 @@ mod changelog;
 mod commands;
 mod config;
 mod constants;
-// CurseForge вимкнено прапорцем `constants::ENABLE_CURSEFORGE`, але код збережено для відновлення.
+// CurseForge вмикається прапорцем `constants::ENABLE_CURSEFORGE` (потрібен API-ключ гравця).
 #[allow(dead_code)]
 mod curseforge;
 mod custom;
+mod danger;
 mod error;
 mod events;
 mod i18n;
@@ -19,6 +20,7 @@ mod loaders;
 mod manifest;
 mod minecraft;
 mod mirrors;
+mod modpack;
 mod modrinth;
 mod mods;
 mod pack_debugger;
@@ -51,6 +53,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_init_info,
+            commands::onboarding_profile,
+            commands::finish_onboarding,
             commands::check_launcher_update,
             commands::sync_all,
             commands::install_launcher_update,
@@ -72,6 +76,7 @@ fn main() {
             commands::remove_profile,
             commands::set_active_profile,
             commands::save_skin,
+            commands::pick_skin,
             commands::clear_skin,
             commands::get_skin,
             commands::play,
@@ -97,7 +102,14 @@ fn main() {
             commands::install_mod,
             commands::set_mod_enabled,
             commands::remove_mod,
-            commands::open_mods_folder
+            commands::open_mods_folder,
+            commands::content_status,
+            commands::install_shader_mod,
+            commands::search_modpacks,
+            commands::modpack_versions,
+            commands::install_modpack,
+            commands::reset_launcher_data,
+            commands::uninstall_launcher
         ])
         .run(tauri::generate_context!())
         .expect("помилка запуску лаунчера");

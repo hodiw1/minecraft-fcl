@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, State, WebviewWindow};
+use tauri::{AppHandle, Manager, State, WebviewWindow};
 
 use std::path::PathBuf;
 
@@ -7,9 +7,10 @@ use crate::changelog::{self, Changelog};
 use crate::constants::ENABLE_CURSEFORGE;
 use crate::config::{
     self, new_id, validate_api_key, validate_nickname, Config, Profile, ProjectBinding, GAME_LANGS,
-    PRESETS, UI_LANGS,
+    PRESETS, THEMES, UI_LANGS,
 };
 use crate::custom::{self, CustomSpec, LoaderVersion, McVersion};
+use crate::danger;
 use crate::error::{fail, AppError, Context, Result};
 use crate::events::{phase, status, step};
 use crate::i18n::{self, tr};
@@ -19,14 +20,15 @@ use crate::launch::{self, LastExit, LaunchRequest};
 use crate::loaders::LoaderKind;
 use crate::manifest::{self, Manifest};
 use crate::mirrors::{self, MirrorsInfo};
-use crate::mods::{self, Api, Source, Target};
+use crate::modpack::{self, ModpackReport};
+use crate::mods::{self, Api, ContentKind, Source, Target};
 use crate::pack_debugger::{self, DebugReport};
 use crate::paths::{Paths, DATA_CHILDREN};
 use crate::project::{self, InstanceEntry, ProjectIndex};
 use crate::server_status::{ping as ping_server, ServerStatus};
 use crate::state::AppState;
 use crate::sync::{self, SyncReport};
-use crate::system;
+use crate::system::{self, FileFilter};
 use crate::t;
 use crate::updater::{self, ReleaseInfo, UpdateOutcome};
 
@@ -50,6 +52,9 @@ async fn update_config<R>(
     change: impl FnOnce(&mut Config) -> Result<R>,
 ) -> Result<R> {
     let _lock = state.config_lock.lock().await;
+    if state.is_shutting_down() {
+        return fail(tr("Лаунчер завершує роботу", "The launcher is shutting down"));
+    }
     let root = Paths::app_root(app)?;
     let mut config = config::load(&root).await;
     let out = change(&mut config)?;
@@ -144,6 +149,8 @@ pub struct SettingsView {
     pub curseforge_key_hint: String,
     /// Ключ береться зі змінної середовища.
     pub curseforge_key_env: bool,
+    /// Акцентна палітра інтерфейсу.
+    pub theme: String,
 }
 
 fn mask_key(key: &str) -> String {
@@ -173,6 +180,7 @@ fn settings_view(config: &Config, paths: &Paths, max: u32) -> SettingsView {
             mask_key(saved)
         },
         curseforge_key_env: saved.is_empty() && config.curseforge_key().is_some(),
+        theme: config.theme.clone(),
     }
 }
 
@@ -187,6 +195,8 @@ pub struct InitInfo {
     pub project: Option<ProjectBinding>,
     pub active_instance: String,
     pub game_running: Option<String>,
+    /// Майстер першого запуску вже пройдено (нік + палітра).
+    pub onboarded: bool,
 }
 
 #[derive(Serialize)]
@@ -229,6 +239,8 @@ pub struct InstanceView {
     pub custom: bool,
     /// Кількість увімкнених модів (лише для власних збірок).
     pub mods_count: Option<usize>,
+    /// Звідки власна збірка: «Modrinth · 6.1.0» (порожньо — створена вручну).
+    pub origin: String,
 }
 
 #[derive(Serialize)]
@@ -242,6 +254,8 @@ pub struct ProjectView {
     pub offline: bool,
     /// Навіть кешу немає — показано лише збірки, встановлені на цьому комп'ютері.
     pub local_only: bool,
+    /// Чи підключено проєкт (без нього в списку — лише власні збірки).
+    pub has_project: bool,
     pub active_instance: String,
     pub instances: Vec<InstanceView>,
 }
@@ -284,6 +298,8 @@ pub struct SettingsPatch {
     /// Порожній рядок — видалити збережений ключ.
     #[serde(default)]
     pub curseforge_api_key: Option<String>,
+    #[serde(default)]
+    pub theme: Option<String>,
 }
 
 async fn build_view(
@@ -349,6 +365,7 @@ async fn build_view(
         update_available,
         custom: false,
         mods_count: None,
+        origin: String::new(),
     }
 }
 
@@ -374,7 +391,40 @@ async fn custom_view(paths: &Paths, id: &str, spec: &CustomSpec) -> InstanceView
         update_available: false,
         custom: true,
         mods_count: Some(mods::count_enabled(paths, id).await),
+        origin: spec.origin.clone(),
     }
+}
+
+/// Список без проєкту: лише власні збірки гравця (лаунчер працює й без прив'язки до проєкту).
+async fn local_view(app: &AppHandle, state: &AppState, config: &Config, paths: &Paths) -> Result<ProjectView> {
+    let customs = custom::list(paths).await;
+    let mut active = config.active_instance.clone();
+    if !customs.iter().any(|(id, _)| *id == active) {
+        active = customs.first().map(|(id, _)| id.clone()).unwrap_or_default();
+        if active != config.active_instance {
+            let chosen = active.clone();
+            update_config(app, state, move |config| {
+                config.active_instance = chosen;
+                Ok(())
+            })
+            .await?;
+        }
+    }
+    let mut instances = Vec::with_capacity(customs.len());
+    for (id, spec) in &customs {
+        instances.push(custom_view(paths, id, spec).await);
+    }
+    Ok(ProjectView {
+        code: String::new(),
+        name: String::new(),
+        description: String::new(),
+        icon: String::new(),
+        offline: false,
+        local_only: false,
+        has_project: false,
+        active_instance: active,
+        instances,
+    })
 }
 
 // ───────────────────────────── старт ─────────────────────────────
@@ -394,7 +444,65 @@ pub async fn get_init_info(app: AppHandle, state: State<'_, AppState>) -> Result
         project: config.project.clone(),
         active_instance: config.active_instance.clone(),
         game_running: state.running_game(),
+        onboarded: config.onboarded && !config.profiles.is_empty(),
     })
+}
+
+// ───────────────────────────── перший запуск ─────────────────────────────
+
+/// Крок 1 майстра: нікнейм (новий або вже наявний у списку) і палітра інтерфейсу.
+#[tauri::command]
+pub async fn onboarding_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    nickname: String,
+    theme: String,
+) -> Result<ProfilesView> {
+    load_ctx(&app).await?;
+    let nickname = nickname.trim().to_string();
+    validate_nickname(&nickname)?;
+    if !THEMES.contains(&theme.as_str()) {
+        return fail("unknown theme");
+    }
+    update_config(&app, &state, move |config| {
+        config.theme = theme;
+        if let Some(existing) = config
+            .profiles
+            .iter()
+            .find(|p| p.nickname.eq_ignore_ascii_case(&nickname))
+        {
+            config.active_profile = existing.id.clone();
+        } else {
+            if config.profiles.len() >= MAX_PROFILES {
+                return fail(tr(
+                    "Забагато профілів (максимум 20)",
+                    "Too many profiles (max 20)",
+                ));
+            }
+            let profile = Profile {
+                id: new_id(),
+                nickname,
+                has_skin: false,
+            };
+            config.active_profile = profile.id.clone();
+            config.profiles.push(profile);
+        }
+        Ok(ProfilesView::of(config))
+    })
+    .await
+}
+
+/// Крок 2 майстра завершено: проєкт підключено або натиснуто «Пропустити».
+#[tauri::command]
+pub async fn finish_onboarding(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
+    update_config(&app, &state, |config| {
+        if config.profiles.is_empty() {
+            return fail(tr("Спершу вкажи нікнейм", "Enter a nickname first"));
+        }
+        config.onboarded = true;
+        Ok(())
+    })
+    .await
 }
 
 /// Перевіряє нову версію лаунчера через UPDATE_MIRRORS. Якщо увімкнено автооновлення —
@@ -482,12 +590,15 @@ pub async fn connect_project(
     state: State<'_, AppState>,
     code: String,
 ) -> Result<ProjectBinding> {
-    let (_, paths) = load_ctx(&app).await?;
+    let (config, paths) = load_ctx(&app).await?;
     let (binding, index) = project::resolve_code(&state.client, &code).await?;
     let _ = project::save_cache(&paths, &binding, &index).await;
     let saved = binding.clone();
+    // Вибрана власна збірка лишається вибраною й після підключення проєкту.
+    let custom_selected = !config.active_instance.is_empty()
+        && custom::load(&paths, &config.active_instance).await.is_some();
     update_config(&app, &state, move |config| {
-        let keep = project::find(&index, &config.active_instance).is_some();
+        let keep = custom_selected || project::find(&index, &config.active_instance).is_some();
         if !keep {
             config.active_instance = index
                 .instances
@@ -504,9 +615,14 @@ pub async fn connect_project(
 
 #[tauri::command]
 pub async fn leave_project(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
-    update_config(&app, &state, |config| {
+    let (config, paths) = load_ctx(&app).await?;
+    let custom_selected = !config.active_instance.is_empty()
+        && custom::load(&paths, &config.active_instance).await.is_some();
+    update_config(&app, &state, move |config| {
         config.project = None;
-        config.active_instance.clear();
+        if !custom_selected {
+            config.active_instance.clear();
+        }
         Ok(())
     })
     .await
@@ -527,8 +643,9 @@ pub async fn load_changelog(app: AppHandle, state: State<'_, AppState>) -> Resul
     Ok(changelog::load(&state.client, &paths, config.project.as_ref()).await)
 }
 
+/// Асинхронна команда: синхронні команди Tauri виконуються в головному потоці вікна.
 #[tauri::command]
-pub fn open_github(repo: String, kind: String, tag: String) -> Result<()> {
+pub async fn open_github(repo: String, kind: String, tag: String) -> Result<()> {
     system::open_github(&repo, &kind, &tag)
 }
 
@@ -572,7 +689,9 @@ async fn resolve_index(
 #[tauri::command]
 pub async fn load_project(app: AppHandle, state: State<'_, AppState>) -> Result<ProjectView> {
     let (config, paths) = load_ctx(&app).await?;
-    let binding = require_project(&config)?;
+    let Some(binding) = config.project.clone() else {
+        return local_view(&app, &state, &config, &paths).await;
+    };
     let customs = custom::list(&paths).await;
     let resolved = resolve_index(&state, &paths, &binding, &customs).await?;
     assemble_view(&app, &state, &config, &paths, &binding, resolved, &customs).await
@@ -640,6 +759,7 @@ async fn assemble_view(
         icon: project::project_icon_url(&binding.index_url),
         offline,
         local_only,
+        has_project: true,
         active_instance: active,
         instances,
     })
@@ -753,7 +873,12 @@ pub async fn sync_all(app: AppHandle, state: State<'_, AppState>) -> Result<Sync
     let project = async {
         match &config.project {
             Some(binding) => Some(sync_project(&app, state, &config, &paths, binding).await),
-            None => None,
+            // Без проєкту синхронізуємо лише список власних збірок.
+            None => Some(local_view(&app, state, &config, &paths).await.map(|view| ProjectSync {
+                view,
+                new_instances: Vec::new(),
+                manifest_errors: 0,
+            })),
         }
     };
     let (launcher, project) = futures_util::future::join(launcher, project).await;
@@ -860,8 +985,16 @@ pub async fn save_settings(
     if let Some(key) = &patch.curseforge_api_key {
         validate_api_key(key.trim())?;
     }
+    if let Some(theme) = &patch.theme {
+        if !THEMES.contains(&theme.as_str()) {
+            return fail("unknown theme");
+        }
+    }
 
     let game_lang_changed = update_config(&app, &state, |config| {
+        if let Some(theme) = patch.theme.clone() {
+            config.theme = theme;
+        }
         if let Some(auto) = patch.auto_update_launcher {
             config.auto_update_launcher = auto;
         }
@@ -1120,7 +1253,42 @@ pub async fn save_skin(
     profile_id: String,
     bytes: Vec<u8>,
 ) -> Result<ProfilesView> {
-    let (_, paths) = load_ctx(&app).await?;
+    store_skin(&app, &state, profile_id, bytes).await
+}
+
+/// «Завантажити скін»: нативний діалог (`IFileOpenDialog`, фоновий STA-потік) і збереження
+/// одразу в Rust — без передачі мегабайтного масиву байтів через IPC як JSON.
+/// `Ok(None)` — гравець закрив діалог.
+#[tauri::command]
+pub async fn pick_skin(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    window: WebviewWindow,
+    profile_id: String,
+) -> Result<Option<ProfilesView>> {
+    let picked = system::pick_file(
+        window_handle(&window),
+        tr("Обери скін Minecraft (.png)", "Choose a Minecraft skin (.png)"),
+        FileFilter {
+            label: tr("Скін Minecraft", "Minecraft skin").to_string(),
+            extension: "png",
+        },
+    )
+    .await?;
+    let Some(path) = picked else {
+        return Ok(None);
+    };
+    let path = PathBuf::from(path);
+    let size = tokio::fs::metadata(&path).await?.len();
+    if size > MAX_SKIN_BYTES as u64 {
+        return fail(tr("Файл скіна завеликий", "The skin file is too large"));
+    }
+    let bytes = tokio::fs::read(&path).await?;
+    store_skin(&app, &state, profile_id, bytes).await.map(Some)
+}
+
+async fn store_skin(app: &AppHandle, state: &AppState, profile_id: String, bytes: Vec<u8>) -> Result<ProfilesView> {
+    let (_, paths) = load_ctx(app).await?;
     if bytes.len() > MAX_SKIN_BYTES {
         return fail(tr("Файл скіна завеликий", "The skin file is too large"));
     }
@@ -1142,7 +1310,7 @@ pub async fn save_skin(
     }
     tokio::fs::create_dir_all(paths.skins()).await?;
     tokio::fs::write(paths.skin_file(&profile_id), &bytes).await?;
-    update_config(&app, &state, |config| {
+    update_config(app, state, |config| {
         if let Some(profile) = config.profiles.iter_mut().find(|p| p.id == profile_id) {
             profile.has_skin = true;
         }
@@ -1305,6 +1473,8 @@ pub async fn play(
         instance::save_state(&paths, &instance_id, &st).await?;
         let manifest = spec.to_manifest();
         manifest::save_cache(&instance::manifest_cache(&paths, &instance_id), &manifest).await?;
+        // Дочекатися встановлення контенту, що вже йде, — гра не стартує з напівзавантаженим модом.
+        drop(state.mods_lock.lock().await);
         start_game(&app, &state, &paths, &config, &profile, &instance_id, &manifest).await?;
         let mut st = instance::load_state(&paths, &instance_id).await;
         if !st.installed {
@@ -1540,10 +1710,13 @@ pub async fn debug_instance(
 
 #[tauri::command]
 pub async fn pick_zip(window: WebviewWindow) -> Result<Option<String>> {
-    system::pick_zip(
+    system::pick_file(
         window_handle(&window),
         tr("Обери .zip архів збірки", "Choose the modpack .zip archive"),
-        tr("Архів збірки", "Modpack archive"),
+        FileFilter {
+            label: tr("Архів збірки", "Modpack archive").to_string(),
+            extension: "zip",
+        },
     )
     .await
 }
@@ -1619,6 +1792,7 @@ pub async fn import_local_pack(
                 loader: kind.id().to_string(),
                 loader_version: manifest.loader.version.clone(),
                 created: 0,
+                origin: String::new(),
             };
             report.created = true;
             (custom::create(&paths, spec).await?, false)
@@ -1740,6 +1914,8 @@ pub async fn delete_instance(
     if state.running_game().as_deref() == Some(instance_id.as_str()) {
         return Err(running_error());
     }
+    // Встановлення мода в цю ж збірку, що вже йде, має завершитися до видалення папки.
+    let _mods = state.mods_lock.lock().await;
     let (_, paths) = load_ctx(&app).await?;
     if keep_personal.unwrap_or(false) {
         // Опис власної збірки зберігаємо, щоб світи не «осиротіли» і збірку можна було відновити.
@@ -1777,10 +1953,30 @@ async fn require_custom(app: &AppHandle, instance_id: &str) -> Result<(Config, P
     check_id(instance_id)?;
     let (config, paths) = load_ctx(app).await?;
     let spec = custom::load(&paths, instance_id).await.ctx(tr(
-        "Моди можна додавати лише у власні збірки: склад збірки проєкту визначає її manifest.json",
-        "Mods can only be added to custom modpacks: a project modpack is defined by its manifest.json",
+        "Контент можна додавати лише у власні збірки: склад збірки проєкту визначає її manifest.json",
+        "Content can only be added to custom modpacks: a project modpack is defined by its manifest.json",
     ))?;
     Ok((config, paths, spec))
+}
+
+fn content_kind(kind: Option<&str>) -> Result<ContentKind> {
+    ContentKind::parse(kind.unwrap_or(""))
+}
+
+/// Фільтр каталогу для збірки: моди — версія гри + завантажувач, ресурс-паки й шейдери — версія гри.
+fn content_target(spec: &CustomSpec, kind: ContentKind) -> Result<Target> {
+    if kind == ContentKind::Modpack {
+        return fail("modpacks are not installed into an existing instance");
+    }
+    Target::content(kind, &spec.minecraft_version, &spec.loader)
+}
+
+fn api_for<'a>(state: &'a AppState, source: Option<&str>, key: Option<&'a str>) -> Result<Api<'a>> {
+    Ok(Api {
+        client: &state.client,
+        source: Source::parse(source.unwrap_or(""))?,
+        key,
+    })
 }
 
 fn ensure_not_running(state: &AppState, instance_id: &str) -> Result<()> {
@@ -1807,24 +2003,17 @@ pub async fn mod_sources(app: AppHandle) -> Result<ModSources> {
     })
 }
 
-fn mod_target(spec: &CustomSpec) -> Result<Target> {
-    Target::new(&spec.minecraft_version, &spec.loader)
-}
-
 #[tauri::command]
 pub async fn mod_categories(
     app: AppHandle,
     state: State<'_, AppState>,
     source: Option<String>,
+    kind: Option<String>,
 ) -> Result<Vec<mods::Category>> {
     let (config, _) = load_ctx(&app).await?;
     let key = config.curseforge_key();
-    let api = Api {
-        client: &state.client,
-        source: Source::parse(source.as_deref().unwrap_or(""))?,
-        key: key.as_deref(),
-    };
-    mods::categories(&api).await
+    let api = api_for(&state, source.as_deref(), key.as_deref())?;
+    mods::categories(&api, content_kind(kind.as_deref())?).await
 }
 
 #[tauri::command]
@@ -1836,20 +2025,17 @@ pub async fn search_mods(
     query: String,
     category: Option<String>,
     offset: Option<u32>,
+    kind: Option<String>,
 ) -> Result<mods::SearchPage> {
     let (config, _, spec) = require_custom(&app, &instance_id).await?;
-    let target = mod_target(&spec)?;
+    let target = content_target(&spec, content_kind(kind.as_deref())?)?;
     let key = config.curseforge_key();
-    let api = Api {
-        client: &state.client,
-        source: Source::parse(source.as_deref().unwrap_or(""))?,
-        key: key.as_deref(),
-    };
+    let api = api_for(&state, source.as_deref(), key.as_deref())?;
     let query: String = query.chars().take(100).collect();
     mods::search(&api, &target, &query, category.as_deref(), offset.unwrap_or(0)).await
 }
 
-/// Версії файлу мода, сумісні з версією Minecraft і завантажувачем збірки.
+/// Версії файлу (мода, ресурс-пака, шейдера), сумісні з версією Minecraft і завантажувачем збірки.
 #[tauri::command]
 pub async fn mod_versions(
     app: AppHandle,
@@ -1857,26 +2043,27 @@ pub async fn mod_versions(
     instance_id: String,
     source: Option<String>,
     project_id: String,
+    kind: Option<String>,
 ) -> Result<Vec<mods::ModVersion>> {
     mods::check_api_id(&project_id)?;
     let (config, _, spec) = require_custom(&app, &instance_id).await?;
-    let target = mod_target(&spec)?;
+    let target = content_target(&spec, content_kind(kind.as_deref())?)?;
     let key = config.curseforge_key();
-    let api = Api {
-        client: &state.client,
-        source: Source::parse(source.as_deref().unwrap_or(""))?,
-        key: key.as_deref(),
-    };
+    let api = api_for(&state, source.as_deref(), key.as_deref())?;
     mods::versions(&api, &target, &project_id).await
 }
 
-/// Власна збірка — моди з записами лаунчера; збірка проєкту — склад з manifest.json (лише перегляд).
+/// Власна збірка — вміст з записами лаунчера; збірка проєкту — склад з manifest.json (лише перегляд модів).
 #[tauri::command]
-pub async fn list_mods(app: AppHandle, instance_id: String) -> Result<Vec<mods::ModEntry>> {
+pub async fn list_mods(app: AppHandle, instance_id: String, kind: Option<String>) -> Result<Vec<mods::ModEntry>> {
     check_id(&instance_id)?;
+    let kind = content_kind(kind.as_deref())?;
+    if kind == ContentKind::Modpack {
+        return Ok(Vec::new());
+    }
     let (_, paths) = load_ctx(&app).await?;
-    if custom::load(&paths, &instance_id).await.is_some() {
-        return Ok(mods::list(&paths, &instance_id).await);
+    if custom::load(&paths, &instance_id).await.is_some() || kind != ContentKind::Mod {
+        return Ok(mods::list(&paths, &instance_id, kind).await);
     }
     let manifest = manifest::load_cached(&instance::manifest_cache(&paths, &instance_id)).await;
     Ok(mods::list_managed(&paths, &instance_id, manifest.as_ref()).await)
@@ -1890,6 +2077,7 @@ pub async fn install_mod(
     source: Option<String>,
     project_id: String,
     version_id: Option<String>,
+    kind: Option<String>,
 ) -> Result<mods::InstallReport> {
     let (config, paths, spec) = require_custom(&app, &instance_id).await?;
     ensure_not_running(&state, &instance_id)?;
@@ -1898,14 +2086,12 @@ pub async fn install_mod(
     if let Some(version) = &version_id {
         mods::check_api_id(version)?;
     }
-    let target = mod_target(&spec)?;
+    let target = content_target(&spec, content_kind(kind.as_deref())?)?;
     let key = config.curseforge_key();
-    let api = Api {
-        client: &state.client,
-        source: Source::parse(source.as_deref().unwrap_or(""))?,
-        key: key.as_deref(),
-    };
+    let api = api_for(&state, source.as_deref(), key.as_deref())?;
     let _lock = state.mods_lock.lock().await;
+    // Поки чекали на блокування, гру могли запустити.
+    ensure_not_running(&state, &instance_id)?;
     mods::install(&api, &paths, &instance_id, &target, &project_id, version_id).await
 }
 
@@ -1916,11 +2102,13 @@ pub async fn set_mod_enabled(
     instance_id: String,
     filename: String,
     enabled: bool,
+    kind: Option<String>,
 ) -> Result<()> {
+    let kind = content_kind(kind.as_deref())?;
     let (_, paths, _) = require_custom(&app, &instance_id).await?;
     ensure_not_running(&state, &instance_id)?;
     let _lock = state.mods_lock.lock().await;
-    mods::set_enabled(&paths, &instance_id, &filename, enabled).await
+    mods::set_enabled(&paths, &instance_id, kind, &filename, enabled).await
 }
 
 #[tauri::command]
@@ -1929,20 +2117,238 @@ pub async fn remove_mod(
     state: State<'_, AppState>,
     instance_id: String,
     filename: String,
+    kind: Option<String>,
 ) -> Result<()> {
+    let kind = content_kind(kind.as_deref())?;
     let (_, paths, _) = require_custom(&app, &instance_id).await?;
     ensure_not_running(&state, &instance_id)?;
     let _lock = state.mods_lock.lock().await;
-    mods::remove(&paths, &instance_id, &filename).await
+    mods::remove(&paths, &instance_id, kind, &filename).await
 }
 
 #[tauri::command]
-pub async fn open_mods_folder(app: AppHandle, instance_id: String) -> Result<()> {
+pub async fn open_mods_folder(app: AppHandle, instance_id: String, kind: Option<String>) -> Result<()> {
     check_id(&instance_id)?;
+    let kind = content_kind(kind.as_deref())?;
     let (_, paths) = load_ctx(&app).await?;
-    let dir = paths.instance_dir(&instance_id).join("mods");
-    tokio::fs::create_dir_all(&dir).await?;
+    let dir = paths.instance_dir(&instance_id).join(kind.folder());
     system::open_folder(&dir)
+}
+
+#[derive(Serialize)]
+pub struct ContentStatus {
+    /// У збірці є увімкнений Iris або Oculus (потрібен для шейдерпаків).
+    pub shader_mod: bool,
+    pub loader: String,
+    pub minecraft_version: String,
+}
+
+#[tauri::command]
+pub async fn content_status(app: AppHandle, instance_id: String) -> Result<ContentStatus> {
+    let (_, paths, spec) = require_custom(&app, &instance_id).await?;
+    Ok(ContentStatus {
+        shader_mod: mods::has_shader_mod(&paths, &instance_id).await,
+        loader: spec.loader,
+        minecraft_version: spec.minecraft_version,
+    })
+}
+
+/// «Встановити Iris / Oculus» з підказки у вкладці шейдерів (Modrinth, з залежностями).
+#[tauri::command]
+pub async fn install_shader_mod(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    instance_id: String,
+) -> Result<mods::InstallReport> {
+    let (_, paths, spec) = require_custom(&app, &instance_id).await?;
+    ensure_not_running(&state, &instance_id)?;
+    let candidates: &[&str] = match spec.loader.as_str() {
+        "fabric" | "quilt" => &["iris"],
+        "neoforge" => &["iris", "oculus"],
+        "forge" => &["oculus"],
+        _ => {
+            return fail(tr(
+                "Шейдерам потрібен мод Iris або Oculus, а у ванільній збірці моди не працюють. Створи збірку на Fabric, Forge, NeoForge або Quilt.",
+                "Shaders need the Iris or Oculus mod, and vanilla modpacks can't run mods. Create a Fabric, Forge, NeoForge or Quilt modpack.",
+            ))
+        }
+    };
+    let target = Target::new(&spec.minecraft_version, &spec.loader)?;
+    let api = api_for(&state, Some("modrinth"), None)?;
+    let _lock = state.mods_lock.lock().await;
+    ensure_not_running(&state, &instance_id)?;
+    let mut last = None;
+    for project in candidates {
+        match mods::install(&api, &paths, &instance_id, &target, project, None).await {
+            Ok(report) => return Ok(report),
+            Err(error) => last = Some(error),
+        }
+    }
+    Err(last.unwrap_or_else(|| AppError("no shader mod".into())))
+}
+
+// ───────────────────────────── готові збірки ─────────────────────────────
+
+#[tauri::command]
+pub async fn search_modpacks(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    source: Option<String>,
+    query: String,
+    category: Option<String>,
+    offset: Option<u32>,
+) -> Result<mods::SearchPage> {
+    let (config, _) = load_ctx(&app).await?;
+    let key = config.curseforge_key();
+    let api = api_for(&state, source.as_deref(), key.as_deref())?;
+    let query: String = query.chars().take(100).collect();
+    mods::search(&api, &Target::modpacks(), &query, category.as_deref(), offset.unwrap_or(0)).await
+}
+
+#[tauri::command]
+pub async fn modpack_versions(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    source: Option<String>,
+    project_id: String,
+) -> Result<Vec<mods::ModVersion>> {
+    mods::check_api_id(&project_id)?;
+    let (config, _) = load_ctx(&app).await?;
+    let key = config.curseforge_key();
+    let api = api_for(&state, source.as_deref(), key.as_deref())?;
+    mods::versions(&api, &Target::modpacks(), &project_id).await
+}
+
+#[derive(Serialize)]
+pub struct ModpackInstalled {
+    pub report: ModpackReport,
+    pub instance: InstanceView,
+}
+
+/// Встановлює готову збірку з Modrinth / CurseForge як нову ізольовану власну збірку.
+#[tauri::command]
+pub async fn install_modpack(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    source: Option<String>,
+    project_id: String,
+    version_id: Option<String>,
+) -> Result<ModpackInstalled> {
+    mods::check_api_id(&project_id)?;
+    let version_id = version_id.filter(|v| !v.is_empty());
+    if let Some(version) = &version_id {
+        mods::check_api_id(version)?;
+    }
+    let _guard = state.busy.try_lock().map_err(|_| busy_error())?;
+    let (config, paths) = load_ctx(&app).await?;
+    paths.ensure_shared_dirs().await?;
+    let key = config.curseforge_key();
+    let api = api_for(&state, source.as_deref(), key.as_deref())?;
+    let report = modpack::install(&app, &api, &paths, &project_id, version_id.as_deref()).await?;
+    let chosen = report.instance_id.clone();
+    update_config(&app, &state, move |config| {
+        config.active_instance = chosen;
+        Ok(())
+    })
+    .await?;
+    let spec = custom::load(&paths, &report.instance_id).await.ctx("custom.json")?;
+    let instance = custom_view(&paths, &report.instance_id, &spec).await;
+    Ok(ModpackInstalled { report, instance })
+}
+
+// ───────────────────────────── Danger Zone ─────────────────────────────
+
+fn ensure_idle(state: &AppState) -> Result<tokio::sync::MutexGuard<'_, ()>> {
+    let guard = state.busy.try_lock().map_err(|_| busy_error())?;
+    if state.running_game().is_some() {
+        return Err(running_error());
+    }
+    Ok(guard)
+}
+
+/// «Видалити все, окрім акаунту та проєктів»: збірки, спільні файли (Java, assets, libraries),
+/// кеш і технічні налаштування. Профілі, скіни та прив'язаний проєкт залишаються.
+#[tauri::command]
+pub async fn reset_launcher_data(app: AppHandle, state: State<'_, AppState>) -> Result<usize> {
+    let _guard = ensure_idle(&state)?;
+    // Дочекатися встановлення модів, що вже йде, — і не дати почати нове під час очищення.
+    let _mods = state.mods_lock.lock().await;
+    let (_, paths) = load_ctx(&app).await?;
+    status(&app, tr("Очищення даних лаунчера…", "Clearing launcher data…"));
+    let wiped = danger::wipe(danger::reset_targets(&paths)).await;
+    // Налаштування скидаємо навіть після часткової помилки (наприклад, файл зайнятий антивірусом).
+    update_config(&app, &state, |config| {
+        *config = config.reset_technical();
+        Ok(())
+    })
+    .await?;
+    let _ = tokio::fs::remove_dir_all(updater::setup_dir()).await;
+    let removed = wiped?;
+    status(&app, tr("Дані лаунчера очищено", "Launcher data cleared"));
+    Ok(removed)
+}
+
+/// «Видалити лаунчер повністю»: усі збірки й дані, конфіги в AppData, кеш WebView2 та сам .exe
+/// (через фоновий `cmd.exe` без вікна після виходу), потім лаунчер закривається.
+#[tauri::command]
+pub async fn uninstall_launcher(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
+    let _guard = ensure_idle(&state)?;
+    let _mods = state.mods_lock.lock().await;
+    let (_, paths) = load_ctx(&app).await?;
+    let identifier = app.config().identifier.clone();
+    status(&app, tr("Видалення лаунчера…", "Uninstalling the launcher…"));
+
+    // 1. Дані в обраній гравцем папці — лише відомі підпапки лаунчера, сама папка — якщо порожня.
+    if paths.data != paths.root {
+        let targets = DATA_CHILDREN.iter().map(|child| (paths.data.clone(), *child)).collect();
+        danger::wipe(targets).await?;
+        let _ = tokio::fs::remove_dir(&paths.data).await;
+    }
+    // 2. Корінь лаунчера в AppData (config.json, профілі, скіни, кеші, збірки за замовчуванням).
+    // Спершу забороняємо будь-які записи конфігу, щоб відкладене збереження з інтерфейсу
+    // не створило папку знову; при помилці — дозволяємо назад (лаунчер працює далі).
+    {
+        let _config = state.config_lock.lock().await;
+        state.shutting_down.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+    if let Err(error) = danger::remove_root(paths.root.clone(), &identifier).await {
+        state.shutting_down.store(false, std::sync::atomic::Ordering::SeqCst);
+        return Err(error);
+    }
+    let _ = tokio::fs::remove_dir_all(updater::setup_dir()).await;
+
+    // 3. Те, що зайняте поки лаунчер працює (сам .exe, дані WebView2), — після виходу.
+    let exe = std::env::current_exe().ctx(tr("не вдалося визначити шлях до .exe", "couldn't locate the .exe"))?;
+    let uninstaller = exe
+        .parent()
+        .map(|dir| dir.join("uninstall.exe"))
+        .filter(|path| path.is_file());
+    let local = app
+        .path()
+        .app_local_data_dir()
+        .ok()
+        .filter(|dir| danger::is_launcher_root(dir, &identifier) && *dir != paths.root);
+    // Корінь AppData — ще раз після виходу (на випадок, якщо щось встигло його відтворити).
+    let mut dirs: Vec<&std::path::Path> = vec![paths.root.as_path()];
+    if let Some(local) = &local {
+        dirs.push(local.as_path());
+    }
+    // Debug-збірку (cargo tauri dev) не видаляємо — інакше зникне бінарник розробника.
+    let release = !cfg!(debug_assertions);
+    let script = danger::cleanup_script(
+        release.then_some(exe.as_path()),
+        uninstaller.as_deref().filter(|_| release),
+        &dirs,
+    );
+    danger::spawn_cleanup(&script)?;
+
+    // 4. Відповідь встигає дійти до інтерфейсу, після чого лаунчер коректно завершується.
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(700)).await;
+        handle.exit(0);
+    });
+    Ok(())
 }
 
 #[tauri::command]
@@ -1978,6 +2384,7 @@ pub async fn delete_all_instances(app: AppHandle, state: State<'_, AppState>) ->
     if state.running_game().is_some() {
         return Err(running_error());
     }
+    let _mods = state.mods_lock.lock().await;
     let (_, paths) = load_ctx(&app).await?;
     let mut removed = 0;
     for disk in instance::list_on_disk(&paths).await {

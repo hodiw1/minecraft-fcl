@@ -22,6 +22,7 @@
   --accent-ink: #06170d;
   --accent-soft: rgba(60, 196, 111, 0.12);
   --accent-line: rgba(60, 196, 111, 0.45);
+  --accent-faint: rgba(60, 196, 111, 0.04);
 
   --warn: #e9a83b;
   --warn-soft: rgba(233, 168, 59, 0.12);
@@ -2141,71 +2142,6 @@ button.brand:active {
   border: 1px solid var(--line);
 }
 
-.ldr-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
-}
-
-/* 5 завантажувачів: чиста гра — на всю ширину, решта — парами */
-.ldr-grid .ldr-card[data-loader="vanilla"] {
-  grid-column: 1 / -1;
-}
-
-.ldr-card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.7rem 0.8rem;
-  text-align: left;
-  border-radius: var(--r);
-  color: var(--text);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  transition: border-color var(--fast) linear, background-color var(--fast) linear, transform var(--fast) var(--ease);
-}
-
-.ldr-card:hover {
-  border-color: var(--line-2);
-}
-
-.ldr-card:active {
-  transform: scale(0.98);
-}
-
-.ldr-card.on {
-  background: var(--accent-soft);
-  border-color: var(--accent-line);
-}
-
-.ldr-text {
-  min-width: 0;
-}
-
-.ldr-text b {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.95rem;
-}
-
-.ldr-text em {
-  font-style: normal;
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 0.05rem 0.4rem;
-  border-radius: 5px;
-  color: var(--accent-ink);
-  background: var(--accent);
-}
-
-.ldr-text small {
-  display: block;
-  margin-top: 0.15rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
 /* ───────── менеджер модів ───────── */
 
 .mods {
@@ -2911,7 +2847,7 @@ form.add-row.glass {
   inset: -1px;
   border-radius: inherit;
   border: 1px solid var(--accent-line);
-  background: linear-gradient(90deg, var(--accent-soft), rgba(60, 196, 111, 0.04) 80%);
+  background: linear-gradient(90deg, var(--accent-soft), var(--accent-faint) 80%);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--mid) var(--ease);
@@ -4649,11 +4585,592 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   background: var(--danger);
 }
 
+/* ───────── діалог створення: компактна сітка без скролу ───────── */
+
+.create-lead {
+  font-size: 0.9rem;
+}
+
+.create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "mc loader"
+    "name loader";
+  align-items: start;
+  gap: 0.6rem;
+}
+
+.cs-mc {
+  grid-area: mc;
+}
+
+.cs-loader {
+  grid-area: loader;
+}
+
+.cs-name {
+  grid-area: name;
+}
+
+.create-sub {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.create-sub .hint {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .create-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "mc" "loader" "name";
+  }
+}
+
+.modal[data-kind="create"] .modal-icon,
+.modal[data-kind="content"] .modal-icon {
+  display: none;
+}
+
+.modal[data-kind="create"] .modal-card {
+  gap: 0.7rem;
+  padding: 1.35rem 1.5rem;
+}
+
+.modal[data-kind="create"] .create-form {
+  margin-top: 0.7rem;
+  gap: 0.6rem;
+}
+
+.modal[data-kind="create"] .create-step {
+  padding: 0.75rem 0.85rem;
+  gap: 0.45rem;
+}
+
+.modal[data-kind="create"] .hint {
+  font-size: 0.8rem;
+}
+
+/* Плавне розгортання блоку «Версія завантажувача»: висота — через grid-template-rows
+   (0fr → 1fr), поява — через opacity/transform, без стрибка сусідів. */
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translate3d(0, -6px, 0);
+  transition:
+    grid-template-rows var(--mid) var(--ease),
+    opacity var(--mid) var(--ease),
+    transform var(--mid) var(--ease);
+}
+
+.collapse.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: none;
+}
+
+.collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+  /* запас під кільце фокуса, яке інакше обрізав би overflow */
+  margin: 0 -3px;
+  padding: 0 3px;
+}
+
+.collapse-inner > .field {
+  padding: 0.5rem 0 3px;
+}
+
+/* ───────── «багатий» випадний список: іконка + назва + опис ───────── */
+
+.dd-ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+
+.ldr-md {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.dd-stack {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.dd-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.dd-rich .dd-trigger {
+  height: 3.25rem;
+  padding-left: 0.7rem;
+}
+
+.dd-rich .dd-value {
+  gap: 0.65rem;
+}
+
+.dd-rich-panel .dd-opt {
+  min-height: 3rem;
+  gap: 0.65rem;
+  padding-block: 0.4rem;
+}
+
+/* ───────── каталог контенту: типи ───────── */
+
+.kind-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+  padding: 0.3rem;
+  border-radius: var(--r);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.kind-tabs button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 0;
+  height: 2.35rem;
+  padding: 0 0.6rem;
+  border-radius: calc(var(--r) - 3px);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color var(--fast) linear, transform var(--fast) var(--ease);
+}
+
+/* активна вкладка — окремий шар: проявляється через opacity/transform */
+.kind-tabs button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity var(--mid) var(--ease), transform var(--mid) var(--ease);
+}
+
+.kind-tabs button > * {
+  position: relative;
+}
+
+.kind-tabs button span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.kind-tabs button svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.kind-tabs button:hover {
+  color: var(--text);
+}
+
+.kind-tabs button:active {
+  transform: scale(0.97);
+}
+
+.kind-tabs button.on {
+  color: var(--accent);
+}
+
+.kind-tabs button.on::before {
+  opacity: 1;
+  transform: none;
+}
+
+.content-lead {
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+}
+
+.modal[data-kind="content"] .modal-card {
+  gap: 0.6rem;
+  padding: 1.3rem 1.5rem;
+}
+
+.modal[data-kind="content"] .mods {
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.modal[data-kind="content"] .content-lead {
+  margin-top: 0.6rem;
+}
+
+.modal[data-kind="content"] .mods-pane {
+  gap: 0.5rem;
+}
+
+.modal[data-kind="content"] .cf-note {
+  padding-block: 0.6rem;
+}
+
+/* Список підлаштовується під висоту вікна: на 1100×690 модалка вміщається без скролу */
+.modal[data-kind="content"] .mod-list {
+  max-height: max(9rem, calc(100vh - 32rem));
+}
+
+.cf-note .btn {
+  flex: none;
+}
+
+/* ───────── палітри ───────── */
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.theme-swatch {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  border-radius: var(--r);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  transition: border-color var(--fast) linear, transform var(--fast) var(--ease);
+}
+
+.theme-swatch i {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  color: var(--sw-ink);
+  background: var(--sw);
+}
+
+.theme-swatch i svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  stroke-width: 2.8;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity var(--mid) var(--ease), transform var(--mid) var(--ease);
+}
+
+.theme-swatch span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.theme-swatch:hover {
+  border-color: var(--line-2);
+}
+
+.theme-swatch:active {
+  transform: scale(0.97);
+}
+
+.theme-swatch.on {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.theme-swatch.on i svg {
+  opacity: 1;
+  transform: none;
+}
+
+/* живе прев'ю: справжні акцентні змінні, тож перефарбовується разом з інтерфейсом */
+.theme-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--r);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.tp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2rem;
+  padding: 0 0.85rem;
+  border-radius: var(--r-sm);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.tp-btn svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  fill: currentColor;
+  stroke: none;
+}
+
+.tp-chip {
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--r-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+
+.tp-switch {
+  position: relative;
+  flex: none;
+  width: 2.2rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.tp-switch i {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: calc(1.25rem - 6px);
+  height: calc(1.25rem - 6px);
+  border-radius: 50%;
+  background: var(--accent-ink);
+}
+
+.tp-bar {
+  flex: 1;
+  min-width: 2rem;
+  height: 0.4rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+
+.tp-bar i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  animation: tp-fill 2.4s var(--ease) infinite alternate;
+}
+
+@keyframes tp-fill {
+  from {
+    transform: scaleX(0.18);
+  }
+  to {
+    transform: scaleX(0.86);
+  }
+}
+
+/* ───────── перший запуск: два кроки ───────── */
+
+.ob-card {
+  width: min(34rem, 100%);
+  gap: 0.75rem;
+  padding: 1.5rem 1.75rem;
+}
+
+.ob-steps {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  list-style: none;
+}
+
+.ob-steps li {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+}
+
+.ob-steps li + li::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 0.2rem);
+  width: 1rem;
+  height: 1px;
+  background: var(--line-2);
+}
+
+.ob-steps li.on {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.ob-steps li.done {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+
+.ob-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ob-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ob-actions .btn-primary {
+  flex: 1;
+}
+
+/* «Пропустити» — помітна, але другорядна дія */
+.ob-skip {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+.project-list-inline {
+  max-height: 15rem;
+}
+
+/* ───────── без проєкту: заклик підключити ───────── */
+
+.inst-cta-soft {
+  margin-top: 0.55rem;
+  border-color: var(--line-2);
+}
+
+.inst-cta-soft > svg {
+  color: var(--muted);
+  background: var(--surface-2);
+}
+
+.inst-cta-soft:hover > svg {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ───────── Danger Zone ───────── */
+
+.danger-zone {
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--danger-line);
+}
+
+.dz-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #ff8f87;
+}
+
+.dz-head svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.dz-head h3 {
+  color: #ffb3ae;
+}
+
+.dz-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--r);
+  background: rgba(229, 83, 75, 0.05);
+  border: 1px solid rgba(229, 83, 75, 0.18);
+}
+
+.dz-row b {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.dz-row small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.dz-row .btn {
+  flex: none;
+}
+
+.dz-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.dz-confirm b {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  color: #ffb3ae;
+}
+
+.dz-confirm input[type="text"]:focus {
+  border-color: var(--danger);
+}
+
+@media (min-width: 1500px) {
+  .view-settings .danger-zone {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Нескінченні декоративні анімації не працюють, коли гра запущена або вікно згорнуте */
 body.calm .skeleton::after,
 body.calm .play.busy::after,
 body.calm .island.is-busy .island-dot,
-body.calm .progress-steps li.active::after {
+body.calm .progress-steps li.active::after,
+body.calm .tp-bar i {
   animation-play-state: paused;
 }
 

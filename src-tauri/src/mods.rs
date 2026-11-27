@@ -1,6 +1,7 @@
-//! Менеджер модів у стилі Prism Launcher: пошук і встановлення з Modrinth та CurseForge
-//! (з фільтром за версією Minecraft і завантажувачем, вибором версії файлу, перевіркою
-//! SHA-1/SHA-512 і обов'язковими залежностями), вмикання/вимикання (.jar ↔ .jar.disabled)
+//! Менеджер контенту у стилі Prism Launcher: пошук і встановлення модів, ресурс-паків,
+//! шейдерпаків і готових збірок з Modrinth та CurseForge (з фільтром за версією Minecraft
+//! і завантажувачем, вибором версії файлу, перевіркою SHA-1/SHA-512 і обов'язковими
+//! залежностями модів), вмикання/вимикання (`.jar` ↔ `.jar.disabled`, `.zip` ↔ `.zip.disabled`)
 //! та видалення.
 
 use std::collections::HashSet;
@@ -20,6 +21,76 @@ use crate::{curseforge, modrinth};
 
 pub const PAGE: u32 = 20;
 const MAX_INSTALLS: usize = 40;
+
+/// Тип контенту в каталозі. Модпак — окремий випадок: він не кладеться в папку збірки,
+/// а створює нову (див. `modpack.rs`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ContentKind {
+    Mod,
+    ResourcePack,
+    Shader,
+    Modpack,
+}
+
+impl ContentKind {
+    pub fn parse(raw: &str) -> Result<Self> {
+        match raw.trim().to_lowercase().as_str() {
+            "" | "mod" | "mods" => Ok(ContentKind::Mod),
+            "resourcepack" | "resourcepacks" => Ok(ContentKind::ResourcePack),
+            "shader" | "shaders" | "shaderpack" | "shaderpacks" => Ok(ContentKind::Shader),
+            "modpack" | "modpacks" => Ok(ContentKind::Modpack),
+            _ => fail("unknown content type"),
+        }
+    }
+
+    /// Папка всередині збірки.
+    pub fn folder(self) -> &'static str {
+        match self {
+            ContentKind::Mod => "mods",
+            ContentKind::ResourcePack => "resourcepacks",
+            ContentKind::Shader => "shaderpacks",
+            ContentKind::Modpack => "",
+        }
+    }
+
+    /// Розширення файлу (у нижньому регістрі, з крапкою).
+    pub fn extension(self) -> &'static str {
+        match self {
+            ContentKind::Mod => ".jar",
+            ContentKind::ResourcePack | ContentKind::Shader => ".zip",
+            ContentKind::Modpack => "",
+        }
+    }
+
+    /// Файл записів лаунчера в `.launcher/` збірки.
+    fn records_name(self) -> &'static str {
+        match self {
+            ContentKind::Mod => "mods.json",
+            ContentKind::ResourcePack => "resourcepacks.json",
+            ContentKind::Shader => "shaderpacks.json",
+            ContentKind::Modpack => "modpacks.json",
+        }
+    }
+
+    pub fn modrinth_type(self) -> &'static str {
+        match self {
+            ContentKind::Mod => "mod",
+            ContentKind::ResourcePack => "resourcepack",
+            ContentKind::Shader => "shader",
+            ContentKind::Modpack => "modpack",
+        }
+    }
+
+    /// `classId` у CurseForge API.
+    pub fn curseforge_class(self) -> u64 {
+        match self {
+            ContentKind::Mod => 6,
+            ContentKind::ResourcePack => 12,
+            ContentKind::Shader => 6552,
+            ContentKind::Modpack => 4471,
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Source {
@@ -55,14 +126,16 @@ pub struct Api<'a> {
     pub key: Option<&'a str>,
 }
 
-/// Для якої збірки шукаємо моди.
+/// Для якої збірки (і якого типу контенту) шукаємо.
 #[derive(Clone, Debug)]
 pub struct Target {
     pub minecraft_version: String,
     pub loader: String,
+    pub kind: ContentKind,
 }
 
 impl Target {
+    /// Моди: потрібен завантажувач.
     pub fn new(minecraft_version: &str, loader: &str) -> Result<Self> {
         let loader = loader.trim().to_lowercase();
         if !matches!(loader.as_str(), "fabric" | "forge" | "neoforge" | "quilt") {
@@ -74,11 +147,38 @@ impl Target {
         Ok(Self {
             minecraft_version: minecraft_version.trim().to_string(),
             loader,
+            kind: ContentKind::Mod,
         })
     }
 
+    /// Будь-який тип контенту. Ресурс-паки й шейдери фільтруються лише за версією Minecraft,
+    /// готові збірки — без фільтра (версію гри та завантажувач визначає сама збірка).
+    pub fn content(kind: ContentKind, minecraft_version: &str, loader: &str) -> Result<Self> {
+        match kind {
+            ContentKind::Mod => Self::new(minecraft_version, loader),
+            ContentKind::Modpack => Ok(Self::modpacks()),
+            _ => Ok(Self {
+                minecraft_version: minecraft_version.trim().to_string(),
+                loader: loader.trim().to_lowercase(),
+                kind,
+            }),
+        }
+    }
+
+    pub fn modpacks() -> Self {
+        Self {
+            minecraft_version: String::new(),
+            loader: String::new(),
+            kind: ContentKind::Modpack,
+        }
+    }
+
     /// Сумісні завантажувачі: Quilt запускає моди Fabric, NeoForge 1.20.1 — моди Forge.
+    /// Для ресурс-паків, шейдерів і збірок фільтра за завантажувачем немає.
     pub fn loaders(&self) -> Vec<&'static str> {
+        if self.kind != ContentKind::Mod {
+            return Vec::new();
+        }
         match (self.loader.as_str(), self.minecraft_version.as_str()) {
             ("quilt", _) => vec!["quilt", "fabric"],
             ("neoforge", "1.20.1") => vec!["neoforge", "forge"],
@@ -99,6 +199,8 @@ pub struct ModHit {
     pub downloads: u64,
     pub author: String,
     pub categories: Vec<String>,
+    /// Найновіші версії Minecraft проєкту (для карток готових збірок).
+    pub game_versions: Vec<String>,
 }
 
 #[derive(Serialize, Default)]
@@ -184,10 +286,10 @@ pub async fn search(
     }
 }
 
-pub async fn categories(api: &Api<'_>) -> Result<Vec<Category>> {
+pub async fn categories(api: &Api<'_>, kind: ContentKind) -> Result<Vec<Category>> {
     match api.source {
-        Source::Modrinth => modrinth::categories(api.client).await,
-        Source::CurseForge => curseforge::categories(api).await,
+        Source::Modrinth => modrinth::categories(api.client, kind).await,
+        Source::CurseForge => curseforge::categories(api, kind).await,
     }
 }
 
@@ -198,7 +300,7 @@ pub async fn versions(api: &Api<'_>, target: &Target, project: &str) -> Result<V
     }
 }
 
-async fn resolve(
+pub async fn resolve(
     api: &Api<'_>,
     target: &Target,
     project: &str,
@@ -242,7 +344,7 @@ impl ModRecord {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct ModEntry {
     pub source: String,
     pub project_id: String,
@@ -258,37 +360,60 @@ pub struct ModEntry {
     pub managed: bool,
 }
 
-fn records_file(paths: &Paths, id: &str) -> PathBuf {
-    paths.instance_meta(id).join("mods.json")
+fn records_file(paths: &Paths, id: &str, kind: ContentKind) -> PathBuf {
+    paths.instance_meta(id).join(kind.records_name())
+}
+
+fn content_dir(paths: &Paths, id: &str, kind: ContentKind) -> PathBuf {
+    paths.instance_dir(id).join(kind.folder())
 }
 
 fn mods_dir(paths: &Paths, id: &str) -> PathBuf {
-    paths.instance_dir(id).join("mods")
+    content_dir(paths, id, ContentKind::Mod)
 }
 
-async fn load_records(paths: &Paths, id: &str) -> Vec<ModRecord> {
-    match tokio::fs::read_to_string(records_file(paths, id)).await {
+async fn load_records(paths: &Paths, id: &str, kind: ContentKind) -> Vec<ModRecord> {
+    match tokio::fs::read_to_string(records_file(paths, id, kind)).await {
+        // Пошкоджений файл записів не ламає список — моди просто покажуться як «додані вручну».
         Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
         Err(_) => Vec::new(),
     }
 }
 
-async fn save_records(paths: &Paths, id: &str, records: &[ModRecord]) -> Result<()> {
+async fn save_records(paths: &Paths, id: &str, kind: ContentKind, records: &[ModRecord]) -> Result<()> {
     tokio::fs::create_dir_all(paths.instance_meta(id)).await?;
-    tokio::fs::write(records_file(paths, id), serde_json::to_string_pretty(records)?).await?;
+    let target = records_file(paths, id, kind);
+    let mut temp = target.clone().into_os_string();
+    temp.push(".tmp");
+    let temp = PathBuf::from(temp);
+    tokio::fs::write(&temp, serde_json::to_string_pretty(records)?).await?;
+    tokio::fs::rename(&temp, &target).await?;
     Ok(())
 }
 
-/// Безпечне ім'я файлу мода: без шляхів, лише .jar.
-fn safe_filename(name: &str) -> Result<String> {
+/// Зарезервовані імена пристроїв Windows (`CON`, `NUL`, `COM1`…), які не можна використовувати як імена файлів.
+pub fn is_reserved_name(name: &str) -> bool {
+    let stem = name.split('.').next().unwrap_or("").trim().to_ascii_uppercase();
+    matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+            && stem.len() == 4
+            && stem.as_bytes()[3].is_ascii_digit())
+}
+
+/// Безпечне ім'я файлу контенту: без шляхів і службових імен, з потрібним розширенням.
+fn safe_filename(name: &str, kind: ContentKind) -> Result<String> {
     let name = name.trim();
-    let bad = name.is_empty()
+    // Готові збірки не мають файлів у папці збірки: порожнє розширення пропустило б будь-яке ім'я.
+    let bad = kind == ContentKind::Modpack
+        || name.is_empty()
         || name.len() > 160
-        || name.contains(['/', '\\', ':'])
+        || name.contains(['/', '\\', ':', '\0', '<', '>', '"', '|', '?', '*'])
         || name.starts_with('.')
-        || !name.to_ascii_lowercase().ends_with(".jar");
+        || name.ends_with([' ', '.'])
+        || is_reserved_name(name)
+        || !name.to_ascii_lowercase().ends_with(kind.extension());
     if bad {
-        return fail(t!("Некоректне ім'я файлу мода: {}", "Invalid mod file name: {}", name));
+        return fail(t!("Некоректне ім'я файлу: {}", "Invalid file name: {}", name));
     }
     Ok(name.to_string())
 }
@@ -310,22 +435,54 @@ pub async fn count_enabled(paths: &Paths, id: &str) -> usize {
 }
 
 fn title_from_file(filename: &str) -> String {
-    filename
-        .strip_suffix(".jar")
-        .or_else(|| filename.strip_suffix(".JAR"))
-        .unwrap_or(filename)
-        .to_string()
+    let lower = filename.to_ascii_lowercase();
+    for ext in [".jar", ".zip"] {
+        if lower.ends_with(ext) {
+            return filename[..filename.len() - ext.len()].to_string();
+        }
+    }
+    filename.to_string()
 }
 
-/// Моди власної збірки: записи лаунчера + файли, додані вручну.
-pub async fn list(paths: &Paths, id: &str) -> Vec<ModEntry> {
-    let mut records = load_records(paths, id).await;
+/// Чи встановлено мод для шейдерів (Iris або Oculus) і чи він увімкнений.
+pub async fn has_shader_mod(paths: &Paths, id: &str) -> bool {
+    const SHADER_MODS: [&str; 4] = ["iris", "oculus", "YL57xq9U", "GchcoXML"];
+    let records = load_records(paths, id, ContentKind::Mod).await;
     let dir = mods_dir(paths, id);
+    let by_record = records.iter().any(|r| {
+        dir.join(&r.filename).is_file()
+            && (SHADER_MODS.contains(&r.project_id.as_str())
+                || ["455508", "581495"].contains(&r.project_id.as_str())
+                || r.title.to_lowercase().starts_with("iris")
+                || r.title.to_lowercase().starts_with("oculus"))
+    });
+    if by_record {
+        return true;
+    }
+    let Ok(mut entries) = tokio::fs::read_dir(&dir).await else {
+        return false;
+    };
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let name = entry.file_name().to_string_lossy().to_lowercase();
+        if name.ends_with(".jar") && (name.starts_with("iris") || name.starts_with("oculus")) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Вміст власної збірки (моди / ресурс-паки / шейдери): записи лаунчера + файли, додані вручну.
+pub async fn list(paths: &Paths, id: &str, kind: ContentKind) -> Vec<ModEntry> {
+    if kind == ContentKind::Modpack {
+        return Vec::new();
+    }
+    let mut records = load_records(paths, id, kind).await;
+    let dir = content_dir(paths, id, kind);
     // Записи, файлів яких уже немає (гравець видалив вручну), прибираємо.
     let before = records.len();
     records.retain(|r| dir.join(&r.filename).is_file() || dir.join(disabled_name(&r.filename)).is_file());
     if records.len() != before {
-        let _ = save_records(paths, id, &records).await;
+        let _ = save_records(paths, id, kind, &records).await;
     }
 
     let mut out: Vec<ModEntry> = records
@@ -352,7 +509,10 @@ pub async fn list(paths: &Paths, id: &str) -> Vec<ModEntry> {
                 Some(base) => (base.to_string(), false),
                 None => (name.clone(), true),
             };
-            if !filename.to_lowercase().ends_with(".jar") || known.contains(&filename.to_lowercase()) {
+            if !filename.to_lowercase().ends_with(kind.extension())
+                || known.contains(&filename.to_lowercase())
+                || !entry.file_type().await.map(|t| t.is_file()).unwrap_or(false)
+            {
                 continue;
             }
             out.push(ModEntry {
@@ -431,7 +591,8 @@ pub struct InstallReport {
     pub missing: Vec<String>,
 }
 
-/// Встановлює мод (конкретну версію або найкращу сумісну) і всі обов'язкові залежності.
+/// Встановлює мод / ресурс-пак / шейдер (конкретну версію або найкращу сумісну);
+/// для модів — ще й усі обов'язкові залежності.
 pub async fn install(
     api: &Api<'_>,
     paths: &Paths,
@@ -440,9 +601,13 @@ pub async fn install(
     project: &str,
     version: Option<String>,
 ) -> Result<InstallReport> {
-    let dir = mods_dir(paths, id);
+    let kind = target.kind;
+    if kind == ContentKind::Modpack {
+        return fail("modpacks are installed as new instances");
+    }
+    let dir = content_dir(paths, id, kind);
     tokio::fs::create_dir_all(&dir).await?;
-    let mut records = load_records(paths, id).await;
+    let mut records = load_records(paths, id, kind).await;
     let mut report = InstallReport::default();
     let source = api.source.id();
     let mut seen: HashSet<String> = records
@@ -474,11 +639,11 @@ pub async fn install(
             Resolution::NoVersion { title } => {
                 if first {
                     return fail(t!(
-                        "Мод «{}» не має версії для Minecraft {} ({})",
+                        "«{}» не має версії для Minecraft {} ({})",
                         "\"{}\" has no version for Minecraft {} ({})",
                         title,
                         target.minecraft_version,
-                        target.loader
+                        if kind == ContentKind::Mod { target.loader.as_str() } else { kind.folder() }
                     ));
                 }
                 report.missing.push(title);
@@ -495,7 +660,7 @@ pub async fn install(
         if !file.url.starts_with("https://") {
             return fail("mod url is not https");
         }
-        let filename = safe_filename(&file.filename)?;
+        let filename = safe_filename(&file.filename, kind)?;
 
         // Стару версію цього ж мода прибираємо.
         let old: Vec<ModRecord> = records
@@ -524,9 +689,13 @@ pub async fn install(
             filename,
             dependency,
         });
-        save_records(paths, id, &records).await?;
+        save_records(paths, id, kind, &records).await?;
         report.installed.push(file.title.clone());
 
+        // Залежності мають сенс лише для модів (шейдер «потребує Iris» — це не файл у shaderpacks/).
+        if kind != ContentKind::Mod {
+            break;
+        }
         for (dep_project, dep_version) in file.dependencies {
             if !seen.contains(&dep_project) {
                 queue.push((dep_project, dep_version, true));
@@ -538,9 +707,9 @@ pub async fn install(
 
 // ───────────────────────────── керування ─────────────────────────────
 
-pub async fn set_enabled(paths: &Paths, id: &str, filename: &str, enabled: bool) -> Result<()> {
-    let filename = safe_filename(filename)?;
-    let dir = mods_dir(paths, id);
+pub async fn set_enabled(paths: &Paths, id: &str, kind: ContentKind, filename: &str, enabled: bool) -> Result<()> {
+    let filename = safe_filename(filename, kind)?;
+    let dir = content_dir(paths, id, kind);
     let on = dir.join(&filename);
     let off = dir.join(disabled_name(&filename));
     if enabled && off.is_file() {
@@ -551,12 +720,56 @@ pub async fn set_enabled(paths: &Paths, id: &str, filename: &str, enabled: bool)
     Ok(())
 }
 
-pub async fn remove(paths: &Paths, id: &str, filename: &str) -> Result<()> {
-    let filename = safe_filename(filename)?;
-    let dir = mods_dir(paths, id);
+pub async fn remove(paths: &Paths, id: &str, kind: ContentKind, filename: &str) -> Result<()> {
+    let filename = safe_filename(filename, kind)?;
+    let dir = content_dir(paths, id, kind);
     let _ = tokio::fs::remove_file(dir.join(&filename)).await;
     let _ = tokio::fs::remove_file(dir.join(disabled_name(&filename))).await;
-    let mut records = load_records(paths, id).await;
+    let mut records = load_records(paths, id, kind).await;
     records.retain(|r| !r.filename.eq_ignore_ascii_case(&filename));
-    save_records(paths, id, &records).await
+    save_records(paths, id, kind, &records).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn filenames_are_checked_per_kind() {
+        assert!(safe_filename("sodium-0.6.jar", ContentKind::Mod).is_ok());
+        assert!(safe_filename("Faithful 32x.zip", ContentKind::ResourcePack).is_ok());
+        assert!(safe_filename("BSL_v8.zip", ContentKind::Shader).is_ok());
+        for bad in ["../x.jar", "a\\b.jar", "C:x.jar", ".hidden.jar", "x.zip", "CON.jar", "nul.jar", "x.jar.", "a|b.jar"] {
+            assert!(safe_filename(bad, ContentKind::Mod).is_err(), "{bad}");
+        }
+        assert!(safe_filename("pack.jar", ContentKind::ResourcePack).is_err());
+        // Модпак не має папки у збірці: жодне ім'я (навіть options.txt) не проходить.
+        assert!(safe_filename("options.txt", ContentKind::Modpack).is_err());
+        assert!(safe_filename("x.jar", ContentKind::Modpack).is_err());
+    }
+
+    #[test]
+    fn content_kinds_map_to_folders() {
+        assert_eq!(ContentKind::parse("resourcepack").unwrap().folder(), "resourcepacks");
+        assert_eq!(ContentKind::parse("shader").unwrap().folder(), "shaderpacks");
+        assert_eq!(ContentKind::parse("").unwrap(), ContentKind::Mod);
+        assert!(ContentKind::parse("worlds").is_err());
+        assert_eq!(ContentKind::Modpack.curseforge_class(), 4471);
+    }
+
+    #[test]
+    fn non_mod_targets_have_no_loader_filter() {
+        let target = Target::content(ContentKind::ResourcePack, "1.21.1", "vanilla").unwrap();
+        assert!(target.loaders().is_empty());
+        assert!(Target::content(ContentKind::Mod, "1.21.1", "vanilla").is_err());
+        assert_eq!(Target::content(ContentKind::Mod, "1.20.1", "neoforge").unwrap().loaders(), vec!["neoforge", "forge"]);
+    }
+
+    #[test]
+    fn reserved_names() {
+        assert!(is_reserved_name("COM1.zip"));
+        assert!(is_reserved_name("aux"));
+        assert!(!is_reserved_name("computer.jar"));
+        assert!(!is_reserved_name("console.zip"));
+    }
 }

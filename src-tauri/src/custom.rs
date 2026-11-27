@@ -1,5 +1,6 @@
 //! Власні збірки гравця: будь-яка версія Minecraft з серверів Mojang
-//! і будь-який завантажувач (Fabric, Forge, NeoForge) — без маніфесту проєкту.
+//! і будь-який завантажувач (Fabric, Forge, NeoForge, Quilt) — без маніфесту проєкту.
+//! Сюди ж потрапляють готові збірки спільноти з Modrinth / CurseForge (див. `modpack.rs`).
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -17,6 +18,7 @@ use crate::util::fetch_json;
 const VERSION_MANIFEST_URL: &str =
     "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 const MAX_NAME: usize = 40;
+const MAX_ORIGIN: usize = 80;
 
 /// Опис власної збірки: `instances/<id>/.launcher/custom.json`.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -29,6 +31,9 @@ pub struct CustomSpec {
     pub loader_version: String,
     #[serde(default)]
     pub created: u64,
+    /// Звідки збірка: «Modrinth · 6.1.0», «CurseForge · 2.4» (порожньо — створена вручну).
+    #[serde(default)]
+    pub origin: String,
 }
 
 impl CustomSpec {
@@ -81,10 +86,25 @@ pub async fn list(paths: &Paths) -> Vec<(String, CustomSpec)> {
 }
 
 fn validate(spec: &mut CustomSpec) -> Result<()> {
-    spec.name = spec.name.trim().chars().take(MAX_NAME).collect();
+    spec.name = spec
+        .name
+        .trim()
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(MAX_NAME)
+        .collect::<String>()
+        .trim()
+        .to_string();
     if spec.name.is_empty() {
         return fail(tr("Вкажи назву збірки", "Enter a modpack name"));
     }
+    spec.origin = spec
+        .origin
+        .trim()
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(MAX_ORIGIN)
+        .collect();
     spec.minecraft_version = spec.minecraft_version.trim().to_string();
     if !is_safe_token(&spec.minecraft_version) {
         return fail(tr("Обери версію Minecraft", "Choose a Minecraft version"));

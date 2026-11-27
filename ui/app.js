@@ -7,9 +7,9 @@ const listen = tauri.event.listen;
 const NICK_RE = /^[A-Za-z0-9_]{3,16}$/;
 const MB = 1024 * 1024;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
-/** CurseForge тимчасово прихований з інтерфейсу (код збережено). Має збігатися з
+/** CurseForge у каталозі контенту (потрібен API-ключ гравця). Має збігатися з
  *  `ENABLE_CURSEFORGE` у src-tauri/src/constants.rs. */
-const ENABLE_CURSEFORGE = false;
+const ENABLE_CURSEFORGE = true;
 
 /* ═══════════════════════════ ПОВЕДІНКА ВІКНА ═══════════════════════════ */
 
@@ -41,21 +41,95 @@ const DICT = {
     "boot.loading": "Завантаження…",
     "boot.updating": "Оновлення лаунчера…",
     "ob.title": "Ласкаво просимо!",
-    "ob.titleBack": "Підключи проєкт",
-    "ob.sub": "Щоб почати, обери проєкт зі списку та вкажи свій ігровий нік.",
-    "ob.subBack": "Обери проєкт, до якого хочеш підключитися.",
-    "ob.pick": "Проєкти",
+    "ob.sub1": "Terrapolis — легкий і швидкий лаунчер Minecraft. Вкажи нік і обери, яким буде лаунчер.",
+    "ob.next": "Далі",
+    "ob.title2": "Проєкти спільноти",
+    "ob.sub2": "Підключись до проєкту — і його збірки з'являться в лаунчері. Або пропусти цей крок: власні збірки можна створювати й запускати одразу.",
+    "ob.back": "Назад",
+    "ob.skip": "Пропустити",
+    "ob.pick": "Доступні проєкти",
     "ob.loadingProjects": "Шукаємо проєкти…",
-    "ob.noProjects": "Проєктів поки не знайдено. Якщо маєш код — введи його нижче.",
-    "ob.code": "Або введи код проєкту",
-    "ob.codePh": "Введіть код проєкту",
-    "ob.codeHint": "Лише для прихованих проєктів — код дає адміністратор.",
+    "ob.noProjects": "Публічних проєктів поки не знайдено. Якщо маєш код — введи його нижче.",
+    "ob.code": "Або введи код проєкту чи owner/repo",
+    "ob.codePh": "Код проєкту або owner/repo",
     "ob.nick": "Твій ігровий нік",
     "ob.nickPh": "Введіть ігровий нікнейм",
     "ob.nickHint": "Під цим ім'ям тебе бачитимуть у грі. 3–16 символів: латиниця, цифри, _",
     "ob.submit": "Підключитися",
     "ob.checking": "Підключаємося…",
-    "ob.needCode": "Обери проєкт або введи код",
+    "ob.needCode": "Обери проєкт або введи код — чи натисни «Пропустити»",
+    "theme.title": "Кольорова палітра",
+    "theme.hint": "Акцентний колір кнопок, перемикачів і виділення. Змінюється миттєво.",
+    "theme.previewChip": "Fabric 1.21.1",
+    "theme.emerald": "Смарагдовий",
+    "theme.cobalt": "Кобальтовий",
+    "theme.amber": "Бурштиновий",
+    "theme.ruby": "Рубіновий",
+    "theme.amethyst": "Аметистовий",
+    "theme.graphite": "Графіт",
+    "top.noProject": "Без проєкту — лише власні збірки",
+    "home.connectTitle": "Підключити проєкт",
+    "home.connectText": "Збірки спільноти — за кодом проєкту або owner/repo",
+    "home.browsePacks": "Готові збірки з Modrinth і CurseForge",
+    "project.none": "Проєкт не підключено",
+    "project.noneSub": "Лаунчер повністю працює й без проєкту: створюй власні збірки або встановлюй готові з Modrinth і CurseForge.",
+    "project.connectTitle": "Підключити проєкт",
+    "project.connectHint": "Обери проєкт зі списку або введи код від адміністратора чи репозиторій GitHub у форматі owner/repo.",
+    "project.left": "Ти вийшов з проєкту — власні збірки залишились на місці",
+    "create.loader": "Завантажувач",
+    "create.browse": "Готова збірка…",
+    "content.title": "Контент — {name}",
+    "content.mods": "Моди",
+    "content.resourcepacks": "Ресурс-паки",
+    "content.shaders": "Шейдери",
+    "content.modpacks": "Готові збірки",
+    "content.browse": "Знайти",
+    "content.leadResourcepacks": "Ресурс-паки для Minecraft {mc}. Увімкнути встановлений пак можна в грі: Налаштування → Пакети ресурсів.",
+    "content.leadShaders": "Шейдерпаки для Minecraft {mc}. Обрати шейдер можна в грі: Налаштування → Відео → Шейдери.",
+    "content.leadModpacks": "Готові збірки спільноти: лаунчер створить нову окрему збірку з потрібною версією Minecraft і завантажувачем та завантажить усі її файли.",
+    "content.searchPhRp": "Пошук ресурс-паків: Faithful, Fresh Animations…",
+    "content.searchPhSh": "Пошук шейдерів: Complementary, BSL, Sildur's…",
+    "content.searchPhMp": "Пошук збірок: Fabulously Optimized, Cobblemon…",
+    "content.popular": "Популярне для цієї версії",
+    "content.popularPacks": "Популярні готові збірки",
+    "content.none": "Тут поки порожньо. Перейди у «Знайти», щоб додати перше.",
+    "content.folderRp": "Папка resourcepacks",
+    "content.folderSh": "Папка shaderpacks",
+    "content.enable": "Увімкнути або вимкнути",
+    "content.remove": "Видалити",
+    "content.removed": "«{name}» видалено",
+    "content.shaderNeed": "Шейдерам потрібен мод Iris або Oculus — у цій збірці його ще немає.",
+    "content.shaderInstall": "Встановити {mod}",
+    "content.shaderVanilla": "Шейдерам потрібен мод Iris або Oculus, а у ванільній збірці моди не працюють. Створи збірку на Fabric, NeoForge, Forge або Quilt.",
+    "content.shaderModDone": "{mod} встановлено — шейдер обирається в грі: Налаштування → Відео → Шейдери",
+    "content.modsVanilla": "Моди потребують завантажувача. Ресурс-паки працюють і у ванільній збірці — вкладка «Ресурс-паки».",
+    "mp.installing": "Встановлення збірки…",
+    "mp.progress": "Встановлення «{name}» — {p}%",
+    "mp.doneTitle": "Збірку «{name}» встановлено",
+    "mp.doneText": "Створено окрему збірку: Minecraft {mc} · {loader}. Натисни «Грати» — лаунчер докачає гру та завантажувач.",
+    "mp.files": "Завантажено файлів",
+    "mp.overrides": "З overrides",
+    "mp.skipped": "Пропущено",
+    "mp.missing": "Автори цих файлів заборонили завантаження стороннім лаунчерам — завантаж їх вручну з CurseForge у відповідну папку збірки:",
+    "mp.mc": "Minecraft {v}",
+    "mp.latest": "Найновіша версія",
+    "danger.title": "Danger Zone",
+    "danger.resetTitle": "Видалити все, окрім акаунту та проєктів",
+    "danger.resetSub": "Збірки, Java, бібліотеки й ресурси гри, кеш завантажень і технічні налаштування. Нікнейми, скіни та проєкти залишаться.",
+    "danger.resetGo": "Очистити…",
+    "danger.resetConfirmTitle": "Очистити дані лаунчера?",
+    "danger.resetConfirmText": "<p>Буде видалено: <b>усі збірки</b> разом зі світами та скріншотами, Java, бібліотеки й ресурси гри, кеш завантажень. Технічні налаштування (ОЗУ, графіка, мова гри, папка даних, ключ CurseForge) повернуться до стандартних.</p><p><b>Залишаться:</b> нікнейми, скіни, підключений проєкт, мова інтерфейсу та палітра.</p>",
+    "danger.resetting": "Очищення даних лаунчера…",
+    "danger.resetDone": "Дані лаунчера очищено",
+    "danger.uninstallTitle": "Видалити лаунчер повністю",
+    "danger.uninstallSub": "Усі збірки, профілі, налаштування, кеш WebView2 і сам лаунчер. Після цього програма закриється.",
+    "danger.uninstallGo": "Видалити лаунчер…",
+    "danger.uninstallConfirmTitle": "Видалити Terrapolis повністю?",
+    "danger.uninstallConfirmText": "<p>Буде безповоротно видалено <b>усе</b>: збірки, світи, скріншоти, профілі, скіни, налаштування, кеш WebView2 і сам лаунчер. Скасувати це не можна.</p><p>Після видалення програма закриється.</p>",
+    "danger.uninstalling": "Видалення лаунчера…",
+    "danger.bye": "Лаунчер видалено. До зустрічі!",
+    "danger.typeHint": "Щоб підтвердити, введи <b>{word}</b>",
+    "danger.word": "ВИДАЛИТИ",
     "nav.home": "Збірки",
     "nav.profiles": "Профілі",
     "nav.project": "Проєкт",
@@ -90,12 +164,12 @@ const DICT = {
     "home.customTitle": "Власні збірки",
     "home.customEmpty": "Власних збірок поки немає. Натисни «+», щоб створити.",
     "home.customMeta": "Власна збірка",
-    "home.customDescNew": "Натисни «Грати» — лаунчер сам завантажить Minecraft {mc} і {loader}. Моди можна додати вже зараз кнопкою «Моди».",
-    "home.customDescMods": "Додавай моди кнопкою «Моди»: показуються лише сумісні з {loader} і Minecraft {mc}, залежності ставляться самі.",
-    "home.customDescVanilla": "Чиста гра Minecraft {mc} без модів.",
+    "home.customDescNew": "Натисни «Грати» — лаунчер сам завантажить Minecraft {mc} і {loader}. Моди, ресурс-паки й шейдери можна додати вже зараз кнопкою «Контент».",
+    "home.customDescMods": "Кнопка «Контент» — моди, ресурс-паки й шейдери: показується лише сумісне з {loader} і Minecraft {mc}, залежності ставляться самі.",
+    "home.customDescVanilla": "Чиста гра Minecraft {mc} без модів. Ресурс-паки можна додати кнопкою «Контент».",
     "create.button": "Створити власну збірку",
     "create.title": "Нова власна збірка",
-    "create.lead": "Будь-яка версія Minecraft з офіційних серверів і завантажувач на вибір. Усе завантажиться під час першого запуску.",
+    "create.lead": "Будь-яка версія Minecraft і завантажувач на вибір — усе завантажиться під час першого запуску.",
     "create.name": "Назва",
     "create.namePh": "Наприклад, «Fabric 1.21.1»",
     "create.mc": "Версія Minecraft",
@@ -121,8 +195,8 @@ const DICT = {
     "loader.fabric": "Легкий і швидкий, більшість сучасних модів",
     "loader.forge": "Класика: великі моди та старі версії",
     "loader.neoforge": "Сучасне продовження Forge (1.20.1+)",
-    "home.mods": "Моди",
-    "home.modsTitle": "Знайти, встановити й керувати модами цієї збірки",
+    "home.mods": "Контент",
+    "home.modsTitle": "Моди, ресурс-паки й шейдери цієї збірки",
     "home.modsVanilla": "Моди потребують завантажувача — створи збірку на Fabric, Forge, NeoForge або Quilt",
     "mods.title": "Моди — {name}",
     "mods.lead": "{loader} · Minecraft {mc}. Показано лише сумісні моди, потрібні залежності встановлюються автоматично.",
@@ -278,7 +352,7 @@ const DICT = {
     "profiles.skinBad": "Це не схоже на скін Minecraft: потрібен .png розміром 64×64 (або 64×32)",
     "profiles.lastOne": "Має залишитися хоча б один профіль",
     "project.title": "Проєкт",
-    "project.sub": "Проєкт — це сервер чи спільнота, до якої прив'язаний лаунчер. Від нього залежить список збірок.",
+    "project.sub": "Проєкт — це сервер чи спільнота зі своїми збірками. Підключення необов'язкове: без проєкту лаунчер працює з власними збірками.",
     "project.code": "Код:",
     "project.refresh": "Оновити список",
     "cl.title": "Що нового",
@@ -293,7 +367,7 @@ const DICT = {
     "project.connect": "Підключити",
     "project.switchHint": "Встановлені збірки залишаться на диску. Видалити їх можна в Налаштуваннях.",
     "project.leaveTitle": "Вийти з проєкту",
-    "project.leaveSub": "Лаунчер забуде код і попросить ввести новий. Профілі й збірки залишаться.",
+    "project.leaveSub": "Лаунчер забуде код проєкту. Профілі та власні збірки залишаться — грати можна й без проєкту.",
     "project.leave": "Вийти з проєкту",
     "project.online": "Список збірок актуальний",
     "project.offline": "Немає зв'язку — показано збережений список",
@@ -439,7 +513,7 @@ const DICT = {
     "play.debugDownload": "Дебагер: докачування — {p}%",
     "menu.debug": "Перевірити збірку (Дебагер)",
     "menu.import": "Імпортувати з .zip…",
-    "menu.mods": "Моди збірки",
+    "menu.mods": "Контент збірки",
     "debug.title": "Дебагер збірки «{name}»",
     "debug.clean": "Усе гаразд: кожен мод на місці, SHA-256 збігаються, сторонніх .jar у mods/ немає.",
     "debug.checked": "Перевірено",
@@ -485,21 +559,95 @@ const DICT = {
     "boot.loading": "Loading…",
     "boot.updating": "Updating the launcher…",
     "ob.title": "Welcome!",
-    "ob.titleBack": "Connect a project",
-    "ob.sub": "To get started, pick a project from the list and enter your in-game nickname.",
-    "ob.subBack": "Pick the project you want to connect to.",
-    "ob.pick": "Projects",
+    "ob.sub1": "Terrapolis is a light and fast Minecraft launcher. Enter your nickname and choose how the launcher looks.",
+    "ob.next": "Next",
+    "ob.title2": "Community projects",
+    "ob.sub2": "Connect to a project and its modpacks will appear in the launcher. Or skip this step: you can create and play your own modpacks right away.",
+    "ob.back": "Back",
+    "ob.skip": "Skip",
+    "ob.pick": "Available projects",
     "ob.loadingProjects": "Looking for projects…",
-    "ob.noProjects": "No projects found yet. If you have a code, enter it below.",
-    "ob.code": "Or enter a project code",
-    "ob.codePh": "Enter project code",
-    "ob.codeHint": "Only for hidden projects — the admin gives you the code.",
+    "ob.noProjects": "No public projects found yet. If you have a code, enter it below.",
+    "ob.code": "Or enter a project code or owner/repo",
+    "ob.codePh": "Project code or owner/repo",
     "ob.nick": "Your in-game nickname",
     "ob.nickPh": "Enter your in-game nickname",
     "ob.nickHint": "Other players will see you by this name. 3–16 chars: Latin letters, digits, _",
     "ob.submit": "Connect",
     "ob.checking": "Connecting…",
-    "ob.needCode": "Pick a project or enter a code",
+    "ob.needCode": "Pick a project or enter a code — or press Skip",
+    "theme.title": "Color palette",
+    "theme.hint": "Accent color of buttons, toggles and highlights. Applies instantly.",
+    "theme.previewChip": "Fabric 1.21.1",
+    "theme.emerald": "Emerald",
+    "theme.cobalt": "Cobalt blue",
+    "theme.amber": "Amber",
+    "theme.ruby": "Ruby",
+    "theme.amethyst": "Amethyst",
+    "theme.graphite": "Graphite",
+    "top.noProject": "No project — your own modpacks only",
+    "home.connectTitle": "Connect a project",
+    "home.connectText": "Community modpacks — by project code or owner/repo",
+    "home.browsePacks": "Ready-made modpacks from Modrinth and CurseForge",
+    "project.none": "No project connected",
+    "project.noneSub": "The launcher fully works without a project: create your own modpacks or install ready-made ones from Modrinth and CurseForge.",
+    "project.connectTitle": "Connect a project",
+    "project.connectHint": "Pick a project from the list or enter a code from the admin or a GitHub repository as owner/repo.",
+    "project.left": "You left the project — your own modpacks are still here",
+    "create.loader": "Loader",
+    "create.browse": "Ready-made modpack…",
+    "content.title": "Content — {name}",
+    "content.mods": "Mods",
+    "content.resourcepacks": "Resource packs",
+    "content.shaders": "Shaders",
+    "content.modpacks": "Modpacks",
+    "content.browse": "Browse",
+    "content.leadResourcepacks": "Resource packs for Minecraft {mc}. Enable an installed pack in game: Options → Resource Packs.",
+    "content.leadShaders": "Shader packs for Minecraft {mc}. Choose a shader in game: Options → Video Settings → Shader Packs.",
+    "content.leadModpacks": "Community modpacks: the launcher creates a separate new modpack with the right Minecraft version and loader and downloads all its files.",
+    "content.searchPhRp": "Search resource packs: Faithful, Fresh Animations…",
+    "content.searchPhSh": "Search shaders: Complementary, BSL, Sildur's…",
+    "content.searchPhMp": "Search modpacks: Fabulously Optimized, Cobblemon…",
+    "content.popular": "Popular for this version",
+    "content.popularPacks": "Popular modpacks",
+    "content.none": "Nothing here yet. Open \"Browse\" to add something.",
+    "content.folderRp": "resourcepacks folder",
+    "content.folderSh": "shaderpacks folder",
+    "content.enable": "Enable or disable",
+    "content.remove": "Remove",
+    "content.removed": "\"{name}\" removed",
+    "content.shaderNeed": "Shaders need the Iris or Oculus mod — this modpack doesn't have it yet.",
+    "content.shaderInstall": "Install {mod}",
+    "content.shaderVanilla": "Shaders need the Iris or Oculus mod, and vanilla modpacks can't run mods. Create a Fabric, NeoForge, Forge or Quilt modpack.",
+    "content.shaderModDone": "{mod} installed — choose a shader in game: Options → Video Settings → Shader Packs",
+    "content.modsVanilla": "Mods need a loader. Resource packs work in vanilla too — see the \"Resource packs\" tab.",
+    "mp.installing": "Installing the modpack…",
+    "mp.progress": "Installing \"{name}\" — {p}%",
+    "mp.doneTitle": "Modpack \"{name}\" installed",
+    "mp.doneText": "A separate modpack was created: Minecraft {mc} · {loader}. Press Play — the launcher will download the game and the loader.",
+    "mp.files": "Files downloaded",
+    "mp.overrides": "From overrides",
+    "mp.skipped": "Skipped",
+    "mp.missing": "The authors of these files disabled downloads by third-party launchers — download them manually from CurseForge into the matching modpack folder:",
+    "mp.mc": "Minecraft {v}",
+    "mp.latest": "Latest version",
+    "danger.title": "Danger Zone",
+    "danger.resetTitle": "Delete everything except account and projects",
+    "danger.resetSub": "Modpacks, Java, game libraries and assets, download cache and technical settings. Nicknames, skins and projects stay.",
+    "danger.resetGo": "Clear…",
+    "danger.resetConfirmTitle": "Clear launcher data?",
+    "danger.resetConfirmText": "<p>This deletes <b>all modpacks</b> together with worlds and screenshots, Java, game libraries and assets, and the download cache. Technical settings (RAM, graphics, game language, data folder, CurseForge key) are reset to defaults.</p><p><b>Kept:</b> nicknames, skins, the connected project, interface language and palette.</p>",
+    "danger.resetting": "Clearing launcher data…",
+    "danger.resetDone": "Launcher data cleared",
+    "danger.uninstallTitle": "Uninstall the launcher completely",
+    "danger.uninstallSub": "All modpacks, profiles, settings, the WebView2 cache and the launcher itself. The app closes afterwards.",
+    "danger.uninstallGo": "Uninstall…",
+    "danger.uninstallConfirmTitle": "Uninstall Terrapolis completely?",
+    "danger.uninstallConfirmText": "<p><b>Everything</b> will be permanently deleted: modpacks, worlds, screenshots, profiles, skins, settings, the WebView2 cache and the launcher itself. This can't be undone.</p><p>The app closes when it's done.</p>",
+    "danger.uninstalling": "Uninstalling the launcher…",
+    "danger.bye": "The launcher has been removed. Goodbye!",
+    "danger.typeHint": "To confirm, type <b>{word}</b>",
+    "danger.word": "DELETE",
     "nav.home": "Modpacks",
     "nav.profiles": "Profiles",
     "nav.project": "Project",
@@ -534,12 +682,12 @@ const DICT = {
     "home.customTitle": "Custom modpacks",
     "home.customEmpty": "No custom modpacks yet. Press \"+\" to create one.",
     "home.customMeta": "Custom modpack",
-    "home.customDescNew": "Press Play — the launcher will download Minecraft {mc} and {loader} by itself. You can already add mods with the Mods button.",
-    "home.customDescMods": "Add mods with the Mods button: only mods compatible with {loader} and Minecraft {mc} are shown, dependencies are installed automatically.",
-    "home.customDescVanilla": "Pure Minecraft {mc}, no mods.",
+    "home.customDescNew": "Press Play — the launcher will download Minecraft {mc} and {loader} by itself. You can already add mods, resource packs and shaders with the Content button.",
+    "home.customDescMods": "The Content button: mods, resource packs and shaders — only what's compatible with {loader} and Minecraft {mc} is shown, dependencies are installed automatically.",
+    "home.customDescVanilla": "Pure Minecraft {mc}, no mods. Add resource packs with the Content button.",
     "create.button": "Create a custom modpack",
     "create.title": "New custom modpack",
-    "create.lead": "Any Minecraft version from the official servers and a loader of your choice. Everything is downloaded on first launch.",
+    "create.lead": "Any Minecraft version and a loader of your choice — everything is downloaded on first launch.",
     "create.name": "Name",
     "create.namePh": "For example, \"Fabric 1.21.1\"",
     "create.mc": "Minecraft version",
@@ -565,8 +713,8 @@ const DICT = {
     "loader.fabric": "Light and fast, most modern mods",
     "loader.forge": "The classic: big mods and old versions",
     "loader.neoforge": "The modern successor of Forge (1.20.1+)",
-    "home.mods": "Mods",
-    "home.modsTitle": "Find, install and manage this modpack's mods",
+    "home.mods": "Content",
+    "home.modsTitle": "Mods, resource packs and shaders of this modpack",
     "home.modsVanilla": "Mods need a loader — create a modpack with Fabric, Forge, NeoForge or Quilt",
     "mods.title": "Mods — {name}",
     "mods.lead": "{loader} · Minecraft {mc}. Only compatible mods are shown; required dependencies are installed automatically.",
@@ -722,7 +870,7 @@ const DICT = {
     "profiles.skinBad": "This doesn't look like a Minecraft skin: a 64×64 (or 64×32) .png is required",
     "profiles.lastOne": "At least one profile must remain",
     "project.title": "Project",
-    "project.sub": "A project is the server or community the launcher is linked to. It decides which modpacks you see.",
+    "project.sub": "A project is a server or community with its own modpacks. Connecting one is optional: without a project the launcher works with your own modpacks.",
     "project.code": "Code:",
     "project.refresh": "Refresh list",
     "cl.title": "What's new",
@@ -737,7 +885,7 @@ const DICT = {
     "project.connect": "Connect",
     "project.switchHint": "Installed modpacks stay on disk. You can delete them in Settings.",
     "project.leaveTitle": "Leave project",
-    "project.leaveSub": "The launcher will forget the code and ask for a new one. Profiles and modpacks stay.",
+    "project.leaveSub": "The launcher forgets the project code. Profiles and your own modpacks stay — you can play without a project.",
     "project.leave": "Leave project",
     "project.online": "Modpack list is up to date",
     "project.offline": "No connection — showing the saved list",
@@ -883,7 +1031,7 @@ const DICT = {
     "play.debugDownload": "Debugger: downloading — {p}%",
     "menu.debug": "Check modpack (Debugger)",
     "menu.import": "Import from .zip…",
-    "menu.mods": "Modpack mods",
+    "menu.mods": "Modpack content",
     "debug.title": "Pack debugger — \"{name}\"",
     "debug.clean": "All good: every mod is in place, SHA-256 hashes match, no foreign .jar files in mods/.",
     "debug.checked": "Checked",
@@ -972,14 +1120,20 @@ const el = {
   boot: $("boot"),
   bootText: $("bootText"),
   onboarding: $("onboarding"),
+  obSteps: $("obSteps"),
+  obStep1: $("obStep1"),
+  obNext: $("obNext"),
+  obError1: $("obError1"),
+  obThemes: $("obThemes"),
   obForm: $("obForm"),
   obCode: $("obCode"),
   obProjects: $("obProjects"),
   obNick: $("obNick"),
-  obNickField: $("obNickField"),
   obNickHint: $("obNickHint"),
   obError: $("obError"),
   obSubmit: $("obSubmit"),
+  obBack: $("obBack"),
+  obSkip: $("obSkip"),
   obLang: $("obLang"),
   app: $("app"),
   brand: $("brand"),
@@ -1035,13 +1189,18 @@ const el = {
   stageNick: $("stageNick"),
   skinUpload: $("skinUpload"),
   skinReset: $("skinReset"),
-  skinFile: $("skinFile"),
   addProfileForm: $("addProfileForm"),
   newNick: $("newNick"),
   newNickHint: $("newNickHint"),
   profileList: $("profileList"),
+  projCard: $("projCard"),
   projBrand: $("projBrand"),
   projName: $("projName"),
+  projMeta: $("projMeta"),
+  projPicker: $("projPicker"),
+  switchTitle: $("switchTitle"),
+  switchHint: $("switchHint"),
+  leaveCard: $("leaveCard"),
   projCode: $("projCode"),
   projCount: $("projCount"),
   projState: $("projState"),
@@ -1059,6 +1218,9 @@ const el = {
   ramHint: $("ramHint"),
   ramWarn: $("ramWarn"),
   ramRecommended: $("ramRecommended"),
+  themeGrid: $("themeGrid"),
+  dzReset: $("dzReset"),
+  dzUninstall: $("dzUninstall"),
   presetSeg: $("presetSeg"),
   applyPreset: $("applyPreset"),
   uiLangSeg: $("uiLangSeg"),
@@ -1112,8 +1274,57 @@ const ICONS = {
   search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   chevron: '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>',
-  close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>'
+  close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  layers: '<svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>',
+  image: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg>',
+  sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  link: '<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>'
 };
+
+/* ═══════════════════════════ ПАЛІТРИ ═══════════════════════════ */
+
+/** Акцентні палітри (id збігаються з `config::THEMES` у Rust). rgb — для напівпрозорих відтінків. */
+const THEMES = {
+  emerald: { accent: "#3cc46f", hover: "#4ad27d", press: "#33ad61", ink: "#06170d", rgb: "60, 196, 111" },
+  cobalt: { accent: "#4d8dff", hover: "#6a9fff", press: "#3f78e0", ink: "#04132e", rgb: "77, 141, 255" },
+  amber: { accent: "#f0a73a", hover: "#f6b757", press: "#d6922c", ink: "#251602", rgb: "240, 167, 58" },
+  ruby: { accent: "#e8457c", hover: "#ef6292", press: "#cc3a6b", ink: "#2b0613", rgb: "232, 69, 124" },
+  amethyst: { accent: "#a47bff", hover: "#b593ff", press: "#8d63e6", ink: "#170834", rgb: "164, 123, 255" },
+  graphite: { accent: "#cfd5dd", hover: "#e2e6eb", press: "#b6bdc7", ink: "#101317", rgb: "207, 213, 221" }
+};
+
+/** Миттєво перефарбовує весь інтерфейс: усі акцентні елементи беруть кольори з CSS-змінних. */
+function applyTheme(id) {
+  const theme = THEMES[id] || THEMES.emerald;
+  const style = document.documentElement.style;
+  style.setProperty("--accent", theme.accent);
+  style.setProperty("--accent-hover", theme.hover);
+  style.setProperty("--accent-press", theme.press);
+  style.setProperty("--accent-ink", theme.ink);
+  style.setProperty("--accent-soft", `rgba(${theme.rgb}, 0.12)`);
+  style.setProperty("--accent-line", `rgba(${theme.rgb}, 0.45)`);
+  style.setProperty("--accent-faint", `rgba(${theme.rgb}, 0.04)`);
+  document.documentElement.dataset.theme = THEMES[id] ? id : "emerald";
+}
+
+/** Сітка кольорових зразків (онбординг і Налаштування). */
+function renderThemeGrid(container, current) {
+  if (!container) return;
+  container.innerHTML = Object.entries(THEMES)
+    .map(([id, theme]) => {
+      const on = id === current;
+      return `<button type="button" class="theme-swatch${on ? " on" : ""}" role="radio" aria-checked="${on}" data-theme="${id}" style="--sw:${theme.accent};--sw-ink:${theme.ink}"><i aria-hidden="true">${ICONS.check}</i><span>${esc(t("theme." + id))}</span></button>`;
+    })
+    .join("");
+}
+
+function markTheme(container, current) {
+  for (const button of container?.querySelectorAll("[data-theme]") || []) {
+    const on = button.dataset.theme === current;
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-checked", String(on));
+  }
+}
 
 /* ═══════════════════════════ СТАН ═══════════════════════════ */
 
@@ -1152,7 +1363,11 @@ const S = {
   /** Іде перевірка кнопкою «Синхронізувати» (повторні кліки ігноруються). */
   syncing: false,
   /** Шаблони дзеркал контенту — для картинок збірок із GitHub. */
-  mirrors: null
+  mirrors: null,
+  /** Назва готової збірки, яка зараз встановлюється (для прогресу в «острові»). */
+  modpackName: "",
+  /** Відкрито системний діалог вибору файлу/папки (повторні кліки ігноруються). */
+  picking: false
 };
 
 function esc(value) {
@@ -1694,6 +1909,7 @@ function closeModal(result) {
     modalCloseTimer = 0;
     el.modal.hidden = true;
     el.modal.classList.remove("closing", "xl");
+    el.modal.dataset.kind = "";
     modalReturnFocus?.focus?.();
   };
   // Таймер, а не animationend: у згорнутому вікні кадри не малюються, і подія може не прийти.
@@ -1709,7 +1925,7 @@ function closeModal(result) {
  * openModal({icon, tone, title, html, buttons:[{id,label,kind,left,onClick}]}) → Promise<id|null>
  * onClick може повернути false, щоб вікно лишилося відкритим.
  */
-function openModal({ icon = "", tone = "", title, html, buttons, wide = false, xl = false }) {
+function openModal({ icon = "", tone = "", title, html, buttons, wide = false, xl = false, kind = "" }) {
   if (modalResolve) closeModal(null);
   // Нове вікно під час анімації закриття попереднього: скасовуємо приховування.
   clearTimeout(modalCloseTimer);
@@ -1739,6 +1955,7 @@ function openModal({ icon = "", tone = "", title, html, buttons, wide = false, x
   }
   el.modal.classList.toggle("wide", wide || xl);
   el.modal.classList.toggle("xl", xl);
+  el.modal.dataset.kind = kind;
   el.modal.hidden = false;
   el.modalText.scrollTop = 0;
   el.modal.querySelector(".modal-card").scrollTop = 0;
@@ -1923,7 +2140,11 @@ class Dropdown {
     const text = this.loading ? this.opts.loadingText || t("dd.loading") : item ? item.label : this.items.length ? this.opts.placeholder : this.opts.empty || this.opts.placeholder;
     this.trigger.disabled = this.disabled || this.loading || (!this.items.length && !this.opts.onOpen);
     this.root.classList.toggle("is-loading", this.loading);
-    this.trigger.innerHTML = `<span class="dd-value"><span class="dd-text">${esc(text)}</span>${item && !this.loading ? badgesHtml(item.badges) : ""}</span>${
+    const shown = item && !this.loading;
+    // Іконка (HTML лише з коду лаунчера, напр. loaderIcon) і короткий опис під назвою — для «багатих» списків.
+    const icon = shown && item.icon ? `<span class="dd-ico" aria-hidden="true">${item.icon}</span>` : "";
+    const label = shown && this.opts.showSub && item.sub ? `<span class="dd-stack"><span class="dd-text">${esc(text)}</span><small class="dd-sub">${esc(item.sub)}</small></span>` : `<span class="dd-text">${esc(text)}</span>`;
+    this.trigger.innerHTML = `<span class="dd-value">${icon}${label}${shown && this.opts.triggerBadges !== false ? badgesHtml(item.badges) : ""}</span>${
       this.loading ? '<span class="btn-spin" aria-hidden="true"></span>' : `<span class="dd-chev" aria-hidden="true">${ICONS.chevron}</span>`
     }`;
   }
@@ -2019,7 +2240,7 @@ class Dropdown {
         .map((item, index) => {
           const on = item.value === this.value;
           return `<div class="dd-opt${on ? " on" : ""}${index === this.active ? " active" : ""}" role="option" aria-selected="${on}" data-index="${index}">
-            <span class="dd-opt-main"><span class="dd-opt-label">${esc(item.label)}</span>${item.sub ? `<small>${esc(item.sub)}</small>` : ""}</span>
+            ${item.icon ? `<span class="dd-ico" aria-hidden="true">${item.icon}</span>` : ""}<span class="dd-opt-main"><span class="dd-opt-label">${esc(item.label)}</span>${item.sub ? `<small>${esc(item.sub)}</small>` : ""}</span>
             ${badgesHtml(item.badges)}<span class="dd-check" aria-hidden="true">${on ? ICONS.check : ""}</span>
           </div>`;
         })
@@ -3143,13 +3364,14 @@ function renderHero() {
   }
   el.heroMark.hidden = !inst.custom;
   el.heroMark.innerHTML = inst.custom ? loaderIcon(inst.loader) : "";
+  // «Контент» — моди, ресурс-паки й шейдери; ванільній збірці доступні ресурс-паки.
   el.modsBtn.hidden = !inst.custom;
-  el.modsBtn.disabled = vanilla;
-  el.modsBtn.title = t(vanilla ? "home.modsVanilla" : "home.modsTitle");
+  el.modsBtn.disabled = false;
+  el.modsBtn.title = t("home.modsTitle");
 
   const meta = [];
   if (inst.custom) {
-    meta.push(t("home.customMeta"), inst.installed ? t("inst.installed") : t("home.notInstalledMeta"));
+    meta.push(inst.origin || t("home.customMeta"), inst.installed ? t("inst.installed") : t("home.notInstalledMeta"));
     if (!vanilla) meta.push(plural(inst.mods_count || 0, "plural.mods"));
   }
   else if (inst.update_available) meta.push(t("home.updateMeta", { from: inst.local_version || "?", to: inst.remote_version }));
@@ -3189,7 +3411,8 @@ function renderList() {
 
   // Той самий набір збірок — оновлюємо картки на місці: так вибір іншої збірки
   // анімується (рамка й акцентна смужка — через opacity/transform), а не «перемальовується».
-  const layout = [lang, ...items.map((inst) => (inst.custom ? "c:" : "p:") + inst.id)].join("|");
+  const hasProject = S.view.has_project !== false;
+  const layout = [lang, hasProject ? "P" : "L", ...items.map((inst) => (inst.custom ? "c:" : "p:") + inst.id)].join("|");
   if (list.dataset.layout === layout && patchList(items)) return;
 
   const projectItems = items.filter((inst) => !inst.custom);
@@ -3204,14 +3427,18 @@ function renderList() {
   };
   const addButton = `<button class="inst-add" type="button" data-act="create" aria-label="${esc(t("create.button"))}" title="${esc(t("create.button"))}">${ICONS.plus}</button>`;
   const importNew = `<button class="inst-add" type="button" data-act="import-new" aria-label="${esc(t("import.newTitle"))}" title="${esc(t("import.newTitle"))}">${ICONS.archive}</button>`;
+  const browsePacks = `<button class="inst-add" type="button" data-act="modpacks" aria-label="${esc(t("home.browsePacks"))}" title="${esc(t("home.browsePacks"))}">${ICONS.layers}</button>`;
   const cta = `<button class="inst-cta" type="button" data-act="create">${ICONS.plus}<span><b>${esc(t("create.ctaTitle"))}</b><small>${esc(t(ENABLE_CURSEFORGE ? "create.ctaText" : "create.ctaTextModrinth"))}</small></span></button>`;
-  const projectPart =
-    `<h3 class="inst-group"><span>${esc(t("home.projectTitle"))}</span></h3>` +
-    (projectItems.length ? projectItems.map(card).join("") : `<div class="empty small">${esc(t("list.empty"))}</div>`);
+  const connect = `<button class="inst-cta inst-cta-soft" type="button" data-goto="project">${ICONS.link}<span><b>${esc(t("home.connectTitle"))}</b><small>${esc(t("home.connectText"))}</small></span></button>`;
+  const projectPart = hasProject
+    ? `<h3 class="inst-group"><span>${esc(t("home.projectTitle"))}</span></h3>` +
+      (projectItems.length ? projectItems.map(card).join("") : `<div class="empty small">${esc(t("list.empty"))}</div>`)
+    : "";
   const customPart =
-    `<h3 class="inst-group"><span>${esc(t("home.customTitle"))}</span><span class="inst-group-acts">${importNew}${customItems.length ? addButton : ""}</span></h3>` +
+    `<h3 class="inst-group"><span>${esc(t("home.customTitle"))}</span><span class="inst-group-acts">${browsePacks}${importNew}${customItems.length ? addButton : ""}</span></h3>` +
     (customItems.length ? customItems.map(card).join("") : cta);
-  list.innerHTML = projectPart + customPart;
+  // Без проєкту — спершу власні збірки, а внизу ненав'язлива пропозиція підключити проєкт.
+  list.innerHTML = hasProject ? projectPart + customPart : customPart + connect;
   list.dataset.layout = layout;
   cardSigs.clear();
   for (const inst of items) {
@@ -3331,7 +3558,12 @@ function mergeInstance(fresh) {
   if (fresh.id === S.activeId) renderHero();
 }
 
+/** Кожне завантаження списку має номер: застаріла відповідь (після виходу з проєкту,
+ *  підключення іншого чи очищення даних) не перезапише свіжий стан. */
+let loadSeq = 0;
+
 async function loadProject({ quiet = false } = {}) {
+  const my = ++loadSeq;
   if (!quiet) {
     S.view = null;
     S.viewError = null;
@@ -3340,6 +3572,7 @@ async function loadProject({ quiet = false } = {}) {
   }
   try {
     const view = await invoke("load_project");
+    if (my !== loadSeq) return;
     S.view = view;
     S.viewError = null;
     S.activeId = view.active_instance;
@@ -3351,6 +3584,7 @@ async function loadProject({ quiet = false } = {}) {
     if (!S.busy && !S.running) idleIsland();
     selectInstance(S.activeId, { save: false });
   } catch (error) {
+    if (my !== loadSeq) return;
     S.view = null;
     S.viewError = errHuman(error);
     renderList();
@@ -3359,12 +3593,20 @@ async function loadProject({ quiet = false } = {}) {
   }
 }
 
+function hasProject() {
+  return Boolean(S.binding) && S.view?.has_project !== false;
+}
+
 function renderTop() {
-  const name = S.view?.name || S.binding?.name || S.binding?.code || "—";
+  const linked = hasProject();
+  const name = linked ? S.view?.name || S.binding?.name || S.binding?.code || "—" : "Terrapolis";
   el.topProject.textContent = name;
+  el.topProject.parentElement.title = linked ? t("nav.project") : t("top.noProject");
+  el.topDot.hidden = !linked;
   el.topDot.classList.toggle("off", Boolean(S.view?.offline));
-  paintAvatar(el.brand, initial(name), projectIcons());
-  paintAvatar(el.topAvatar, initial(name), projectIcons());
+  const icons = linked ? projectIcons() : [];
+  paintAvatar(el.brand, initial(name), icons);
+  paintAvatar(el.topAvatar, initial(name), icons);
 }
 
 async function onPlay() {
@@ -3614,14 +3856,18 @@ async function onImport(targetId) {
     setIsland("warn", t("mods.running"));
     return;
   }
+  if (S.picking) return;
+  S.picking = true;
   let path = null;
   try {
     path = await invoke("pick_zip");
   } catch (error) {
     showError(error);
     return;
+  } finally {
+    S.picking = false;
   }
-  if (!path) return;
+  if (!path || S.busy) return;
   const ok = await confirmDialog({
     icon: "archive",
     title: inst ? t("import.confirmTitle", { name: inst.name }) : t("import.newTitle"),
@@ -3707,36 +3953,56 @@ function loaderVersionItems(list) {
   });
 }
 
+/** Нова власна збірка в списку: перед іншими власними, після збірок проєкту. */
+function addCustomInstance(created) {
+  if (!S.view || !created) return;
+  S.view.instances = S.view.instances.filter((i) => i.id !== created.id);
+  const firstCustom = S.view.instances.findIndex((i) => i.custom);
+  S.view.instances.splice(firstCustom < 0 ? S.view.instances.length : firstCustom, 0, created);
+}
+
+/** Пункти списку завантажувачів: іконка, назва, короткий опис і бейдж «Рекомендовано» для Fabric. */
+function loaderItems() {
+  return CUSTOM_LOADERS.map((loader) => ({
+    value: loader,
+    label: loaderName(loader),
+    sub: t("loader." + loader),
+    icon: loaderIcon(loader, "ldr-md"),
+    badges: loader === "fabric" ? [{ text: t("create.recommended"), kind: "recommended" }] : []
+  }));
+}
+
 async function openCreateDialog() {
   if (!S.view || S.busy) return;
-  const form = { loader: "fabric", snapshots: false };
+  // Vanilla за замовчуванням: найпростіший старт, завантажувач — лише якщо гравець його обрав.
+  const form = { loader: "vanilla", snapshots: false };
   let created = null;
   let loaderSeq = 0;
   let mcSeq = 0;
-  const mcDd = new Dropdown({ search: true, label: t("create.mc"), placeholder: "—", searchPh: "1.21.1, 1.20.1…", minWidth: 280 });
-  const lvDd = new Dropdown({ search: true, label: t("create.loaderVersion"), placeholder: "—", empty: t("create.noLoader"), minWidth: 280 });
-  const loaderCard = (l) =>
-    `<button type="button" role="radio" data-loader="${l}" class="ldr-card${l === form.loader ? " on" : ""}" aria-checked="${l === form.loader}">
-      ${loaderIcon(l, "ldr-lg")}
-      <span class="ldr-text"><b>${esc(loaderName(l))}${l === "fabric" ? ` <em>${esc(t("create.recommended"))}</em>` : ""}</b><small>${esc(t("loader." + l))}</small></span>
-    </button>`;
-  const html = `<p>${esc(t("create.lead"))}</p>
+  const mcDd = new Dropdown({ search: true, label: t("create.mc"), placeholder: "—", searchPh: "1.21.1, 1.20.1…", minWidth: 260 });
+  const lvDd = new Dropdown({ search: true, label: t("create.loaderVersion"), placeholder: "—", empty: t("create.noLoader"), minWidth: 260 });
+  const loaderDd = new Dropdown({ className: "dd-rich", label: t("create.loader"), showSub: true, triggerBadges: false, minWidth: 300, items: loaderItems(), value: form.loader });
+  const html = `<p class="create-lead">${esc(t("create.lead"))}</p>
     <div class="create-form">
-      <section class="create-step">
-        <span class="label">${esc(t("create.step1"))}</span>
-        <div class="create-row"><div class="dd-mount" id="cMc"></div>
-        <label class="toggle-inline" for="cSnap"><span class="switch"><input type="checkbox" id="cSnap"><span></span></span><span>${esc(t("create.snapshots"))}</span></label></div>
-        <span class="hint">${esc(t("create.mcHint"))}</span>
-      </section>
-      <section class="create-step">
-        <span class="label">${esc(t("create.step2"))}</span>
-        <div class="ldr-grid" id="cLoader" role="radiogroup">${CUSTOM_LOADERS.map(loaderCard).join("")}</div>
-        <div class="field" id="cLvField"><span class="label">${esc(t("create.loaderVersion"))}</span><div class="dd-mount" id="cLv"></div><span class="hint">${esc(t("create.loaderHint"))}</span></div>
-      </section>
-      <section class="create-step">
-        <label class="label" for="cName">${esc(t("create.step3"))}</label>
-        <input type="text" id="cName" maxlength="40" spellcheck="false" autocomplete="off" placeholder="${esc(t("create.namePh"))}">
-      </section>
+      <div class="create-grid">
+        <section class="create-step cs-mc">
+          <span class="label">${esc(t("create.step1"))}</span>
+          <div class="dd-mount" id="cMc"></div>
+          <div class="create-row create-sub"><span class="hint">${esc(t("create.mcHint"))}</span>
+          <label class="toggle-inline" for="cSnap"><span class="switch"><input type="checkbox" id="cSnap"><span></span></span><span>${esc(t("create.snapshots"))}</span></label></div>
+        </section>
+        <section class="create-step cs-loader">
+          <span class="label">${esc(t("create.step2"))}</span>
+          <div class="dd-mount" id="cLoader"></div>
+          <div class="collapse" id="cLvWrap"><div class="collapse-inner" id="cLvInner" inert>
+            <div class="field"><span class="label">${esc(t("create.loaderVersion"))}</span><div class="dd-mount" id="cLv"></div><span class="hint">${esc(t("create.loaderHint"))}</span></div>
+          </div></div>
+        </section>
+        <section class="create-step cs-name">
+          <label class="label" for="cName">${esc(t("create.step3"))}</label>
+          <input type="text" id="cName" maxlength="40" spellcheck="false" autocomplete="off" placeholder="${esc(t("create.namePh"))}">
+        </section>
+      </div>
       <p class="form-error" id="cError" hidden></p>
     </div>`;
   const updateNamePlaceholder = () => {
@@ -3751,14 +4017,22 @@ async function openCreateDialog() {
     node.textContent = text || "";
     node.hidden = !text;
   };
+  /** Блок «Версія завантажувача» плавно розгортається (grid-template-rows 0fr → 1fr) і згортається для Vanilla. */
+  const setLoaderVersionVisible = (on) => {
+    const wrap = $("cLvWrap");
+    if (!wrap) return;
+    wrap.classList.toggle("open", on);
+    $("cLvInner").inert = !on;
+    if (!on) lvDd.close();
+  };
   const loadLoaderVersions = async () => {
-    const field = $("cLvField");
-    if (!field) return;
-    field.hidden = form.loader === "vanilla";
+    if (!$("cLvWrap")) return;
+    const vanilla = form.loader === "vanilla";
+    setLoaderVersionVisible(!vanilla);
     updateNamePlaceholder();
     const mc = mcDd.value;
     const my = ++loaderSeq;
-    if (form.loader === "vanilla" || !mc) return;
+    if (vanilla || !mc) return;
     lvDd.setLoading(true);
     try {
       const list = await invoke("loader_versions", { loader: form.loader, minecraftVersion: mc });
@@ -3786,9 +4060,14 @@ async function openCreateDialog() {
       mcDd.setItems([], "");
       showError(errHuman(error));
     }
-    await loadLoaderVersions();
+    if (my === mcSeq) await loadLoaderVersions();
   };
   mcDd.opts.onChange = () => {
+    showError("");
+    loadLoaderVersions();
+  };
+  loaderDd.opts.onChange = (value) => {
+    form.loader = value;
     showError("");
     loadLoaderVersions();
   };
@@ -3798,7 +4077,9 @@ async function openCreateDialog() {
     title: t("create.title"),
     html,
     wide: true,
+    kind: "create",
     buttons: [
+      { id: "browse", label: t("create.browse"), kind: "ghost", left: true, onClick: () => void setTimeout(() => openContentDialog("", "modpack"), 220) },
       { id: "cancel", label: t("common.cancel"), kind: "ghost" },
       {
         id: "ok",
@@ -3828,33 +4109,21 @@ async function openCreateDialog() {
   });
 
   mcDd.mount($("cMc"));
+  loaderDd.mount($("cLoader"));
   lvDd.mount($("cLv"));
   $("cSnap")?.addEventListener("change", (event) => {
     form.snapshots = event.target.checked;
     loadMc();
   });
-  $("cLoader")?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-loader]");
-    if (!button) return;
-    form.loader = button.dataset.loader;
-    for (const node of $("cLoader").querySelectorAll("[data-loader]")) {
-      const on = node === button;
-      node.classList.toggle("on", on);
-      node.setAttribute("aria-checked", String(on));
-    }
-    showError("");
-    loadLoaderVersions();
-  });
   loadMc();
 
   if ((await choice) !== "ok" || !created || !S.view) return;
-  const firstCustom = S.view.instances.findIndex((i) => i.custom);
-  S.view.instances.splice(firstCustom < 0 ? S.view.instances.length : firstCustom, 0, created);
+  addCustomInstance(created);
   setIsland("ok", t("create.done", { name: created.name }));
   selectInstance(created.id, { save: false });
 }
 
-/* менеджер модів (Modrinth / CurseForge) у стилі Prism Launcher */
+/* каталог контенту (Modrinth / CurseForge) у стилі Prism Launcher: моди, ресурс-паки, шейдери, готові збірки */
 
 const MOD_PLACEHOLDER = '<span class="mod-icon mod-icon-empty" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/></svg></span>';
 
@@ -3877,8 +4146,8 @@ function sourceLabel(id) {
 }
 
 /** Версії файлу мода: «Найновіша сумісна (Авто)» + конкретні файли з бейджами типу релізу. */
-function modVersionItems(list) {
-  const items = [{ value: "", label: t("mods.latestCompatible"), badges: [{ text: t("badge.auto"), kind: "auto" }] }];
+function modVersionItems(list, autoLabel = t("mods.latestCompatible")) {
+  const items = autoVersionItem(autoLabel);
   list.forEach((version, index) => {
     const kind = ["release", "beta", "alpha"].includes(version.kind) ? version.kind : "release";
     const badges = [{ text: t("badge." + kind), kind }];
@@ -3894,16 +4163,35 @@ function modVersionItems(list) {
   return items;
 }
 
-const autoVersionItem = () => [{ value: "", label: t("mods.latestCompatible"), badges: [{ text: t("badge.auto"), kind: "auto" }] }];
+function autoVersionItem(label = t("mods.latestCompatible")) {
+  return [{ value: "", label, badges: [{ text: t("badge.auto"), kind: "auto" }] }];
+}
 
-async function openModsDialog(id = S.activeId) {
-  const inst = S.view?.instances.find((i) => i.id === id);
-  if (!inst) return;
-  const vanilla = !inst.loader || inst.loader === "vanilla";
-  if (inst.custom && vanilla) return;
-  // Збірка проєкту: склад визначає manifest.json, тож лише перегляд.
-  const managed = !inst.custom;
+const CONTENT_KINDS = ["mod", "resourcepack", "shader", "modpack"];
+const KIND_LABEL = { mod: "content.mods", resourcepack: "content.resourcepacks", shader: "content.shaders", modpack: "content.modpacks" };
+const KIND_ICON = { mod: "box", resourcepack: "image", shader: "sun", modpack: "layers" };
+const KIND_FOLDER = { mod: "mods.folder", resourcepack: "content.folderRp", shader: "content.folderSh" };
+
+function contentPlaceholder(kind, source) {
+  if (kind === "mod") return t(source === "curseforge" ? "mods.searchPhCurse" : "mods.searchPh");
+  return t({ resourcepack: "content.searchPhRp", shader: "content.searchPhSh", modpack: "content.searchPhMp" }[kind]);
+}
+
+/**
+ * Каталог контенту. `id` — власна збірка (моди, ресурс-паки, шейдери й готові збірки);
+ * збірка проєкту — лише перегляд складу модів; порожній `id` — лише каталог готових збірок.
+ */
+async function openContentDialog(id = S.activeId, startKind = "") {
+  const inst = id ? S.view?.instances.find((i) => i.id === id) : null;
+  if (id && !inst) return;
+  const vanilla = Boolean(inst) && (!inst.loader || inst.loader === "vanilla");
+  // Збірка проєкту: склад визначає manifest.json, тож лише перегляд модів.
+  const managed = Boolean(inst) && !inst.custom;
+  if (managed && vanilla) return;
+  const kinds = managed ? ["mod"] : inst ? CONTENT_KINDS : ["modpack"];
+  const fallback = managed ? "mod" : !inst ? "modpack" : vanilla ? "resourcepack" : "mod";
   const M = {
+    kind: kinds.includes(startKind) ? startKind : fallback,
     source: "modrinth",
     tab: managed ? "installed" : "browse",
     query: "",
@@ -3914,53 +4202,72 @@ async function openModsDialog(id = S.activeId) {
     installed: [],
     busy: new Set(),
     seq: 0,
+    listSeq: 0,
     versions: new Map(),
     picked: new Map(),
     pickers: [],
-    cf: false
+    cf: false,
+    shaderMod: true
   };
-  const keyOf = (projectId) => M.source + ":" + projectId;
-  const installedKeys = () => new Set(M.installed.filter((m) => m.project_id).map((m) => (m.source || "modrinth") + ":" + m.project_id));
-  const loaderText = loaderName(inst.loader) + (inst.loader_version ? " " + inst.loader_version : "");
-  const chips = `<span class="chip">Minecraft ${esc(inst.minecraft_version)}</span><span class="chip">${loaderIcon(inst.loader)}${esc(loaderName(inst.loader))}</span>`;
+  const keyOf = (projectId) => M.source + ":" + M.kind + ":" + projectId;
+  const installedKeys = () => new Set(M.installed.filter((m) => m.project_id).map((m) => (m.source || "modrinth") + ":" + M.kind + ":" + m.project_id));
+  const loaderText = inst ? loaderName(inst.loader) + (inst.loader_version ? " " + inst.loader_version : "") : "";
+  const chipsFor = (kind) => {
+    if (!inst || kind === "modpack") return "";
+    const mc = `<span class="chip">Minecraft ${esc(inst.minecraft_version)}</span>`;
+    return kind === "mod" ? mc + `<span class="chip">${loaderIcon(inst.loader)}${esc(loaderName(inst.loader))}</span>` : mc;
+  };
+  const leadFor = (kind) => {
+    if (managed) return t("mods.managedLead");
+    if (kind === "mod") return t("mods.lead", { loader: loaderText, mc: inst.minecraft_version });
+    if (kind === "resourcepack") return t("content.leadResourcepacks", { mc: inst.minecraft_version });
+    if (kind === "shader") return t("content.leadShaders", { mc: inst.minecraft_version });
+    return t("content.leadModpacks");
+  };
+  const shaderModName = () => (inst?.loader === "forge" ? "Oculus" : "Iris");
+  /** Для ванільної збірки моди й шейдери недоступні — показуємо пояснення замість пошуку. */
+  const blocked = () => Boolean(inst) && !managed && vanilla && (M.kind === "mod" || M.kind === "shader");
+  const cfLocked = () => M.source === "curseforge" && !M.cf;
   const skeletons = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
 
-  const html = managed
-    ? `<p>${esc(t("mods.managedLead"))}</p>
-      <div class="mods">
-        <div class="mods-head"><span class="chips">${chips}</span>
-          <button class="btn btn-ghost btn-sm" type="button" id="mFolder">${ICONS.folder}<span>${esc(t("mods.folder"))}</span></button></div>
-        <div id="mInstalled" class="mods-pane"><div class="mod-list" id="mList">${skeletons}</div></div>
-      </div>`
-    : `<p>${esc(t("mods.lead", { loader: loaderText, mc: inst.minecraft_version }))}</p>
+  const kindTabs =
+    kinds.length > 1
+      ? `<div class="kind-tabs" id="mKinds" role="tablist">${kinds
+          .map((kind) => `<button type="button" role="tab" data-kind="${kind}">${ICONS[KIND_ICON[kind]]}<span>${esc(t(KIND_LABEL[kind]))}</span></button>`)
+          .join("")}</div>`
+      : "";
+  const html = `${kindTabs}<p class="content-lead" id="mLead"></p>
       <div class="mods">
         <div class="mods-head">
-          <div class="seg seg-sm" id="mTabs" role="tablist">
-            <button type="button" role="tab" data-mtab="browse">${esc(t("mods.browse"))}</button>
+          <div class="seg seg-sm" id="mTabs" role="tablist"${managed ? " hidden" : ""}>
+            <button type="button" role="tab" data-mtab="browse">${esc(t("content.browse"))}</button>
             <button type="button" role="tab" data-mtab="installed">${esc(t("mods.installed"))} <span class="mods-count" id="mCount"></span></button>
           </div>
-          <button class="btn btn-ghost btn-sm" type="button" id="mFolder">${ICONS.folder}<span>${esc(t("mods.folder"))}</span></button>
+          <span class="chips" id="mChipsHead"${managed ? "" : " hidden"}></span>
+          <button class="btn btn-ghost btn-sm" type="button" id="mFolder">${ICONS.folder}<span id="mFolderText"></span></button>
         </div>
-        <div id="mBrowse" class="mods-pane">
+        <div class="cf-note" id="mNote" hidden>${ICONS.alert}<span id="mNoteText"></span><button class="btn btn-primary btn-sm" type="button" id="mNoteAct" hidden><span class="btn-spin" aria-hidden="true"></span><span class="btn-text"></span></button></div>
+        <div id="mBrowse" class="mods-pane"${managed ? " hidden" : ""}>
           <div class="mods-tools">
             <div class="seg seg-sm seg-src" id="mSource" role="radiogroup">${MOD_SOURCES.map((s) => `<button type="button" role="radio" data-src="${s.id}">${s.label}</button>`).join("")}</div>
             <label class="mods-search">${ICONS.search}<input type="text" id="mQuery" spellcheck="false" autocomplete="off"></label>
             <div class="dd-mount mods-cat" id="mCat"></div>
           </div>
-          <div class="mods-filter"><span class="mods-filter-label">${esc(t("mods.autoFilter"))}</span>${chips}</div>
+          <div class="mods-filter" id="mFilter"><span class="mods-filter-label">${esc(t("mods.autoFilter"))}</span><span class="chips" id="mChips"></span></div>
           <div class="cf-note" id="mCfNote" hidden>${ICONS.alert}<span>${esc(t("mods.cfNeedKey"))}</span><button class="btn btn-ghost btn-sm" type="button" id="mCfSettings">${esc(t("mods.cfOpenSettings"))}</button></div>
           <span class="hint" id="mHint"></span>
           <div class="mod-list" id="mResults"></div>
           <button class="btn btn-ghost btn-sm mods-more" type="button" id="mMore" hidden><span class="btn-spin" aria-hidden="true"></span><span>${esc(t("mods.more"))}</span></button>
         </div>
-        <div id="mInstalled" class="mods-pane" hidden><div class="mod-list" id="mList"></div></div>
+        <div id="mInstalled" class="mods-pane"${managed ? "" : " hidden"}><div class="mod-list" id="mList">${skeletons}</div></div>
       </div>`;
 
   const choice = openModal({
-    icon: "box",
-    title: managed ? t("mods.managedTitle", { name: inst.name }) : t("mods.title", { name: inst.name }),
+    icon: KIND_ICON[M.kind] === "layers" && !inst ? "layers" : "box",
+    title: managed ? t("mods.managedTitle", { name: inst.name }) : inst ? t("content.title", { name: inst.name }) : t("content.modpacks"),
     html,
     xl: true,
+    kind: "content",
     buttons: [{ id: "done", label: t("common.done"), kind: "primary" }]
   });
 
@@ -3982,50 +4289,103 @@ async function openModsDialog(id = S.activeId) {
   if (catDd) catDd.mount($("mCat"));
 
   const renderTabs = () => {
-    if (managed || !$("mTabs")) return;
-    for (const button of $("mTabs").querySelectorAll("[data-mtab]")) {
-      const on = button.dataset.mtab === M.tab;
-      button.classList.toggle("on", on);
-      button.setAttribute("aria-selected", String(on));
+    if (!$("mList")) return;
+    if (!managed) {
+      for (const button of $("mTabs").querySelectorAll("[data-mtab]")) {
+        const on = button.dataset.mtab === M.tab;
+        button.classList.toggle("on", on);
+        button.setAttribute("aria-selected", String(on));
+      }
+      $("mBrowse").hidden = M.tab !== "browse";
+      $("mInstalled").hidden = M.tab !== "installed";
     }
-    $("mBrowse").hidden = M.tab !== "browse";
-    $("mInstalled").hidden = M.tab !== "installed";
     $("mCount").textContent = M.installed.length ? String(M.installed.length) : "";
   };
 
-  const cfLocked = () => M.source === "curseforge" && !M.cf;
+  const renderNote = () => {
+    const note = $("mNote");
+    if (!note) return;
+    let text = "";
+    let action = "";
+    if (!managed && inst && M.kind === "mod" && vanilla) text = t("content.modsVanilla");
+    else if (!managed && inst && M.kind === "shader" && vanilla) text = t("content.shaderVanilla");
+    else if (!managed && inst && M.kind === "shader" && !M.shaderMod) {
+      text = t("content.shaderNeed");
+      action = t("content.shaderInstall", { mod: shaderModName() });
+    }
+    note.hidden = !text;
+    $("mNoteText").textContent = text;
+    const act = $("mNoteAct");
+    act.hidden = !action;
+    act.querySelector(".btn-text").textContent = action;
+  };
 
   const renderSource = () => {
-    if (managed) return;
+    if (managed || !$("mSource")) return;
     for (const button of $("mSource").querySelectorAll("[data-src]")) {
       const on = button.dataset.src === M.source;
       button.classList.toggle("on", on);
       button.setAttribute("aria-checked", String(on));
     }
     const locked = cfLocked();
-    $("mQuery").placeholder = t(M.source === "curseforge" ? "mods.searchPhCurse" : "mods.searchPh");
-    $("mQuery").disabled = locked;
-    $("mCfNote").hidden = !locked;
-    $("mResults").hidden = locked;
-    $("mHint").hidden = locked;
-    if (locked) $("mMore").hidden = true;
-    catDd.setDisabled(locked);
+    const off = locked || blocked();
+    $("mQuery").placeholder = contentPlaceholder(M.kind, M.source);
+    $("mQuery").disabled = off;
+    $("mCfNote").hidden = !locked || blocked();
+    $("mResults").hidden = off;
+    $("mHint").hidden = off;
+    if (off) $("mMore").hidden = true;
+    catDd.setDisabled(off);
+  };
+
+  const renderKind = () => {
+    if (!$("mLead")) return;
+    $("mLead").textContent = leadFor(M.kind);
+    for (const button of $("mKinds")?.querySelectorAll("[data-kind]") || []) {
+      const on = button.dataset.kind === M.kind;
+      button.classList.toggle("on", on);
+      button.setAttribute("aria-selected", String(on));
+    }
+    const packs = M.kind === "modpack";
+    if (packs) M.tab = "browse";
+    $("mFolder").hidden = packs || !inst;
+    if (!packs) $("mFolderText").textContent = t(KIND_FOLDER[M.kind]);
+    if (!managed) {
+      $("mTabs").hidden = packs;
+      $("mFilter").hidden = packs || !inst;
+      $("mChips").innerHTML = chipsFor(M.kind);
+    } else $("mChipsHead").innerHTML = chipsFor("mod");
+    renderNote();
+    renderSource();
+    renderTabs();
   };
 
   const loadCategories = async () => {
     const source = M.source;
-    if (managed || cfLocked()) return;
-    let list = modCategoryCache.get(source);
+    const kind = M.kind;
+    if (managed || cfLocked() || blocked()) return;
+    const cacheKey = source + ":" + kind;
+    let list = modCategoryCache.get(cacheKey);
     if (!list) {
       try {
-        list = await invoke("mod_categories", { source });
-        modCategoryCache.set(source, list);
+        list = await invoke("mod_categories", { source, kind });
+        modCategoryCache.set(cacheKey, list);
       } catch {
         list = [];
       }
     }
-    if (source !== M.source) return;
+    if (source !== M.source || kind !== M.kind || !$("mCat")) return;
     catDd.setItems([{ value: "", label: t("mods.allCategories") }, ...list.map((c) => ({ value: c.id, label: c.name }))], "");
+  };
+
+  const loadStatus = async () => {
+    if (!inst || managed || vanilla) return;
+    try {
+      M.shaderMod = Boolean((await invoke("content_status", { instanceId: id })).shader_mod);
+    } catch {
+      M.shaderMod = true;
+    }
+    renderNote();
   };
 
   const closePickers = () => {
@@ -4037,9 +4397,10 @@ async function openModsDialog(id = S.activeId) {
     const done = have.has(key);
     const busy = M.busy.has(key);
     const label = busy ? t("mods.installing") : done ? t("mods.isInstalled") : t("mods.install");
+    const mc = M.kind === "modpack" && hit.game_versions?.length ? " · " + t("mp.mc", { v: hit.game_versions[0] }) : "";
     return `<div class="mod-row enter" data-pid="${esc(hit.id)}" style="--i:${Math.min(index, 10)}">
         ${modIcon(hit.icon_url)}
-        <span class="mod-info"><b>${esc(hit.title)}</b><small>${esc(t("mods.by", { author: hit.author || "?" }))} · ↓ ${esc(formatCount(hit.downloads))}</small><span class="mod-desc">${esc(hit.description)}</span><span class="mod-err" hidden></span></span>
+        <span class="mod-info"><b>${esc(hit.title)}</b><small>${esc(t("mods.by", { author: hit.author || "?" }))} · ↓ ${esc(formatCount(hit.downloads))}${esc(mc)}</small><span class="mod-desc">${esc(hit.description)}</span><span class="mod-err" hidden></span></span>
         <span class="mod-act">
           <span class="dd-mount" data-ver="${esc(hit.id)}"></span>
           <button class="btn btn-sm ${done ? "btn-ghost" : "btn-primary"}${busy ? " loading" : ""}" type="button" data-install="${esc(hit.id)}" ${done || busy ? "disabled" : ""}><span class="btn-spin" aria-hidden="true"></span><span class="btn-text">${esc(label)}</span></button>
@@ -4047,7 +4408,7 @@ async function openModsDialog(id = S.activeId) {
       </div>`;
   };
 
-  /** Рядки результатів; append — додати лише нові (без повторної анімації старих). */
+  /** Рядки результатів; from > 0 — додати лише нові (без повторної анімації старих). */
   const renderResults = (from = 0) => {
     const box = $("mResults");
     if (!box) return;
@@ -4058,6 +4419,7 @@ async function openModsDialog(id = S.activeId) {
       box.innerHTML = "";
     }
     box.insertAdjacentHTML("beforeend", M.hits.slice(from).map((hit, index) => rowHtml(hit, index, have)).join(""));
+    const autoLabel = M.kind === "modpack" ? t("mp.latest") : t("mods.latestCompatible");
     for (const hit of M.hits.slice(from)) {
       const mount = box.querySelector(`[data-ver="${CSS.escape(hit.id)}"]`);
       if (!mount) continue;
@@ -4068,7 +4430,7 @@ async function openModsDialog(id = S.activeId) {
         label: t("mods.version"),
         search: true,
         minWidth: 330,
-        items: known ? modVersionItems(known) : autoVersionItem(),
+        items: known ? modVersionItems(known, autoLabel) : autoVersionItem(autoLabel),
         value: M.picked.get(key) || "",
         pendingText: t("mods.loadingVersions"),
         onOpen: (dd) => loadVersions(hit.id, dd),
@@ -4088,22 +4450,26 @@ async function openModsDialog(id = S.activeId) {
       const key = keyOf(button.dataset.install);
       const done = have.has(key);
       const busy = M.busy.has(key);
-      button.disabled = done || busy;
+      button.disabled = done || busy || (M.kind === "modpack" && Boolean(S.busy) && !busy);
       button.classList.toggle("loading", busy);
       button.classList.toggle("btn-primary", !done);
       button.classList.toggle("btn-ghost", done);
-      button.querySelector(".btn-text").textContent = busy ? t("mods.installing") : done ? t("mods.isInstalled") : t("mods.install");
+      if (!busy || M.kind !== "modpack") button.querySelector(".btn-text").textContent = busy ? t("mods.installing") : done ? t("mods.isInstalled") : t("mods.install");
     }
   };
 
   const loadVersions = async (projectId, picker) => {
     const key = keyOf(projectId);
+    const kind = M.kind;
     if (M.versions.has(key)) return;
     picker.setPending(true);
     try {
-      const list = await invoke("mod_versions", { instanceId: id, source: M.source, projectId });
+      const list =
+        kind === "modpack"
+          ? await invoke("modpack_versions", { source: M.source, projectId })
+          : await invoke("mod_versions", { instanceId: id, source: M.source, projectId, kind });
       M.versions.set(key, list);
-      picker.setItems(modVersionItems(list), M.picked.get(key) || "");
+      picker.setItems(modVersionItems(list, kind === "modpack" ? t("mp.latest") : t("mods.latestCompatible")), M.picked.get(key) || "");
     } catch (error) {
       picker.setPending(false);
       setIsland("error", errHuman(error));
@@ -4115,7 +4481,7 @@ async function openModsDialog(id = S.activeId) {
     if (!box) return;
     renderTabs();
     if (!M.installed.length) {
-      box.innerHTML = `<div class="empty small">${esc(t("mods.none"))}</div>`;
+      box.innerHTML = `<div class="empty small">${esc(t(managed || M.kind === "mod" ? "mods.none" : "content.none"))}</div>`;
       return;
     }
     box.innerHTML = M.installed
@@ -4127,8 +4493,8 @@ async function openModsDialog(id = S.activeId) {
         const tone = managed ? (mod.managed ? (mod.enabled ? "" : " missing") : " extra") : mod.enabled ? "" : " off";
         const controls = managed
           ? `<span class="mod-state${mod.managed && mod.enabled ? " ok" : ""}" aria-hidden="true"></span>`
-          : `<label class="switch" title="${esc(t("mods.enable"))}"><input type="checkbox" data-toggle="${esc(mod.filename)}" ${mod.enabled ? "checked" : ""}><span></span></label>
-             <button class="more" type="button" data-remove="${esc(mod.filename)}" title="${esc(t("mods.remove"))}" aria-label="${esc(t("mods.remove"))}">${ICONS.trash}</button>`;
+          : `<label class="switch" title="${esc(t("content.enable"))}"><input type="checkbox" data-toggle="${esc(mod.filename)}" ${mod.enabled ? "checked" : ""}><span></span></label>
+             <button class="more" type="button" data-remove="${esc(mod.filename)}" title="${esc(t("content.remove"))}" aria-label="${esc(t("content.remove"))}">${ICONS.trash}</button>`;
         return `<div class="mod-row${tone}${animate ? " enter" : ""}" style="--i:${Math.min(index, 10)}">
           ${modIcon(mod.icon_url)}
           <span class="mod-info"><b>${esc(mod.title)}</b><small>${esc(sub || mod.filename)}</small></span>
@@ -4139,19 +4505,29 @@ async function openModsDialog(id = S.activeId) {
   };
 
   const loadInstalled = async (animate = false) => {
-    try {
-      M.installed = await invoke("list_mods", { instanceId: id });
-    } catch (error) {
+    if (!inst || M.kind === "modpack") {
       M.installed = [];
+      renderTabs();
+      return;
+    }
+    const kind = M.kind;
+    const my = ++M.listSeq;
+    let list = [];
+    try {
+      list = await invoke("list_mods", { instanceId: id, kind });
+    } catch (error) {
       setIsland("error", errHuman(error));
     }
+    if (my !== M.listSeq || kind !== M.kind) return;
+    M.installed = list;
     renderInstalled(animate);
     refreshInstallButtons();
   };
 
   const search = async (append = false) => {
-    if (managed || cfLocked() || !$("mResults")) return;
+    if (managed || cfLocked() || blocked() || !$("mResults")) return;
     const my = ++M.seq;
+    const kind = M.kind;
     const hint = $("mHint");
     const more = $("mMore");
     if (!append) {
@@ -4161,13 +4537,14 @@ async function openModsDialog(id = S.activeId) {
       more.hidden = true;
     } else setLoading(more, true);
     try {
-      const page = await invoke("search_mods", { instanceId: id, source: M.source, query: M.query, category: M.category || null, offset: M.offset });
+      const args = { source: M.source, query: M.query, category: M.category || null, offset: M.offset };
+      const page = kind === "modpack" ? await invoke("search_modpacks", args) : await invoke("search_mods", { ...args, instanceId: id, kind });
       if (my !== M.seq || !$("mResults")) return;
       M.total = page.total_hits;
       const from = append ? M.hits.length : 0;
       M.hits = append ? M.hits.concat(page.hits) : page.hits;
       M.offset = M.hits.length;
-      if (hint) hint.textContent = M.query || M.category ? "" : t("mods.popular");
+      if (hint) hint.textContent = M.query || M.category ? "" : t(kind === "modpack" ? "content.popularPacks" : kind === "mod" ? "mods.popular" : "content.popular");
       renderResults(from);
       if (!M.hits.length) $("mResults").innerHTML = `<div class="empty small">${esc(t("mods.nothing"))}</div>`;
     } catch (error) {
@@ -4179,35 +4556,102 @@ async function openModsDialog(id = S.activeId) {
     }
   };
 
+  const showRowError = (row, error) => {
+    const node = row?.querySelector(".mod-err");
+    if (!node || !node.isConnected) return;
+    node.textContent = errHuman(error);
+    node.hidden = false;
+  };
+
+  /** Готова збірка → нова окрема збірка (команда тримає «важке» блокування лаунчера). */
+  const installPack = async (projectId, row) => {
+    if (S.busy || S.updating) {
+      setIsland("warn", t("play.wait"));
+      return;
+    }
+    const hit = M.hits.find((h) => h.id === projectId);
+    const key = keyOf(projectId);
+    const source = M.source;
+    row?.querySelector(".mod-err")?.setAttribute("hidden", "");
+    M.busy.add(key);
+    S.busy = "modpack";
+    S.modpackName = hit?.title || "";
+    refreshInstallButtons();
+    renderPlay();
+    setIsland("busy", t("mp.installing"));
+    try {
+      const result = await invoke("install_modpack", { source, projectId, versionId: M.picked.get(key) || null });
+      addCustomInstance(result.instance);
+      setIsland("ok", t("mp.doneTitle", { name: result.report.name }));
+      showModpackReport(result.report);
+      selectInstance(result.instance.id, { save: false });
+    } catch (error) {
+      setIsland("error", errHuman(error));
+      showRowError(row, error);
+    } finally {
+      S.busy = null;
+      S.modpackName = "";
+      M.busy.delete(key);
+      refreshInstallButtons();
+      renderList();
+      renderHero();
+    }
+  };
+
   const install = async (projectId, row) => {
+    if (M.kind === "modpack") return installPack(projectId, row);
     if (S.running === id) {
       setIsland("warn", t("mods.running"));
       return;
     }
     const key = keyOf(projectId);
-    const errorNode = row?.querySelector(".mod-err");
-    if (errorNode) errorNode.hidden = true;
+    const kind = M.kind;
+    const source = M.source;
+    row?.querySelector(".mod-err")?.setAttribute("hidden", "");
     M.busy.add(key);
     refreshInstallButtons();
     try {
-      const report = await invoke("install_mod", { instanceId: id, source: M.source, projectId, versionId: M.picked.get(key) || null });
+      const report = await invoke("install_mod", { instanceId: id, source, projectId, versionId: M.picked.get(key) || null, kind });
       setIsland(
         report.missing.length ? "warn" : "ok",
         report.missing.length ? t("mods.missing", { list: report.missing.join(", ") }) : t("mods.done", { list: report.installed.join(", ") })
       );
     } catch (error) {
       setIsland("error", errHuman(error));
-      if (errorNode) {
-        errorNode.textContent = errHuman(error);
-        errorNode.hidden = false;
-      }
+      showRowError(row, error);
     } finally {
       M.busy.delete(key);
-      await loadInstalled();
+      if (kind === M.kind) await loadInstalled();
+      else refreshInstallButtons();
+      // Iris/Oculus могли поставити вручну з вкладки модів — підказку для шейдерів оновлюємо.
+      if (kind === "mod") loadStatus();
     }
   };
 
-  // Іконка мода не завантажилась — показуємо заглушку (error не спливає, тому capture).
+  /** Перемикання типу контенту: пошук, категорії й встановлене — для нового типу. */
+  const switchKind = (kind) => {
+    if (kind === M.kind || !kinds.includes(kind)) return;
+    closePickers();
+    catDd?.close();
+    M.kind = kind;
+    M.category = "";
+    M.query = "";
+    M.hits = [];
+    M.offset = 0;
+    M.total = 0;
+    M.seq++;
+    M.listSeq++;
+    M.installed = [];
+    if ($("mQuery")) $("mQuery").value = "";
+    if ($("mList")) $("mList").innerHTML = skeletons;
+    catDd?.setItems([{ value: "", label: t("mods.allCategories") }], "");
+    renderKind();
+    loadCategories();
+    loadInstalled(true);
+    search(false);
+  };
+
+  // Іконка не завантажилась — показуємо заглушку (error не спливає, тому capture).
   el.modalText.querySelector(".mods").addEventListener(
     "error",
     (event) => {
@@ -4215,7 +4659,30 @@ async function openModsDialog(id = S.activeId) {
     },
     true
   );
-  $("mFolder").addEventListener("click", () => invoke("open_mods_folder", { instanceId: id }).catch((e) => setIsland("error", errText(e))));
+  $("mFolder").addEventListener("click", () => invoke("open_mods_folder", { instanceId: id, kind: M.kind }).catch((e) => setIsland("error", errText(e))));
+  $("mKinds")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-kind]");
+    if (button) switchKind(button.dataset.kind);
+  });
+  $("mNoteAct").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    if (button.disabled) return;
+    if (S.running === id) {
+      setIsland("warn", t("mods.running"));
+      return;
+    }
+    setLoading(button, true);
+    try {
+      const report = await invoke("install_shader_mod", { instanceId: id });
+      M.shaderMod = true;
+      setIsland("ok", t("content.shaderModDone", { mod: report.installed[0] || shaderModName() }));
+      renderNote();
+    } catch (error) {
+      setIsland("error", errHuman(error));
+    } finally {
+      if (button.isConnected) setLoading(button, false);
+    }
+  });
 
   if (!managed) {
     $("mTabs").addEventListener("click", (event) => {
@@ -4232,6 +4699,7 @@ async function openModsDialog(id = S.activeId) {
       M.source = button.dataset.src;
       M.category = "";
       M.hits = [];
+      M.seq++;
       renderSource();
       loadCategories();
       search(false);
@@ -4265,14 +4733,16 @@ async function openModsDialog(id = S.activeId) {
     $("mList").addEventListener("change", async (event) => {
       const input = event.target.closest("[data-toggle]");
       if (!input) return;
+      const kind = M.kind;
       const row = input.closest(".mod-row");
       const mod = M.installed.find((m) => m.filename === input.dataset.toggle);
       const enabled = input.checked;
       row?.classList.toggle("off", !enabled);
       input.disabled = true;
       try {
-        await invoke("set_mod_enabled", { instanceId: id, filename: input.dataset.toggle, enabled });
+        await invoke("set_mod_enabled", { instanceId: id, filename: input.dataset.toggle, enabled, kind });
         if (mod) mod.enabled = enabled;
+        if (kind === "mod") loadStatus();
       } catch (error) {
         input.checked = !enabled;
         row?.classList.toggle("off", enabled);
@@ -4283,19 +4753,22 @@ async function openModsDialog(id = S.activeId) {
     });
     $("mList").addEventListener("click", async (event) => {
       const button = event.target.closest("[data-remove]");
-      if (!button) return;
+      if (!button || button.disabled) return;
+      const kind = M.kind;
       const filename = button.dataset.remove;
       const mod = M.installed.find((m) => m.filename === filename);
       const row = button.closest(".mod-row");
       button.disabled = true;
       try {
-        await invoke("remove_mod", { instanceId: id, filename });
-        setIsland("ok", t("mods.removed", { name: mod?.title || filename }));
+        await invoke("remove_mod", { instanceId: id, filename, kind });
+        setIsland("ok", t("content.removed", { name: mod?.title || filename }));
+        if (kind !== M.kind) return;
         M.installed = M.installed.filter((m) => m.filename !== filename);
         leave(row, "leaving", 240, () => {
           renderInstalled();
           refreshInstallButtons();
         });
+        if (kind === "mod") loadStatus();
       } catch (error) {
         button.disabled = false;
         setIsland("error", errHuman(error));
@@ -4303,7 +4776,7 @@ async function openModsDialog(id = S.activeId) {
     });
   }
 
-  renderTabs();
+  renderKind();
   try {
     M.cf = Boolean((await invoke("mod_sources")).curseforge);
   } catch {
@@ -4311,8 +4784,9 @@ async function openModsDialog(id = S.activeId) {
   }
   renderSource();
   loadCategories();
+  loadStatus();
   await loadInstalled(true);
-  if (!managed && M.installed.length) {
+  if (!managed && !startKind && M.kind !== "modpack" && M.installed.length) {
     M.tab = "installed";
     renderTabs();
   }
@@ -4321,11 +4795,40 @@ async function openModsDialog(id = S.activeId) {
   await choice;
   closePickers();
   catDd?.close();
+  if (!inst) return;
   try {
     mergeInstance(await invoke("instance_details", { instanceId: id }));
   } catch {
     /* лічильник модів оновиться пізніше */
   }
+}
+
+/** Звіт про встановлену готову збірку (і файли, які треба докачати вручну). */
+function showModpackReport(report) {
+  const stats = `<div class="usage">${statCell(t("mp.files"), report.files, "good")}${statCell(t("mp.overrides"), report.overrides)}${statCell(t("mp.skipped"), report.skipped)}</div>`;
+  const missing = report.missing.length
+    ? `<p>${esc(t("mp.missing"))}</p><ul class="dbg-list">${report.missing
+        .slice(0, 40)
+        .map((name) => `<li>${esc(name)}</li>`)
+        .join("")}</ul>`
+    : "";
+  const loader = loaderName(report.loader) + (report.loader_version ? " " + report.loader_version : "");
+  openModal({
+    icon: "layers",
+    tone: report.missing.length ? "warn" : "",
+    title: t("mp.doneTitle", { name: report.name }),
+    html: `<p>${esc(t("mp.doneText", { mc: report.minecraft_version, loader }))}</p>${stats}${missing}`,
+    buttons: [{ id: "close", label: t("common.close"), kind: "primary" }]
+  });
+}
+
+/** Прогрес завантаження файлів готової збірки: «острів» і кнопка в рядку каталогу. */
+function onModpackProgress(payload) {
+  if (S.busy !== "modpack") return;
+  const p = Math.max(0, Math.min(100, Math.floor(Number(payload.percent) || 0)));
+  setIsland("busy", t("mp.progress", { name: S.modpackName || "…", p }));
+  const label = document.querySelector("#mResults [data-install].loading .btn-text");
+  if (label) label.textContent = p + "%";
 }
 
 async function openFolder(id) {
@@ -4359,8 +4862,8 @@ function openMenu(button, id) {
   const item = (act) => el.instMenu.querySelector(`[data-act="${act}"]`);
   const vanilla = !target?.loader || target.loader === "vanilla";
   item("folder").disabled = !target?.installed && !target?.custom;
-  // Моди: власна збірка — повний менеджер; збірка проєкту — перегляд складу.
-  item("mods").hidden = vanilla;
+  // Контент: власна збірка — повний каталог (ванільна — ресурс-паки); збірка проєкту — перегляд модів.
+  item("mods").hidden = vanilla && !target?.custom;
   item("mods").disabled = !target?.custom && !target?.installed;
   item("repair").disabled = locked || !target?.installed;
   item("debug").hidden = Boolean(target?.custom);
@@ -4440,34 +4943,22 @@ async function renderProfiles() {
 
 let profilesActiveShown = null;
 
-let skinTarget = null;
-
-function pickSkin(profileId) {
-  skinTarget = profileId;
-  el.skinFile.value = "";
-  el.skinFile.click();
-}
-
-async function onSkinFile() {
-  const file = el.skinFile.files?.[0];
-  const profileId = skinTarget;
-  if (!file || !profileId) return;
-  if (file.size > MB) {
-    setIsland("error", t("profiles.skinBig"));
-    return;
-  }
+/** Нативний діалог вибору .png (IFileOpenDialog у фоновому STA-потоці): перевірку розміру
+ *  й збереження робить бекенд — без передачі мегабайтного масиву байтів через IPC. */
+async function pickSkin(profileId) {
+  if (!profileId || S.picking) return;
+  S.picking = true;
   try {
-    const buffer = await file.arrayBuffer();
-    const bitmap = await createImageBitmap(new Blob([buffer], { type: "image/png" }));
-    const okSize = (bitmap.width === 64 || bitmap.width === 128) && (bitmap.height === bitmap.width || bitmap.height === bitmap.width / 2);
-    if (!okSize) throw new Error(t("profiles.skinBad"));
-    const view = await invoke("save_skin", { profileId, bytes: Array.from(new Uint8Array(buffer)) });
-    S.skins.set(profileId, bitmap);
+    const view = await invoke("pick_skin", { profileId });
+    if (!view) return;
+    S.skins.delete(profileId);
     applyProfiles(view);
     renderProfiles();
     setIsland("ok", t("profiles.skinSaved"));
   } catch (error) {
-    setIsland("error", errText(error).includes("decode") ? t("profiles.skinBad") : errText(error));
+    setIsland("error", errHuman(error));
+  } finally {
+    S.picking = false;
   }
 }
 
@@ -4532,6 +5023,24 @@ async function onAddProfile(event) {
 /* ═══════════════════════════ ПРОЄКТ ═══════════════════════════ */
 
 function renderProject() {
+  const linked = Boolean(S.binding);
+  el.leaveCard.hidden = !linked;
+  el.projRefresh.hidden = !linked;
+  el.projMeta.hidden = !linked;
+  el.projPicker.hidden = linked;
+  el.switchTitle.dataset.i18n = linked ? "project.switchTitle" : "project.connectTitle";
+  el.switchTitle.textContent = t(el.switchTitle.dataset.i18n);
+  el.switchHint.dataset.i18n = linked ? "project.switchHint" : "project.connectHint";
+  el.switchHint.textContent = t(el.switchHint.dataset.i18n);
+  if (!linked) {
+    // Без проєкту: пояснення + список публічних проєктів і поле для коду / owner/repo.
+    el.projName.textContent = t("project.none");
+    el.projState.textContent = t("project.noneSub");
+    paintAvatar(el.projBrand, "T", []);
+    if (!S.projectList) loadProjectList();
+    else renderProjectList();
+    return;
+  }
   const name = S.view?.name || S.binding?.name || "—";
   el.projName.textContent = name;
   paintAvatar(el.projBrand, initial(name), projectIcons());
@@ -4640,7 +5149,8 @@ function onChangelogClick(event) {
 
 async function onSwitchProject(event) {
   event.preventDefault();
-  const code = el.switchCode.value.trim();
+  if (el.switchSubmit.disabled) return;
+  const code = el.switchCode.value.trim() || (S.binding ? "" : S.pickedProject);
   el.switchError.hidden = true;
   if (!code) {
     el.switchCode.classList.add("invalid");
@@ -4651,6 +5161,8 @@ async function onSwitchProject(event) {
   try {
     S.binding = await invoke("connect_project", { code });
     el.switchCode.value = "";
+    S.pickedProject = "";
+    S.changelog = null;
     await loadProject();
     renderProject();
     setIsland("ok", t("project.switched", { name: S.binding.name || code }));
@@ -4668,10 +5180,14 @@ async function onLeave() {
   if (!ok) return;
   try {
     await invoke("leave_project");
+    // Лаунчер лишається відкритим: без проєкту показуються власні збірки.
     S.binding = null;
-    S.view = null;
-    paintHeroImage(null);
-    showOnboarding();
+    S.changelog = null;
+    S.pickedProject = "";
+    await loadProject();
+    renderTop();
+    renderProject();
+    setIsland("ok", t("project.left"));
   } catch (error) {
     showError(error);
   }
@@ -4761,6 +5277,11 @@ async function refreshSettings() {
   el.aboutText.textContent = t("settings.about", { v: S.launcherVersion });
   el.versionText.textContent = "v" + S.launcherVersion;
   el.autoUpdate.checked = Boolean(S.settings.auto_update_launcher);
+  if (!el.themeGrid.firstChild || el.themeGrid.dataset.lang !== lang) {
+    renderThemeGrid(el.themeGrid, S.settings.theme);
+    el.themeGrid.dataset.lang = lang;
+  } else markTheme(el.themeGrid, S.settings.theme);
+  renderDanger();
   renderCurseForge();
   renderMirrors();
   invoke("mirrors_info")
@@ -4872,6 +5393,24 @@ async function onDeleteAll() {
   }
 }
 
+async function onThemePick(event) {
+  const button = event.target.closest("[data-theme]");
+  if (!button || !S.settings || button.dataset.theme === S.settings.theme) return;
+  const previous = S.settings.theme;
+  const next = button.dataset.theme;
+  S.settings.theme = next;
+  applyTheme(next);
+  markTheme(el.themeGrid, next);
+  try {
+    await saveSettingsPatch({ theme: next });
+  } catch (error) {
+    S.settings.theme = previous;
+    applyTheme(previous);
+    markTheme(el.themeGrid, previous);
+    setIsland("error", errText(error));
+  }
+}
+
 async function changeDataDir(path) {
   const moveChoice = await openModal({
     icon: "folder",
@@ -4902,55 +5441,114 @@ async function changeDataDir(path) {
 }
 
 async function onChangeDir() {
-  if (S.busy || S.running) return;
+  if (S.busy || S.running || S.picking) return;
+  S.picking = true;
+  let picked = null;
   try {
-    const picked = await invoke("pick_folder");
-    if (picked) await changeDataDir(picked);
+    picked = await invoke("pick_folder");
   } catch (error) {
     showError(error);
+  } finally {
+    S.picking = false;
   }
+  if (picked) await changeDataDir(picked);
 }
 
-/* ═══════════════════════════ ПЕРШИЙ ВХІД ═══════════════════════════ */
+/* ═══════════════════════════ ПЕРШИЙ ЗАПУСК ═══════════════════════════ */
+
+/** Майстер першого запуску: крок 1 — нік і палітра, крок 2 — проєкт (можна пропустити). */
+const OB = { step: 1, theme: "emerald", busy: false };
+
+/** Списки проєктів: у майстрі та у вкладці «Проєкт», коли проєкт не підключено. */
+function projectPickers() {
+  return [el.obProjects, el.projPicker].filter(Boolean);
+}
 
 function markPicked() {
-  for (const button of el.obProjects.querySelectorAll(".pl-item")) {
-    const on = button.dataset.code === S.pickedProject;
-    button.classList.toggle("on", on);
-    button.setAttribute("aria-checked", on);
+  for (const container of projectPickers()) {
+    for (const button of container.querySelectorAll(".pl-item")) {
+      const on = button.dataset.code === S.pickedProject;
+      button.classList.toggle("on", on);
+      button.setAttribute("aria-checked", on);
+    }
   }
 }
 
 function renderProjectList() {
   const list = S.projectList;
-  if (!list) {
-    el.obProjects.innerHTML = `<div class="pl-state">${esc(t("ob.loadingProjects"))}</div>`;
-    return;
+  for (const container of projectPickers()) {
+    if (!list) {
+      container.innerHTML = `<div class="pl-state">${esc(t("ob.loadingProjects"))}</div>`;
+      continue;
+    }
+    if (!list.length) {
+      container.innerHTML = `<div class="pl-state">${esc(S.projectListError || t("ob.noProjects"))}</div>`;
+      continue;
+    }
+    container.innerHTML = list
+      .map((project, index) => `<button type="button" class="pl-item" role="radio" aria-checked="false" data-code="${esc(project.code)}"><span class="avatar" data-pl="${index}"></span><span class="pl-text"><b>${esc(project.title)}</b><span>${esc(project.description)}</span></span></button>`)
+      .join("");
+    list.forEach((project, index) => paintAvatar(container.querySelector(`[data-pl="${index}"]`), initial(project.title), [project.icon]));
   }
-  if (!list.length) {
-    el.obProjects.innerHTML = `<div class="pl-state">${esc(S.projectListError || t("ob.noProjects"))}</div>`;
-    return;
-  }
-  el.obProjects.innerHTML = list
-    .map((project, index) => `<button type="button" class="pl-item" role="radio" aria-checked="false" data-code="${esc(project.code)}"><span class="avatar" data-pl="${index}"></span><span class="pl-text"><b>${esc(project.title)}</b><span>${esc(project.description)}</span></span></button>`)
-    .join("");
-  list.forEach((project, index) => paintAvatar(el.obProjects.querySelector(`[data-pl="${index}"]`), initial(project.title), [project.icon]));
   markPicked();
 }
 
+let projectListSeq = 0;
+
 async function loadProjectList() {
+  const my = ++projectListSeq;
   S.projectList = null;
   S.projectListError = "";
   S.pickedProject = "";
   renderProjectList();
+  let list = [];
+  let error = "";
   try {
-    S.projectList = await invoke("list_projects");
-  } catch (error) {
-    S.projectList = [];
-    S.projectListError = errHuman(error);
+    list = await invoke("list_projects");
+  } catch (failure) {
+    error = errHuman(failure);
   }
-  if (S.projectList.length === 1) S.pickedProject = S.projectList[0].code;
+  if (my !== projectListSeq) return;
+  S.projectList = list;
+  S.projectListError = error;
+  if (list.length === 1) S.pickedProject = list[0].code;
   renderProjectList();
+}
+
+function onProjectPick(event, input) {
+  const button = event.target.closest(".pl-item");
+  if (!button) return;
+  S.pickedProject = button.dataset.code;
+  input.value = "";
+  input.classList.remove("invalid");
+  markPicked();
+}
+
+function setObStep(step, animate = true) {
+  const back = step < OB.step;
+  OB.step = step;
+  el.obStep1.hidden = step !== 1;
+  el.obForm.hidden = step !== 2;
+  el.obSteps.querySelectorAll("li").forEach((li, index) => {
+    li.classList.toggle("on", index + 1 === step);
+    li.classList.toggle("done", index + 1 < step);
+  });
+  const shown = step === 1 ? el.obStep1 : el.obForm;
+  if (animate) {
+    motion(
+      shown,
+      [
+        { opacity: 0, transform: `translate3d(${back ? -18 : 18}px, 0, 0)` },
+        { opacity: 1, transform: "none" }
+      ],
+      360
+    );
+  }
+  if (step === 2) {
+    el.obError.hidden = true;
+    if (!S.projectList) loadProjectList();
+    else renderProjectList();
+  } else requestAnimationFrame(() => el.obNick.focus());
 }
 
 function showOnboarding() {
@@ -4959,24 +5557,58 @@ function showOnboarding() {
   clearInterval(serverTimer);
   el.app.hidden = true;
   el.onboarding.hidden = false;
-  const needNick = S.profiles.length === 0;
-  el.obNickField.hidden = !needNick;
-  const title = el.onboarding.querySelector("h1");
-  title.dataset.i18n = needNick ? "ob.title" : "ob.titleBack";
-  $("obSub").dataset.i18n = needNick ? "ob.sub" : "ob.subBack";
-  applyI18n();
+  OB.theme = THEMES[S.settings?.theme] ? S.settings.theme : "emerald";
+  OB.busy = false;
+  applyTheme(OB.theme);
+  renderThemeGrid(el.obThemes, OB.theme);
+  const profile = activeProfile();
+  if (profile && !el.obNick.value) el.obNick.value = profile.nickname;
+  el.obError1.hidden = true;
   el.obError.hidden = true;
-  el.boot.classList.add("gone");
   el.obCode.value = "";
-  loadProjectList();
+  applyI18n();
+  setObStep(1, false);
+  el.boot.classList.add("gone");
 }
 
+function setObBusy(on, button) {
+  OB.busy = on;
+  if (button) setLoading(button, on);
+  for (const node of [el.obBack, el.obSkip, el.obNext, el.obSubmit]) if (node !== button) node.disabled = on;
+}
+
+/** Крок 1 → 2: нік (3–16 символів) і палітра зберігаються одразу — їх можна змінити пізніше. */
+async function onObStep1(event) {
+  event.preventDefault();
+  if (OB.busy) return;
+  el.obError1.hidden = true;
+  const nickname = el.obNick.value.trim();
+  if (!NICK_RE.test(nickname)) {
+    el.obNick.classList.add("invalid");
+    el.obNickHint.classList.add("error");
+    el.obNickHint.textContent = t("profiles.nickBad");
+    el.obNick.focus();
+    return;
+  }
+  setObBusy(true, el.obNext);
+  try {
+    applyProfiles(await invoke("onboarding_profile", { nickname, theme: OB.theme }));
+    if (S.settings) S.settings.theme = OB.theme;
+    setObStep(2);
+  } catch (error) {
+    el.obError1.textContent = errHuman(error);
+    el.obError1.hidden = false;
+  } finally {
+    setObBusy(false, el.obNext);
+  }
+}
+
+/** Крок 2: підключити обраний проєкт або введений код / owner/repo. */
 async function onOnboardingSubmit(event) {
   event.preventDefault();
+  if (OB.busy) return;
   el.obError.hidden = true;
   const code = el.obCode.value.trim() || S.pickedProject;
-  const needNick = !el.obNickField.hidden;
-  const nickname = el.obNick.value.trim();
   if (!code) {
     el.obCode.classList.add("invalid");
     el.obError.textContent = t("ob.needCode");
@@ -4984,26 +5616,45 @@ async function onOnboardingSubmit(event) {
     el.obCode.focus();
     return;
   }
-  if (needNick && !NICK_RE.test(nickname)) {
-    el.obNick.classList.add("invalid");
-    el.obNickHint.classList.add("error");
-    el.obNickHint.textContent = t("profiles.nickBad");
-    el.obNick.focus();
-    return;
-  }
-  setLoading(el.obSubmit, true);
+  setObBusy(true, el.obSubmit);
   el.obSubmit.querySelector(".btn-text").textContent = t("ob.checking");
   try {
     S.binding = await invoke("connect_project", { code });
-    if (needNick) applyProfiles(await invoke("add_profile", { nickname }));
-    showApp();
+    await finishOnboarding();
   } catch (error) {
     el.obError.textContent = errHuman(error);
     el.obError.hidden = false;
   } finally {
-    setLoading(el.obSubmit, false);
+    setObBusy(false, el.obSubmit);
     el.obSubmit.querySelector(".btn-text").textContent = t("ob.submit");
   }
+}
+
+/** «Пропустити»: увійти без проєкту — власні збірки можна створювати й запускати одразу. */
+async function onObSkip() {
+  if (OB.busy) return;
+  setObBusy(true, el.obSkip);
+  try {
+    await finishOnboarding();
+  } catch (error) {
+    el.obError.textContent = errHuman(error);
+    el.obError.hidden = false;
+  } finally {
+    setObBusy(false, el.obSkip);
+  }
+}
+
+async function finishOnboarding() {
+  await invoke("finish_onboarding");
+  showApp();
+}
+
+function onObTheme(event) {
+  const button = event.target.closest("[data-theme]");
+  if (!button || button.dataset.theme === OB.theme) return;
+  OB.theme = button.dataset.theme;
+  applyTheme(OB.theme);
+  markTheme(el.obThemes, OB.theme);
 }
 
 function showApp() {
@@ -5015,6 +5666,122 @@ function showApp() {
   renderNickNote();
   requestAnimationFrame(() => switchTab("home", false));
   loadProject();
+}
+
+/* ═══════════════════════════ DANGER ZONE ═══════════════════════════ */
+
+/** Підтвердження незворотної дії: кнопка активується лише після введення слова-підтвердження. */
+async function strictConfirm({ title, html, ok }) {
+  const word = t("danger.word");
+  const matches = () => ($("dzWord")?.value || "").trim().toLocaleUpperCase() === word.toLocaleUpperCase();
+  const choice = openModal({
+    icon: "alert",
+    tone: "danger",
+    title,
+    kind: "danger",
+    html: `${html}<label class="dz-confirm"><span>${t("danger.typeHint", { word: esc(word) })}</span><input type="text" id="dzWord" spellcheck="false" autocomplete="off" maxlength="32"></label>`,
+    buttons: [
+      { id: "cancel", label: t("common.cancel"), kind: "ghost" },
+      {
+        id: "ok",
+        label: ok,
+        kind: "danger",
+        onClick: () => {
+          if (matches()) return;
+          $("dzWord")?.classList.add("invalid");
+          $("dzWord")?.focus();
+          return false;
+        }
+      }
+    ]
+  });
+  const input = $("dzWord");
+  const confirmButton = el.modalActions.querySelector(".btn-danger-solid");
+  if (confirmButton) confirmButton.disabled = true;
+  input?.addEventListener("input", () => {
+    input.classList.remove("invalid");
+    if (confirmButton) confirmButton.disabled = !matches();
+  });
+  input?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && matches()) {
+      event.preventDefault();
+      confirmButton?.click();
+    }
+  });
+  input?.focus();
+  return (await choice) === "ok";
+}
+
+function dangerBlocked() {
+  if (S.running) {
+    setIsland("warn", t("delete.running"));
+    return true;
+  }
+  if (S.busy || S.updating) {
+    setIsland("warn", t("play.wait"));
+    return true;
+  }
+  return false;
+}
+
+async function onDangerReset() {
+  if (dangerBlocked()) return;
+  const ok = await strictConfirm({ title: t("danger.resetConfirmTitle"), html: t("danger.resetConfirmText"), ok: t("danger.resetGo").replace("…", "") });
+  if (!ok || dangerBlocked()) return;
+  S.busy = "danger";
+  renderPlay();
+  renderDanger();
+  setIsland("busy", t("danger.resetting"));
+  try {
+    await invoke("reset_launcher_data");
+    setIsland("ok", t("danger.resetDone"));
+  } catch (error) {
+    setIsland("error", errHuman(error));
+    showError(error);
+  } finally {
+    // Стан беремо з бекенда заново: налаштування скинуто, збірок на диску більше немає.
+    try {
+      const info = await invoke("get_init_info");
+      S.settings = info.settings;
+      el.ram.value = String(info.settings.ram_mb);
+    } catch {
+      /* лишаємо попередні значення */
+    }
+    S.busy = null;
+    S.disk = [];
+    hideProgress();
+    await loadProject({ quiet: true });
+    renderPlay();
+    if (S.tab === "settings") refreshSettings();
+  }
+}
+
+async function onDangerUninstall() {
+  if (dangerBlocked()) return;
+  const ok = await strictConfirm({ title: t("danger.uninstallConfirmTitle"), html: t("danger.uninstallConfirmText"), ok: t("danger.uninstallGo").replace("…", "") });
+  if (!ok || dangerBlocked()) return;
+  S.busy = "uninstall";
+  renderPlay();
+  renderDanger();
+  el.bootText.textContent = t("danger.uninstalling");
+  el.boot.classList.remove("gone");
+  try {
+    await invoke("uninstall_launcher");
+    // Бекенд завершить процес за мить — інтерфейс більше нічого не робить.
+    el.bootText.textContent = t("danger.bye");
+  } catch (error) {
+    el.boot.classList.add("gone");
+    S.busy = null;
+    renderPlay();
+    renderDanger();
+    showError(error);
+  }
+}
+
+function renderDanger() {
+  const locked = Boolean(S.busy) || Boolean(S.running) || S.updating;
+  el.dzReset.disabled = locked;
+  el.dzUninstall.disabled = locked;
 }
 
 /* ═══════════════════════════ МОВА ═══════════════════════════ */
@@ -5032,7 +5799,10 @@ function setLang(next) {
     dismissToast(updateToast, true);
     showUpdateToast(S.update);
   }
-  if (!el.onboarding.hidden) renderProjectList();
+  if (!el.onboarding.hidden) {
+    renderProjectList();
+    renderThemeGrid(el.obThemes, OB.theme);
+  }
   renderAll();
   invoke("save_settings", { patch: { ui_lang: next } }).catch(() => {});
 }
@@ -5063,8 +5833,11 @@ async function registerListeners() {
   });
   await listen("play-step", (event) => setStep(String(event.payload)));
   await listen("sync-progress", (event) => {
-    // Оновлення лаунчера показуємо у його сповіщенні, а не в панелі збірки.
-    if (event.payload?.stage === "launcher-update") onUpdateProgress(event.payload);
+    // Оновлення лаунчера показуємо у його сповіщенні, готову збірку — в «острові» й каталозі,
+    // а не в панелі збірки.
+    const stage = event.payload?.stage;
+    if (stage === "launcher-update") onUpdateProgress(event.payload);
+    else if (stage === "modpack") onModpackProgress(event.payload);
     else setProgress(event.payload);
   });
   await listen("play-phase", (event) => {
@@ -5159,6 +5932,10 @@ function bindEvents() {
       onImport("");
       return;
     }
+    if (event.target.closest('[data-act="modpacks"]')) {
+      openContentDialog("", "modpack");
+      return;
+    }
     const card = event.target.closest(".inst-card");
     if (card) selectInstance(card.dataset.id);
   });
@@ -5184,7 +5961,7 @@ function bindEvents() {
     closeMenu();
     const act = button.dataset.act;
     if (act === "folder") openFolder(id);
-    else if (act === "mods") openModsDialog(id);
+    else if (act === "mods") openContentDialog(id);
     else if (act === "repair") onRepair(id);
     else if (act === "debug") onDebug(id);
     else if (act === "import") onImport(id);
@@ -5196,11 +5973,15 @@ function bindEvents() {
   el.stopYes.addEventListener("click", onStopConfirm);
   el.stopNo.addEventListener("click", onStopCancel);
   el.repairBtn.addEventListener("click", () => onRepair());
-  el.modsBtn.addEventListener("click", () => openModsDialog());
+  el.modsBtn.addEventListener("click", () => openContentDialog());
   el.folderBtn.addEventListener("click", () => openFolder());
   el.importBtn.addEventListener("click", () => onImport(S.activeId));
   el.deleteBtn.addEventListener("click", () => onDelete(S.activeId));
 
+  el.obStep1.addEventListener("submit", onObStep1);
+  el.obThemes.addEventListener("click", onObTheme);
+  el.obBack.addEventListener("click", () => !OB.busy && setObStep(1));
+  el.obSkip.addEventListener("click", onObSkip);
   el.obForm.addEventListener("submit", onOnboardingSubmit);
   el.obCode.addEventListener("input", () => {
     el.obCode.classList.remove("invalid");
@@ -5211,15 +5992,17 @@ function bindEvents() {
     }
   });
   el.obProjects.addEventListener("click", (event) => {
-    const button = event.target.closest(".pl-item");
-    if (!button) return;
-    S.pickedProject = button.dataset.code;
-    el.obCode.value = "";
-    el.obCode.classList.remove("invalid");
     el.obError.hidden = true;
-    markPicked();
+    onProjectPick(event, el.obCode);
   });
-  el.obNick.addEventListener("input", () => nickState(el.obNick, el.obNickHint, "ob.nickHint"));
+  el.projPicker.addEventListener("click", (event) => {
+    el.switchError.hidden = true;
+    onProjectPick(event, el.switchCode);
+  });
+  el.obNick.addEventListener("input", () => {
+    el.obError1.hidden = true;
+    nickState(el.obNick, el.obNickHint, "ob.nickHint");
+  });
   el.obLang.addEventListener("click", (event) => {
     const button = event.target.closest("[data-lang]");
     if (button) setLang(button.dataset.lang);
@@ -5252,12 +6035,14 @@ function bindEvents() {
       setIsland("error", errText(error));
     }
   });
-  el.skinFile.addEventListener("change", onSkinFile);
-
   el.switchForm.addEventListener("submit", onSwitchProject);
   el.switchCode.addEventListener("input", () => {
     el.switchCode.classList.remove("invalid");
     el.switchError.hidden = true;
+    if (el.switchCode.value.trim() && S.pickedProject) {
+      S.pickedProject = "";
+      markPicked();
+    }
   });
   el.leaveBtn.addEventListener("click", onLeave);
   el.clWrap.addEventListener("click", onChangelogClick);
@@ -5359,6 +6144,9 @@ function bindEvents() {
     else if (action === "folder") openFolder(row.dataset.disk);
   });
   el.deleteAll.addEventListener("click", onDeleteAll);
+  el.themeGrid.addEventListener("click", onThemePick);
+  el.dzReset.addEventListener("click", onDangerReset);
+  el.dzUninstall.addEventListener("click", onDangerUninstall);
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
@@ -5465,11 +6253,14 @@ async function onSync() {
   S.syncing = true;
   renderSyncButton();
   if (!S.busy) setIsland("busy", t("sync.running"));
+  // Поки йшла синхронізація, гравець міг підключити інший проєкт чи вийти з нього.
+  const bindingKey = S.binding?.index_url || "";
+  const seq = loadSeq;
   try {
     const result = await invoke("sync_all");
     const launcher = result.launcher;
     if (launcher) S.update = launcher;
-    if (result.project) applySyncedView(result.project);
+    if (result.project && bindingKey === (S.binding?.index_url || "") && seq === loadSeq) applySyncedView(result.project);
 
     const found = [];
     if (launcher?.available && launcher.release) {
@@ -5649,6 +6440,7 @@ async function init() {
   S.activeId = info.active_instance;
   S.running = info.game_running;
   lang = info.settings.ui_lang === "en" ? "en" : "uk";
+  applyTheme(info.settings.theme);
 
   el.ram.min = "1024";
   el.ram.max = String(Math.max(1280, info.max_ram_mb));
@@ -5663,7 +6455,8 @@ async function init() {
     })
     .catch(() => {});
 
-  if (!info.project || info.profiles.length === 0) showOnboarding();
+  // Проєкт необов'язковий: майстер показується лише до першого збереженого профілю.
+  if (!info.onboarded) showOnboarding();
   else showApp();
   checkUpdate();
 }

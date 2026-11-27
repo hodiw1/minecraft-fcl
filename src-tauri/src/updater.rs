@@ -60,7 +60,7 @@ pub fn current_version() -> &'static str {
 }
 
 /// Тимчасова папка для завантаженого інсталятора оновлення.
-fn setup_dir() -> PathBuf {
+pub fn setup_dir() -> PathBuf {
     std::env::temp_dir().join("terrapolis-update")
 }
 

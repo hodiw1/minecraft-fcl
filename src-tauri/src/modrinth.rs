@@ -10,7 +10,8 @@ use serde_json::json;
 use crate::error::{fail, Context, Result};
 use crate::i18n::tr;
 use crate::mods::{
-    pretty_label, Category, ModHit, ModVersion, Resolution, ResolvedFile, SearchPage, Target, PAGE,
+    pretty_label, Category, ContentKind, ModHit, ModVersion, Resolution, ResolvedFile, SearchPage,
+    Target, PAGE,
 };
 use crate::util::Checksum;
 
@@ -25,7 +26,7 @@ async fn get<T: DeserializeOwned>(client: &Client, path: &str, query: &[(&str, S
         .send()
         .await?;
     if response.status().as_u16() == 404 {
-        return fail(tr("Мод не знайдено на Modrinth", "Mod not found on Modrinth"));
+        return fail(tr("Проєкт не знайдено на Modrinth", "Project not found on Modrinth"));
     }
     Ok(response.error_for_status()?.json::<T>().await?)
 }
@@ -46,6 +47,9 @@ struct Hit {
     author: String,
     #[serde(default)]
     display_categories: Vec<String>,
+    /// Версії Minecraft, для яких є файли (для готових збірок — показуємо найновішу).
+    #[serde(default)]
+    versions: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -69,11 +73,13 @@ pub async fn search(
         .iter()
         .map(|loader| format!("categories:{loader}"))
         .collect();
-    let mut facets = vec![
-        json!(["project_type:mod"]),
-        json!([format!("versions:{}", target.minecraft_version)]),
-        json!(loaders),
-    ];
+    let mut facets = vec![json!([format!("project_type:{}", target.kind.modrinth_type())])];
+    if !target.minecraft_version.is_empty() {
+        facets.push(json!([format!("versions:{}", target.minecraft_version)]));
+    }
+    if !loaders.is_empty() {
+        facets.push(json!(loaders));
+    }
     if let Some(category) = category.filter(|c| !c.is_empty()) {
         facets.push(json!([format!("categories:{category}")]));
     }
@@ -105,6 +111,7 @@ pub async fn search(
                 downloads: hit.downloads,
                 author: hit.author,
                 categories: hit.display_categories,
+                game_versions: hit.versions.into_iter().rev().take(3).collect(),
             })
             .collect(),
     })
@@ -119,11 +126,12 @@ struct Tag {
     header: String,
 }
 
-pub async fn categories(client: &Client) -> Result<Vec<Category>> {
+pub async fn categories(client: &Client, kind: ContentKind) -> Result<Vec<Category>> {
     let tags: Vec<Tag> = get(client, "/tag/category", &[]).await?;
+    let project_type = kind.modrinth_type();
     let mut out: Vec<Category> = tags
         .into_iter()
-        .filter(|tag| tag.project_type == "mod" && tag.header == "categories")
+        .filter(|tag| tag.project_type == project_type && tag.header == "categories")
         .map(|tag| Category {
             name: pretty_label(&tag.name),
             id: tag.name,
@@ -201,16 +209,17 @@ impl Version {
     }
 }
 
-/// Сумісні версії мода, від найновішої.
+/// Сумісні версії проєкту, від найновішої.
 async fn compatible(client: &Client, target: &Target, project: &str) -> Result<Vec<Version>> {
-    let loaders = json!(target.loaders()).to_string();
-    let games = json!([target.minecraft_version]).to_string();
-    let mut list: Vec<Version> = get(
-        client,
-        &format!("/project/{project}/version"),
-        &[("loaders", loaders), ("game_versions", games)],
-    )
-    .await?;
+    let mut query: Vec<(&str, String)> = Vec::new();
+    let loaders = target.loaders();
+    if !loaders.is_empty() {
+        query.push(("loaders", json!(loaders).to_string()));
+    }
+    if !target.minecraft_version.is_empty() {
+        query.push(("game_versions", json!([target.minecraft_version]).to_string()));
+    }
+    let mut list: Vec<Version> = get(client, &format!("/project/{project}/version"), &query).await?;
     list.sort_by(|a, b| b.date_published.cmp(&a.date_published));
     Ok(list)
 }
@@ -219,6 +228,7 @@ pub async fn versions(client: &Client, target: &Target, project: &str) -> Result
     Ok(compatible(client, target, project)
         .await?
         .into_iter()
+        .filter(|v| target.kind != ContentKind::Modpack || v.primary_file().is_some_and(|f| is_mrpack(&f.filename)))
         .take(60)
         .map(|v| ModVersion {
             filename: v.primary_file().map(|f| f.filename.clone()).unwrap_or_default(),
@@ -237,6 +247,10 @@ pub async fn versions(client: &Client, target: &Target, project: &str) -> Result
         .collect())
 }
 
+fn is_mrpack(filename: &str) -> bool {
+    filename.to_ascii_lowercase().ends_with(".mrpack")
+}
+
 pub async fn resolve(
     client: &Client,
     target: &Target,
@@ -253,7 +267,10 @@ pub async fn resolve(
             Some(version)
         }
         None => {
-            let list = compatible(client, target, &info.id).await?;
+            let mut list = compatible(client, target, &info.id).await?;
+            if target.kind == ContentKind::Modpack {
+                list.retain(|v| v.primary_file().is_some_and(|f| is_mrpack(&f.filename)));
+            }
             // Релізи мають перевагу над бета/альфа.
             list.iter()
                 .find(|v| v.version_type == "release")
@@ -267,7 +284,13 @@ pub async fn resolve(
     let file = version
         .primary_file()
         .cloned()
-        .ctx(tr("У версії мода немає файлу", "The mod version has no file"))?;
+        .ctx(tr("У цієї версії немає файлу", "This version has no file"))?;
+    if target.kind == ContentKind::Modpack && !is_mrpack(&file.filename) {
+        return fail(tr(
+            "Ця версія збірки не містить .mrpack — обери іншу",
+            "This modpack version has no .mrpack file — choose another one",
+        ));
+    }
     let checksum = match (&file.hashes.sha512, &file.hashes.sha1) {
         (Some(hash), _) if hash.len() == 128 => Checksum::Sha512(hash.clone()),
         (_, Some(hash)) if hash.len() == 40 => Checksum::Sha1(hash.clone()),

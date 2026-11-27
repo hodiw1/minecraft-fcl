@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use reqwest::Client;
@@ -21,6 +22,8 @@ pub struct AppState {
     pub mods_lock: tokio::sync::Mutex<()>,
     /// Остання знайдена нова версія лаунчера (щоб «Завантажити» не перевіряло все заново).
     pub update: Mutex<Option<ReleaseInfo>>,
+    /// Лаунчер видаляє себе: жоден запис config.json не має відтворити вже видалену папку.
+    pub shutting_down: AtomicBool,
 }
 
 impl AppState {
@@ -33,7 +36,12 @@ impl AppState {
             processes: Arc::new(Mutex::new(HashMap::new())),
             mods_lock: tokio::sync::Mutex::new(()),
             update: Mutex::new(None),
+            shutting_down: AtomicBool::new(false),
         }
+    }
+
+    pub fn is_shutting_down(&self) -> bool {
+        self.shutting_down.load(Ordering::SeqCst)
     }
 
     pub fn running_game(&self) -> Option<String> {

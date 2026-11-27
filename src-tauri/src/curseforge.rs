@@ -8,14 +8,17 @@ use serde::Deserialize;
 
 use crate::error::{fail, Result};
 use crate::i18n::tr;
-use crate::mods::{Api, Category, ModHit, ModVersion, Resolution, ResolvedFile, SearchPage, Target, PAGE};
+use crate::mods::{
+    Api, Category, ContentKind, ModHit, ModVersion, Resolution, ResolvedFile, SearchPage, Target, PAGE,
+};
 use crate::t;
 use crate::util::Checksum;
 
 const API: &str = "https://api.curseforge.com/v1";
 const GAME_MINECRAFT: &str = "432";
-const CLASS_MODS: u64 = 6;
 const TIMEOUT: Duration = Duration::from_secs(20);
+/// Скільки id передаємо в одному POST /mods, /mods/files.
+const BATCH: usize = 200;
 /// API віддає не більше 10 000 результатів пошуку (index + pageSize).
 const MAX_INDEX: u32 = 10_000;
 
@@ -45,7 +48,27 @@ async fn get<T: DeserializeOwned>(api: &Api<'_>, path: &str, query: &[(&str, Str
             "CurseForge відхилив API-ключ (403). Перевір ключ у Налаштуваннях → «Джерела модів».",
             "CurseForge rejected the API key (403). Check the key in Settings → \"Mod sources\".",
         )),
-        404 => fail(tr("Мод не знайдено на CurseForge", "Mod not found on CurseForge")),
+        404 => fail(tr("Проєкт не знайдено на CurseForge", "Project not found on CurseForge")),
+        _ => Ok(response.error_for_status()?.json::<T>().await?),
+    }
+}
+
+async fn post<T: DeserializeOwned>(api: &Api<'_>, path: &str, body: serde_json::Value) -> Result<T> {
+    let key = key(api)?;
+    let response = api
+        .client
+        .post(format!("{API}{path}"))
+        .header("x-api-key", key)
+        .header("Accept", "application/json")
+        .json(&body)
+        .timeout(TIMEOUT)
+        .send()
+        .await?;
+    match response.status().as_u16() {
+        401 | 403 => fail(tr(
+            "CurseForge відхилив API-ключ (403). Перевір ключ у Налаштуваннях → «Джерела модів».",
+            "CurseForge rejected the API key (403). Check the key in Settings → \"Mod sources\".",
+        )),
         _ => Ok(response.error_for_status()?.json::<T>().await?),
     }
 }
@@ -118,6 +141,17 @@ struct CfMod {
     authors: Vec<Author>,
     #[serde(default)]
     categories: Vec<CfCategory>,
+    #[serde(default)]
+    class_id: Option<u64>,
+    #[serde(default)]
+    latest_files_indexes: Vec<LatestIndex>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LatestIndex {
+    #[serde(default)]
+    game_version: String,
 }
 
 #[derive(Deserialize)]
@@ -163,6 +197,8 @@ struct CfFile {
     dependencies: Vec<Dependency>,
     #[serde(default)]
     game_versions: Vec<String>,
+    #[serde(default)]
+    file_length: u64,
 }
 
 #[derive(Deserialize, Clone)]
@@ -198,6 +234,19 @@ impl CfFile {
     }
 
     fn fits(&self, target: &Target) -> bool {
+        match target.kind {
+            ContentKind::Modpack => return true,
+            ContentKind::ResourcePack | ContentKind::Shader => {
+                // Частина шейдерпаків на CurseForge взагалі не позначає версій гри.
+                let numeric = self
+                    .game_versions
+                    .iter()
+                    .filter(|v| v.chars().next().is_some_and(|c| c.is_ascii_digit()))
+                    .count();
+                return numeric == 0 || self.game_versions.iter().any(|v| v == &target.minecraft_version);
+            }
+            ContentKind::Mod => {}
+        }
         if !self.game_versions.iter().any(|v| v == &target.minecraft_version) {
             return false;
         }
@@ -223,12 +272,16 @@ pub async fn search(
     let offset = offset.min(MAX_INDEX - PAGE);
     let mut params: Vec<(&str, String)> = vec![
         ("gameId", GAME_MINECRAFT.to_string()),
-        ("classId", CLASS_MODS.to_string()),
-        ("gameVersion", target.minecraft_version.clone()),
-        ("modLoaderType", search_loader_type(target).to_string()),
+        ("classId", target.kind.curseforge_class().to_string()),
         ("pageSize", PAGE.to_string()),
         ("index", offset.to_string()),
     ];
+    if !target.minecraft_version.is_empty() && target.kind != ContentKind::Shader {
+        params.push(("gameVersion", target.minecraft_version.clone()));
+    }
+    if target.kind == ContentKind::Mod {
+        params.push(("modLoaderType", search_loader_type(target).to_string()));
+    }
     let query = query.trim();
     if query.is_empty() {
         params.push(("sortField", "2".to_string())); // популярність
@@ -252,7 +305,15 @@ pub async fn search(
 }
 
 fn hit_of(item: CfMod) -> ModHit {
+    let mut game_versions: Vec<String> = Vec::new();
+    for index in &item.latest_files_indexes {
+        let version = index.game_version.trim();
+        if !version.is_empty() && !game_versions.iter().any(|v| v == version) && game_versions.len() < 3 {
+            game_versions.push(version.to_string());
+        }
+    }
     ModHit {
+        game_versions,
         id: item.id.to_string(),
         slug: item.slug,
         title: item.name,
@@ -267,20 +328,21 @@ fn hit_of(item: CfMod) -> ModHit {
     }
 }
 
-pub async fn categories(api: &Api<'_>) -> Result<Vec<Category>> {
+pub async fn categories(api: &Api<'_>, kind: ContentKind) -> Result<Vec<Category>> {
+    let class = kind.curseforge_class();
     let page: Page<CfCategory> = get(
         api,
         "/categories",
         &[
             ("gameId", GAME_MINECRAFT.to_string()),
-            ("classId", CLASS_MODS.to_string()),
+            ("classId", class.to_string()),
         ],
     )
     .await?;
     let mut out: Vec<Category> = page
         .data
         .into_iter()
-        .filter(|c| c.class_id == Some(CLASS_MODS) && c.is_class != Some(true))
+        .filter(|c| c.class_id == Some(class) && c.is_class != Some(true))
         .map(|c| Category {
             id: c.id.to_string(),
             name: c.name,
@@ -290,17 +352,13 @@ pub async fn categories(api: &Api<'_>) -> Result<Vec<Category>> {
     Ok(out)
 }
 
-/// Сумісні файли мода, від найновішого.
+/// Сумісні файли проєкту, від найновішого.
 async fn compatible(api: &Api<'_>, target: &Target, project: &str) -> Result<Vec<CfFile>> {
-    let page: Page<CfFile> = get(
-        api,
-        &format!("/mods/{project}/files"),
-        &[
-            ("gameVersion", target.minecraft_version.clone()),
-            ("pageSize", "50".to_string()),
-        ],
-    )
-    .await?;
+    let mut query = vec![("pageSize", "50".to_string())];
+    if !target.minecraft_version.is_empty() && target.kind != ContentKind::Shader {
+        query.push(("gameVersion", target.minecraft_version.clone()));
+    }
+    let page: Page<CfFile> = get(api, &format!("/mods/{project}/files"), &query).await?;
     let mut files: Vec<CfFile> = page.data.into_iter().filter(|f| f.fits(target)).collect();
     files.sort_by(|a, b| b.file_date.cmp(&a.file_date));
     Ok(files)
@@ -360,9 +418,10 @@ pub async fn resolve(
     };
     let Some(url) = file.download_url.clone().filter(|u| u.starts_with("https://")) else {
         return fail(t!(
-            "Автор мода «{}» заборонив завантаження через сторонні лаунчери — встанови його вручну з сайту CurseForge у папку mods",
-            "The author of \"{}\" disabled downloads through third-party launchers — install it manually from the CurseForge website into the mods folder",
-            info.name
+            "Автор «{}» заборонив завантаження через сторонні лаунчери — завантаж файл вручну з сайту CurseForge у папку {}",
+            "The author of \"{}\" disabled downloads through third-party launchers — download it manually from the CurseForge website into the {} folder",
+            info.name,
+            if target.kind == ContentKind::Modpack { "Downloads" } else { target.kind.folder() }
         ));
     };
     let checksum = file
@@ -397,4 +456,63 @@ pub async fn resolve(
         checksum,
         dependencies,
     }))
+}
+
+// ───────────────────────────── готові збірки ─────────────────────────────
+
+/// Файл зі списку CurseForge-модпака (`manifest.json` → `files[]`).
+pub struct PackFile {
+    pub file_id: u64,
+    pub mod_id: u64,
+    pub title: String,
+    pub filename: String,
+    /// `None` — автор заборонив завантаження сторонніми лаунчерами.
+    pub url: Option<String>,
+    pub checksum: Checksum,
+    pub size: u64,
+    /// `classId` проєкту: 6 — мод, 12 — ресурс-пак, 6552 — шейдер.
+    pub class_id: Option<u64>,
+}
+
+/// Інформація про файли модпака пакетними запитами (`POST /mods/files`, `POST /mods`).
+pub async fn pack_files(api: &Api<'_>, file_ids: &[u64]) -> Result<Vec<PackFile>> {
+    let mut files: Vec<CfFile> = Vec::new();
+    for chunk in file_ids.chunks(BATCH) {
+        let page: Page<CfFile> = post(api, "/mods/files", serde_json::json!({ "fileIds": chunk })).await?;
+        files.extend(page.data);
+    }
+    let mut mod_ids: Vec<u64> = files.iter().map(|f| f.mod_id).collect();
+    mod_ids.sort_unstable();
+    mod_ids.dedup();
+    let mut mods: std::collections::HashMap<u64, CfMod> = std::collections::HashMap::new();
+    for chunk in mod_ids.chunks(BATCH) {
+        let page: Page<CfMod> = post(api, "/mods", serde_json::json!({ "modIds": chunk })).await?;
+        for item in page.data {
+            mods.insert(item.id, item);
+        }
+    }
+    Ok(files
+        .into_iter()
+        .map(|file| {
+            let info = mods.get(&file.mod_id);
+            let checksum = file
+                .hashes
+                .iter()
+                .find(|h| h.algo == 1 && h.value.len() == 40)
+                .map(|h| Checksum::Sha1(h.value.to_lowercase()))
+                .unwrap_or(Checksum::None);
+            PackFile {
+                file_id: file.id,
+                mod_id: file.mod_id,
+                title: info
+                    .map(|m| m.name.clone())
+                    .unwrap_or_else(|| file.display_name.clone()),
+                url: file.download_url.clone().filter(|u| u.starts_with("https://")),
+                checksum,
+                size: file.file_length,
+                class_id: info.and_then(|m| m.class_id),
+                filename: file.file_name,
+            }
+        })
+        .collect())
 }
