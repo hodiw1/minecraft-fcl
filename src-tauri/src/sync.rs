@@ -11,7 +11,9 @@ use crate::error::{AppError, Result};
 use crate::events::{phase, status, step, Progress};
 use crate::i18n::tr;
 use crate::instance::{self, PROTECTED};
-use crate::manifest::{is_config_like, safe_relative, Manifest, ManifestFile};
+use crate::manifest::{
+    is_config_like, is_world_junk, is_world_path, safe_relative, Manifest, ManifestFile,
+};
 use crate::paths::Paths;
 use crate::t;
 use crate::util::{download_file, verify_file_async, Checksum};
@@ -32,7 +34,8 @@ struct Entry {
 enum Decision {
     Keep,
     Download,
-    /// Конфіг, який гравець змінив сам — не чіпаємо, лише запам'ятовуємо еталон.
+    /// Конфіг, який гравець змінив сам, або вже наявний файл світу з `saves/` —
+    /// не чіпаємо, лише запам'ятовуємо еталон.
     KeepUserCopy,
 }
 
@@ -83,6 +86,16 @@ fn remove_unlisted(root: &Path, keep: &HashSet<String>) -> Result<usize> {
 async fn decide(entry: &Entry, deep: bool) -> Decision {
     let expected = entry.file.sha256.to_lowercase();
     let exists = entry.dest.is_file();
+
+    // Стартовий світ: докачуємо лише відсутні файли. Якщо файл уже є — це прогрес гравця,
+    // його не перезаписуємо навіть у режимі «Ремонт» (і зайві файли світу ніколи не видаляються).
+    if is_world_path(&entry.file.path) {
+        return if exists || is_world_junk(&entry.file.path) {
+            Decision::KeepUserCopy
+        } else {
+            Decision::Download
+        };
+    }
 
     if is_config_like(&entry.file.path) {
         if !exists {
@@ -291,5 +304,86 @@ pub async fn sync_instance(
     match first_error {
         Some(error) => Err(error),
         None => Ok(report),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sha2::{Digest, Sha256};
+
+    fn temp_root(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "terrapolis-sync-test-{name}-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn entry(root: &Path, path: &str, content: &[u8], recorded: Option<&str>) -> Entry {
+        Entry {
+            file: ManifestFile {
+                path: path.to_string(),
+                sha256: hex::encode(Sha256::digest(content)),
+                size: content.len() as u64,
+                url: format!("https://example.invalid/{path}"),
+            },
+            dest: root.join(safe_relative(path).unwrap()),
+            recorded: recorded.map(str::to_string),
+        }
+    }
+
+    #[tokio::test]
+    async fn world_files_are_downloaded_only_when_missing() {
+        let root = temp_root("saves");
+        let admin = b"level from the modpack";
+
+        // Файлу ще немає — стартовий світ докачується.
+        let missing = entry(&root, "saves/HW25/level.dat", admin, None);
+        assert!(matches!(decide(&missing, false).await, Decision::Download));
+        assert!(matches!(decide(&missing, true).await, Decision::Download));
+
+        // Гравець уже грав у світі: файл відрізняється від еталона, але його не чіпаємо —
+        // ні під час звичайної перевірки, ні в режимі «Ремонт», ні після оновлення збірки.
+        let player = root.join("saves").join("HW25").join("level.dat");
+        std::fs::create_dir_all(player.parent().unwrap()).unwrap();
+        std::fs::write(&player, b"player progress").unwrap();
+        let changed_by_admin = entry(&root, "saves/HW25/level.dat", admin, Some("0".repeat(64).as_str()));
+        for deep in [false, true] {
+            assert!(matches!(decide(&changed_by_admin, deep).await, Decision::KeepUserCopy));
+        }
+        assert_eq!(std::fs::read(&player).unwrap(), b"player progress");
+
+        // Службові файли світу ніколи не завантажуються.
+        let lock = entry(&root, "saves/HW25/session.lock", b"lock", None);
+        assert!(matches!(decide(&lock, true).await, Decision::KeepUserCopy));
+
+        // Звичайні файли збірки й далі оновлюються, якщо відрізняються.
+        let jar = root.join("mods").join("a.jar");
+        std::fs::create_dir_all(jar.parent().unwrap()).unwrap();
+        std::fs::write(&jar, b"old jar").unwrap();
+        let mod_entry = entry(&root, "mods/a.jar", b"new jar", None);
+        assert!(matches!(decide(&mod_entry, false).await, Decision::Download));
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn prune_never_touches_saves() {
+        let root = temp_root("prune");
+        let world = root.join("saves").join("w").join("region").join("r.0.0.mca");
+        std::fs::create_dir_all(world.parent().unwrap()).unwrap();
+        std::fs::write(&world, b"region").unwrap();
+        let extra = root.join("mods").join("extra.jar");
+        std::fs::create_dir_all(extra.parent().unwrap()).unwrap();
+        std::fs::write(&extra, b"jar").unwrap();
+
+        let removed = remove_unlisted(&root, &HashSet::new()).unwrap();
+        assert_eq!(removed, 1);
+        assert!(world.is_file());
+        assert!(!extra.exists());
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

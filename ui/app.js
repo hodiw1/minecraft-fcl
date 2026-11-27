@@ -42,6 +42,22 @@ const DICT = {
     "cl.noBody": "Опису немає.",
     "nav.settings": "Налаштування",
     "top.changeProfile": "Змінити профіль",
+    "top.sync": "Синхронізувати: перевірити оновлення лаунчера та збірок",
+    "sync.title": "Синхронізація",
+    "sync.running": "Синхронізація: перевірка оновлень лаунчера та збірок…",
+    "sync.found": "Знайдено {list}",
+    "sync.launcher": "оновлення лаунчера v{v}",
+    "sync.and": " та ",
+    "sync.upToDate": "Усе актуально: оновлень не знайдено",
+    "sync.newList": "Нові збірки: {names}",
+    "sync.updList": "Є оновлення: {names}",
+    "sync.launcherFailed": "Не вдалося перевірити оновлення лаунчера: джерела недоступні",
+    "sync.projectFailed": "Не вдалося оновити список збірок: {error}",
+    "sync.manifestFailed": "Не вдалося перевірити збірок: {n} (дзеркала недоступні)",
+    "sync.offline": "Джерела проєкту недоступні — показано збережений список збірок",
+    "sync.failed": "Синхронізація не вдалася: джерела недоступні",
+    "plural.newPacks": ["нову збірку", "нові збірки", "нових збірок"],
+    "plural.packUpdates": ["оновлення збірки", "оновлення збірок", "оновлень збірок"],
     "home.repair": "Ремонт",
     "home.repairTitle": "Перевірити та відновити пошкоджені файли збірки",
     "home.folder": "Папка",
@@ -470,6 +486,22 @@ const DICT = {
     "cl.noBody": "No description.",
     "nav.settings": "Settings",
     "top.changeProfile": "Change profile",
+    "top.sync": "Sync: check for launcher and modpack updates",
+    "sync.title": "Sync",
+    "sync.running": "Sync: checking for launcher and modpack updates…",
+    "sync.found": "Found {list}",
+    "sync.launcher": "launcher update v{v}",
+    "sync.and": " and ",
+    "sync.upToDate": "Everything is up to date: no updates found",
+    "sync.newList": "New modpacks: {names}",
+    "sync.updList": "Updates available: {names}",
+    "sync.launcherFailed": "Couldn't check for launcher updates: sources are unreachable",
+    "sync.projectFailed": "Couldn't refresh the modpack list: {error}",
+    "sync.manifestFailed": "Couldn't check {n} modpack(s): mirrors are unreachable",
+    "sync.offline": "Project sources are unreachable — showing the saved modpack list",
+    "sync.failed": "Sync failed: sources are unreachable",
+    "plural.newPacks": ["new modpack", "new modpacks", "new modpacks"],
+    "plural.packUpdates": ["modpack update", "modpack updates", "modpack updates"],
     "home.repair": "Repair",
     "home.repairTitle": "Check and restore damaged modpack files",
     "home.folder": "Folder",
@@ -899,6 +931,7 @@ function applyI18n() {
   for (const node of document.querySelectorAll("[data-i18n-html]")) node.innerHTML = t(node.dataset.i18nHtml);
   for (const node of document.querySelectorAll("[data-i18n-ph]")) node.placeholder = t(node.dataset.i18nPh);
   for (const node of document.querySelectorAll("[data-i18n-title]")) node.title = t(node.dataset.i18nTitle);
+  for (const node of document.querySelectorAll("[data-i18n-aria]")) node.setAttribute("aria-label", t(node.dataset.i18nAria));
   for (const group of [el.obLang, el.uiLangSeg]) {
     for (const button of group.querySelectorAll("[data-lang]")) {
       const on = button.dataset.lang === lang;
@@ -933,6 +966,7 @@ const el = {
   island: $("island"),
   status: $("statusText"),
   topProject: $("topProject"),
+  topSync: $("topSync"),
   topDot: $("topDot"),
   topHead: $("topHead"),
   topNick: $("topNick"),
@@ -1092,6 +1126,8 @@ const S = {
   update: null,
   /** «Пізніше» — до наступного запуску. */
   updateDismissed: false,
+  /** Іде перевірка кнопкою «Синхронізувати» (повторні кліки ігноруються). */
+  syncing: false,
   /** Шаблони дзеркал контенту — для картинок збірок із GitHub. */
   mirrors: null
 };
@@ -4878,6 +4914,7 @@ function showCrash(payload) {
 }
 
 function bindEvents() {
+  el.topSync.addEventListener("click", onSync);
   document.addEventListener("click", (event) => {
     const goto = event.target.closest("[data-goto]");
     if (goto && !el.app.hidden) {
@@ -5173,6 +5210,95 @@ async function checkUpdate({ manual = false } = {}) {
   S.updating = false;
   renderPlay();
   if (!manual && !el.app.hidden && S.view && !S.busy && !S.running && !result?.error) idleIsland();
+}
+
+/* ═══ кнопка «Синхронізувати» у верхній панелі ═══ */
+
+/** Перелік через кому з «та / and» перед останнім пунктом. */
+function joinList(items) {
+  if (items.length <= 1) return items.join("");
+  return items.slice(0, -1).join(", ") + t("sync.and") + items[items.length - 1];
+}
+
+function renderSyncButton() {
+  el.topSync.classList.toggle("is-spinning", S.syncing);
+  el.topSync.disabled = S.syncing;
+  el.topSync.setAttribute("aria-busy", String(S.syncing));
+}
+
+/** Застосовує свіжий ProjectView із синхронізації, не ламаючи збірку, яку зараз встановлюють чи запускають. */
+function applySyncedView(view) {
+  if (S.busy && S.view) {
+    const live = S.view.instances.find((i) => i.id === S.activeId);
+    const index = view.instances.findIndex((i) => i.id === S.activeId);
+    if (live && index >= 0) view.instances[index] = live;
+  }
+  const keep = view.instances.some((i) => i.id === S.activeId);
+  S.view = view;
+  S.viewError = null;
+  if (!keep) S.activeId = view.active_instance;
+  if (S.binding && view.name) S.binding.name = view.name;
+  prefetchAssets();
+  renderTop();
+  renderList();
+  renderHero();
+  if (S.tab === "project") renderProject();
+}
+
+/**
+ * Комплексна перевірка без кешу: нова версія лаунчера (сповіщення «Пізніше / Changelog / Завантажити»),
+ * нові збірки проєкту та нові версії manifest.json встановлених збірок (кнопка «ОНОВИТИ»).
+ */
+async function onSync() {
+  if (S.syncing) return;
+  S.syncing = true;
+  renderSyncButton();
+  if (!S.busy) setIsland("busy", t("sync.running"));
+  try {
+    const result = await invoke("sync_all");
+    const launcher = result.launcher;
+    if (launcher) S.update = launcher;
+    if (result.project) applySyncedView(result.project);
+
+    const found = [];
+    if (launcher?.available && launcher.release) {
+      found.push(t("sync.launcher", { v: launcher.release.version }));
+      S.updateDismissed = false;
+      showUpdateToast(launcher);
+    }
+    const fresh = result.new_instances || [];
+    const updates = result.updates || [];
+    if (fresh.length) found.push(plural(fresh.length, "plural.newPacks"));
+    if (updates.length) found.push(plural(updates.length, "plural.packUpdates"));
+
+    const notes = [];
+    if (fresh.length) notes.push(t("sync.newList", { names: fresh.join(", ") }));
+    if (updates.length) notes.push(t("sync.updList", { names: updates.join(", ") }));
+    if (launcher?.error) notes.push(t("sync.launcherFailed"));
+    if (result.project_error) notes.push(t("sync.projectFailed", { error: result.project_error }));
+    else if (result.project?.offline) notes.push(t("sync.offline"));
+    if (result.manifest_errors) notes.push(t("sync.manifestFailed", { n: result.manifest_errors }));
+
+    const failedAll = launcher?.error && (result.project_error || result.project?.offline);
+    const summary = found.length ? t("sync.found", { list: joinList(found) }) : failedAll ? t("sync.failed") : t("sync.upToDate");
+    const tone = found.length ? "accent" : notes.length ? "warn" : "";
+    toast({
+      id: "sync",
+      icon: found.length ? "sparkle" : notes.length ? "alert" : "check",
+      tone,
+      title: t("sync.title"),
+      text: summary,
+      html: notes.length ? `<p class="toast-text">${notes.map(esc).join("<br>")}</p>` : "",
+      timeout: found.length ? 9000 : 6000
+    });
+    if (!S.busy) setIsland(found.length ? "ok" : notes.length ? "warn" : "ok", summary);
+  } catch (error) {
+    if (!S.busy) setIsland("error", errHuman(error));
+    toast({ id: "sync", icon: "alert", tone: "warn", title: t("sync.title"), text: errHuman(error), timeout: 9000 });
+  } finally {
+    S.syncing = false;
+    renderSyncButton();
+  }
 }
 
 function updateVersionLine(check) {

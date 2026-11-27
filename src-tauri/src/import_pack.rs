@@ -1,9 +1,10 @@
 //! Імпорт збірки з `.zip`: коли всі джерела недоступні, адміністратор може роздати архів,
 //! а гравець — встановити його без інтернету.
 //!
-//! Розпаковуються ЛИШЕ `manifest.json`, `mods/`, `config/`, `resourcepacks/`, `shaderpacks/`
-//! та `servers.dat`. Світи, скріншоти, `options.txt` та інші особисті файли гравця не
-//! чіпаються, навіть якщо вони є в архіві.
+//! Розпаковуються ЛИШЕ `manifest.json`, `mods/`, `config/`, `resourcepacks/`, `shaderpacks/`,
+//! `saves/` та `servers.dat`. Файли стартових світів із `saves/` лише докладаються, коли їх ще
+//! немає: наявні світи гравця не перезаписуються. Скріншоти, `options.txt` та інші особисті
+//! файли гравця не чіпаються, навіть якщо вони є в архіві.
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -158,7 +159,7 @@ pub fn extract(
             continue;
         };
         // manifest.json читаємо окремо; решта — лише дозволені папки (safe_relative відсікає
-        // saves/, options.txt, "..", абсолютні шляхи тощо).
+        // options.txt, screenshots/, "..", абсолютні шляхи тощо).
         if relative == "manifest.json" {
             continue;
         }
@@ -175,6 +176,11 @@ pub fn extract(
         }
 
         let dest = instance_dir.join(&safe);
+        // Світ гравця не перезаписуємо: з архіву беремо лише відсутні файли, без службових.
+        if manifest::is_world_path(relative) && (dest.exists() || manifest::is_world_junk(relative)) {
+            report.skipped += 1;
+            continue;
+        }
         if let Some(parent) = dest.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -219,10 +225,10 @@ mod tests {
 
     #[test]
     fn personal_files_are_never_extracted() {
-        for path in ["saves/world/level.dat", "options.txt", "screenshots/a.png", "../x.jar", "C:/x.jar"] {
+        for path in ["options.txt", "screenshots/a.png", "../x.jar", "C:/x.jar", "saves/../x.jar"] {
             assert!(safe_relative(path).is_err(), "{path}");
         }
-        for path in ["mods/a.jar", "config/a.toml", "resourcepacks/r.zip", "shaderpacks/s.zip", "servers.dat"] {
+        for path in ["mods/a.jar", "config/a.toml", "resourcepacks/r.zip", "shaderpacks/s.zip", "servers.dat", "saves/world/level.dat"] {
             assert!(safe_relative(path).is_ok(), "{path}");
         }
     }

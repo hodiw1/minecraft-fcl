@@ -817,6 +817,75 @@ button.brand:active {
   color: var(--muted);
 }
 
+/* права група верхньої панелі: [синхронізація][профіль] — займає ту саму колонку, що й профіль */
+.top-right {
+  justify-self: end;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* кнопка синхронізації: квадрат на висоту кнопки профілю */
+.top-sync {
+  flex: none;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 2.75rem;
+  border-radius: var(--r);
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition: transform var(--fast) var(--ease), background-color var(--fast) linear, color var(--fast) linear,
+    border-color var(--fast) linear;
+}
+
+.top-sync:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.top-sync:active {
+  transform: scale(0.94);
+}
+
+.top-sync-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  transition: transform var(--mid) var(--ease);
+}
+
+.top-sync:hover .top-sync-icon {
+  transform: rotate(60deg);
+}
+
+/* під час перевірки: іконка плавно обертається (лише transform — GPU), повторні кліки вимкнено */
+.top-sync.is-spinning {
+  cursor: progress;
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.top-sync.is-spinning .top-sync-icon {
+  animation: sync-spin 0.9s linear infinite;
+  will-change: transform;
+}
+
+.top-sync:disabled:active {
+  transform: none;
+}
+
+@keyframes sync-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .head {
   width: 2.1rem;
   height: 2.1rem;

@@ -19,7 +19,11 @@ use tokio::process::Command;
 
 const ADDRESS: &str = "127.0.0.1:8080";
 const URL: &str = "http://127.0.0.1:8080";
-const MANAGED_DIRS: [&str; 4] = ["mods", "config", "resourcepacks", "shaderpacks"];
+/// Кореневі папки в pack/. `saves/` — стартові світи: лаунчер докачує лише відсутні файли
+/// й ніколи не перезаписує світ гравця.
+const MANAGED_DIRS: [&str; 5] = ["mods", "config", "resourcepacks", "shaderpacks", "saves"];
+/// Службові файли світу, які не потрапляють у manifest.json і на GitHub.
+const WORLD_JUNK: [&str; 2] = ["session.lock", "level.dat_old"];
 const CATEGORIES: [&str; 3] = ["mods", "shaderpacks", "resourcepacks"];
 const CONFIG_EXTENSIONS: [&str; 7] = ["toml", "json", "cfg", "properties", "yml", "yaml", "txt"];
 const GITHUB_FILE_LIMIT: u64 = 100 * 1024 * 1024;
@@ -586,6 +590,29 @@ fn is_ignored(name: &str) -> bool {
         || lower == "desktop.ini"
 }
 
+/// `saves/<світ>/.../session.lock` чи `level.dat_old` — тимчасові файли гри, їх не публікуємо.
+fn is_world_junk(relative: &str) -> bool {
+    relative.starts_with("saves/")
+        && relative
+            .rsplit('/')
+            .next()
+            .map(|name| WORLD_JUNK.iter().any(|junk| junk.eq_ignore_ascii_case(name)))
+            .unwrap_or(false)
+}
+
+/// Те саме правило, що й у лаунчері (manifest::safe_relative): лише Normal-компоненти
+/// (жодних `..`, `.`, абсолютних шляхів чи дисків) і лише дозволені кореневі папки.
+fn is_allowed_path(relative: &str) -> bool {
+    if relative == "servers.dat" {
+        return true;
+    }
+    let parts: Vec<&str> = relative.split('/').collect();
+    let clean = parts.iter().all(|part| {
+        !part.is_empty() && *part != "." && *part != ".." && !part.contains('\\') && !part.contains(':')
+    });
+    clean && parts.len() >= 2 && MANAGED_DIRS.contains(&parts[0])
+}
+
 fn walk(base: &FsPath) -> Result<Vec<(String, u64)>, String> {
     let mut out = Vec::new();
     if !base.is_dir() {
@@ -731,10 +758,10 @@ fn scan_pack(base: &FsPath, raw_base: &str) -> Result<Vec<FileOut>, String> {
     }
     let mut files = Vec::with_capacity(found.len());
     for (relative, size) in found {
-        let first = relative.split('/').next().unwrap_or("");
-        let allowed =
-            relative == "servers.dat" || (relative.contains('/') && MANAGED_DIRS.contains(&first));
-        if !allowed {
+        if is_world_junk(&relative) {
+            continue;
+        }
+        if !is_allowed_path(&relative) {
             return Err(format!("файл поза дозволеними місцями: pack/{relative}"));
         }
         if size >= GITHUB_FILE_LIMIT {
@@ -1418,5 +1445,56 @@ async fn main() {
 
     if let Err(error) = axum::serve(listener, app).await {
         eprintln!("помилка сервера: {error}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saves_are_allowed_without_traversal() {
+        for path in [
+            "saves/HW25/level.dat",
+            "saves/WINTER DebtHunt v0.5/region/r.0.0.mca",
+            "mods/a.jar",
+            "servers.dat",
+        ] {
+            assert!(is_allowed_path(path), "{path}");
+        }
+        for path in [
+            "saves",
+            "saves/../mods/a.jar",
+            "saves/./w/level.dat",
+            "saves//level.dat",
+            "C:/saves/w/level.dat",
+            "options.txt",
+            "logs/latest.log",
+        ] {
+            assert!(!is_allowed_path(path), "{path}");
+        }
+    }
+
+    #[test]
+    fn world_junk_is_skipped() {
+        assert!(is_world_junk("saves/HW25/session.lock"));
+        assert!(is_world_junk("saves/w/level.dat_old"));
+        assert!(!is_world_junk("saves/w/level.dat"));
+        assert!(!is_world_junk("config/session.lock"));
+    }
+
+    #[test]
+    fn scan_pack_skips_world_junk() {
+        let base = std::env::temp_dir().join(format!("mb-scan-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let world = base.join("pack").join("saves").join("W");
+        std::fs::create_dir_all(&world).unwrap();
+        std::fs::write(world.join("level.dat"), b"level").unwrap();
+        std::fs::write(world.join("level.dat_old"), b"old").unwrap();
+        std::fs::write(world.join("session.lock"), b"lock").unwrap();
+        let files = scan_pack(&base, "https://raw.githubusercontent.com/o/r/main/pack").unwrap();
+        let paths: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(paths, vec!["saves/W/level.dat"]);
+        let _ = std::fs::remove_dir_all(&base);
     }
 }

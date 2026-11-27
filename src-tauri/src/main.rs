@@ -52,6 +52,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::get_init_info,
             commands::check_launcher_update,
+            commands::sync_all,
             commands::install_launcher_update,
             commands::connect_project,
             commands::leave_project,

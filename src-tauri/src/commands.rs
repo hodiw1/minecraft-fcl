@@ -22,7 +22,7 @@ use crate::mirrors::{self, MirrorsInfo};
 use crate::mods::{self, Api, Source, Target};
 use crate::pack_debugger::{self, DebugReport};
 use crate::paths::{Paths, DATA_CHILDREN};
-use crate::project::{self, InstanceEntry};
+use crate::project::{self, InstanceEntry, ProjectIndex};
 use crate::server_status::{ping as ping_server, ServerStatus};
 use crate::state::AppState;
 use crate::sync::{self, SyncReport};
@@ -412,7 +412,7 @@ pub async fn check_launcher_update(
             "Checking for launcher updates…",
         ),
     );
-    let info = match updater::fetch_latest(&state.client).await {
+    let info = match updater::fetch_latest(&state.client, false).await {
         Ok(info) => info,
         Err(error) => {
             check.error = Some(error.0);
@@ -453,7 +453,7 @@ pub async fn install_launcher_update(
     let cached = state.update.lock().ok().and_then(|slot| slot.clone());
     let info = match cached {
         Some(info) => info,
-        None => updater::fetch_latest(&state.client).await?,
+        None => updater::fetch_latest(&state.client, false).await?,
     };
     let mut check = UpdateCheck {
         current: updater::current_version().to_string(),
@@ -527,24 +527,68 @@ pub fn open_github(repo: String, kind: String, tag: String) -> Result<()> {
     system::open_github(&repo, &kind, &tag)
 }
 
+/// Список збірок проєкту, з якого будується [`ProjectView`].
+struct ResolvedIndex {
+    index: ProjectIndex,
+    /// Жодне дзеркало не відповіло — список із кешу.
+    offline: bool,
+    /// Навіть кешу немає — лише збірки, встановлені на цьому комп'ютері.
+    local_only: bool,
+}
+
+/// Мережа → дзеркала → кеш індексу → лише встановлені збірки. Запуск уже
+/// встановлених збірок не блокується, навіть якщо недоступно геть усе.
+async fn resolve_index(
+    state: &AppState,
+    paths: &Paths,
+    binding: &ProjectBinding,
+    customs: &[(String, CustomSpec)],
+) -> Result<ResolvedIndex> {
+    match project::load_index(&state.client, paths, binding).await {
+        Ok((index, offline)) => Ok(ResolvedIndex {
+            index,
+            offline,
+            local_only: false,
+        }),
+        Err(error) => {
+            let local = project::local_index(paths, binding).await;
+            if local.instances.is_empty() && customs.is_empty() {
+                return Err(error);
+            }
+            Ok(ResolvedIndex {
+                index: local,
+                offline: true,
+                local_only: true,
+            })
+        }
+    }
+}
+
 #[tauri::command]
 pub async fn load_project(app: AppHandle, state: State<'_, AppState>) -> Result<ProjectView> {
     let (config, paths) = load_ctx(&app).await?;
     let binding = require_project(&config)?;
     let customs = custom::list(&paths).await;
-    // Мережа → дзеркала → кеш індексу → лише встановлені збірки. Запуск уже
-    // встановлених збірок не блокується, навіть якщо недоступно геть усе.
-    let (index, offline, local_only) =
-        match project::load_index(&state.client, &paths, &binding).await {
-            Ok((index, offline)) => (index, offline, false),
-            Err(error) => {
-                let local = project::local_index(&paths, &binding).await;
-                if local.instances.is_empty() && customs.is_empty() {
-                    return Err(error);
-                }
-                (local, true, true)
-            }
-        };
+    let resolved = resolve_index(&state, &paths, &binding, &customs).await?;
+    assemble_view(&app, &state, &config, &paths, &binding, resolved, &customs).await
+}
+
+/// Збирає [`ProjectView`]: вибрана збірка, стан кожної збірки (встановлена / є оновлення)
+/// за кешем віддалених manifest.json і локальними `state.json`.
+async fn assemble_view(
+    app: &AppHandle,
+    state: &AppState,
+    config: &Config,
+    paths: &Paths,
+    binding: &ProjectBinding,
+    resolved: ResolvedIndex,
+    customs: &[(String, CustomSpec)],
+) -> Result<ProjectView> {
+    let ResolvedIndex {
+        index,
+        offline,
+        local_only,
+    } = resolved;
 
     let mut active = config.active_instance.clone();
     if project::find(&index, &active).is_none() && !customs.iter().any(|(id, _)| *id == active) {
@@ -557,7 +601,7 @@ pub async fn load_project(app: AppHandle, state: State<'_, AppState>) -> Result<
         // Офлайн (лише встановлені збірки) — вибір гравця в конфігу не перезаписуємо.
         if !local_only {
             let chosen = active.clone();
-            update_config(&app, &state, move |config| {
+            update_config(app, state, move |config| {
                 config.active_instance = chosen;
                 Ok(())
             })
@@ -567,16 +611,16 @@ pub async fn load_project(app: AppHandle, state: State<'_, AppState>) -> Result<
 
     let mut instances = Vec::with_capacity(index.instances.len());
     for entry in &index.instances {
-        instances.push(build_view(&paths, &binding, entry).await);
+        instances.push(build_view(paths, binding, entry).await);
     }
-    for (id, spec) in &customs {
-        instances.push(custom_view(&paths, id, spec).await);
+    for (id, spec) in customs {
+        instances.push(custom_view(paths, id, spec).await);
     }
-    let name = project::display_name(&binding, &index);
+    let name = project::display_name(binding, &index);
     if name != binding.name && !local_only {
         // Виправляємо збережену назву («Myteam» → «MyTeam»), щоб вона була правильна й до завантаження.
         let fixed = name.clone();
-        let _ = update_config(&app, &state, move |config| {
+        let _ = update_config(app, state, move |config| {
             if let Some(project) = config.project.as_mut() {
                 project.name = fixed;
             }
@@ -594,6 +638,146 @@ pub async fn load_project(app: AppHandle, state: State<'_, AppState>) -> Result<
         active_instance: active,
         instances,
     })
+}
+
+// ───────────────────────────── синхронізація ─────────────────────────────
+
+/// Результат кнопки «Синхронізувати» у верхній панелі.
+#[derive(Serialize)]
+pub struct SyncCheck {
+    /// Перевірка нової версії лаунчера (без автовстановлення — лише сповіщення).
+    pub launcher: UpdateCheck,
+    /// Свіжий список збірок; `None` — проєкт не підключено або його не вдалося завантажити.
+    pub project: Option<ProjectView>,
+    pub project_error: Option<String>,
+    /// Назви збірок, що з'явилися в проєкті з моменту попереднього завантаження списку.
+    pub new_instances: Vec<String>,
+    /// Назви встановлених збірок, для яких вийшла нова версія manifest.json.
+    pub updates: Vec<String>,
+    /// Скільки manifest.json не вдалося отримати з жодного дзеркала.
+    pub manifest_errors: usize,
+}
+
+struct ProjectSync {
+    view: ProjectView,
+    new_instances: Vec<String>,
+    manifest_errors: usize,
+}
+
+/// Оновлює список збірок проєкту та віддалені manifest.json кожної збірки (через дзеркала,
+/// з обходом кешу CDN), після чого будує свіжий [`ProjectView`].
+async fn sync_project(
+    app: &AppHandle,
+    state: &AppState,
+    config: &Config,
+    paths: &Paths,
+    binding: &ProjectBinding,
+) -> Result<ProjectSync> {
+    // Попередній список — до того, як load_index перезапише кеш індексу.
+    let before: Option<std::collections::HashSet<String>> = project::load_cache(paths, binding)
+        .await
+        .map(|index| index.instances.into_iter().map(|entry| entry.id).collect());
+    let customs = custom::list(paths).await;
+    let resolved = resolve_index(state, paths, binding, &customs).await?;
+
+    let mut manifest_errors = 0usize;
+    if !resolved.offline {
+        let results = futures_util::future::join_all(
+            resolved
+                .index
+                .instances
+                .iter()
+                .filter(|entry| !entry.manifest.is_empty())
+                .map(|entry| async move {
+                    match manifest::fetch(&state.client, &entry.manifest).await {
+                        Ok(fresh) => {
+                            let cache = project::remote_manifest_cache(paths, binding, &entry.id);
+                            manifest::save_cache(&cache, &fresh).await.is_ok()
+                        }
+                        Err(_) => false,
+                    }
+                }),
+        )
+        .await;
+        manifest_errors = results.iter().filter(|ok| !**ok).count();
+    }
+
+    let new_instances: Vec<String> = match &before {
+        Some(before) if !resolved.local_only => resolved
+            .index
+            .instances
+            .iter()
+            .filter(|entry| !before.contains(&entry.id))
+            .map(|entry| entry.name.clone())
+            .collect(),
+        _ => Vec::new(),
+    };
+    let view = assemble_view(app, state, config, paths, binding, resolved, &customs).await?;
+    Ok(ProjectSync {
+        view,
+        new_instances,
+        manifest_errors,
+    })
+}
+
+/// Кнопка «Синхронізувати»: паралельно перевіряє нову версію лаунчера, нові збірки
+/// в підключеному проєкті та оновлення manifest.json уже встановлених збірок.
+#[tauri::command]
+pub async fn sync_all(app: AppHandle, state: State<'_, AppState>) -> Result<SyncCheck> {
+    let (config, paths) = load_ctx(&app).await?;
+    let state: &AppState = &state;
+
+    let launcher = async {
+        let mut check = UpdateCheck {
+            current: updater::current_version().to_string(),
+            auto: config.auto_update_launcher,
+            ..UpdateCheck::default()
+        };
+        match updater::fetch_latest(&state.client, true).await {
+            Ok(info) => {
+                check.available = updater::is_newer(&info);
+                if let Ok(mut slot) = state.update.lock() {
+                    *slot = check.available.then(|| info.clone());
+                }
+                check.release = Some(info);
+            }
+            Err(error) => check.error = Some(error.0),
+        }
+        check
+    };
+    let project = async {
+        match &config.project {
+            Some(binding) => Some(sync_project(&app, state, &config, &paths, binding).await),
+            None => None,
+        }
+    };
+    let (launcher, project) = futures_util::future::join(launcher, project).await;
+
+    let mut out = SyncCheck {
+        launcher,
+        project: None,
+        project_error: None,
+        new_instances: Vec::new(),
+        updates: Vec::new(),
+        manifest_errors: 0,
+    };
+    match project {
+        Some(Ok(synced)) => {
+            out.updates = synced
+                .view
+                .instances
+                .iter()
+                .filter(|inst| inst.update_available && !inst.custom)
+                .map(|inst| inst.name.clone())
+                .collect();
+            out.new_instances = synced.new_instances;
+            out.manifest_errors = synced.manifest_errors;
+            out.project = Some(synced.view);
+        }
+        Some(Err(error)) => out.project_error = Some(error.0),
+        None => {}
+    }
+    Ok(out)
 }
 
 /// Підтягує manifest.json збірки, щоб показати точний розмір і чи є оновлення.

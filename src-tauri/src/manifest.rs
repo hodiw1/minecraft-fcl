@@ -6,7 +6,13 @@ use serde::{Deserialize, Serialize};
 use crate::error::{fail, Result};
 use crate::mirrors;
 
-pub const MANAGED_DIRS: [&str; 4] = ["mods", "config", "resourcepacks", "shaderpacks"];
+/// Кореневі папки всередині `pack/`, які може містити збірка. `saves/` — стартові світи:
+/// їх лаунчер лише докачує, коли файлу ще немає, і ніколи не перезаписує (див. [`is_world_path`]).
+pub const MANAGED_DIRS: [&str; 5] = ["mods", "config", "resourcepacks", "shaderpacks", "saves"];
+
+/// Службові файли світу, які не мають потрапляти в збірку: блокування сесії
+/// й резервна копія level.dat, яку гра перезаписує сама.
+pub const WORLD_JUNK: [&str; 2] = ["session.lock", "level.dat_old"];
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct LoaderSpec {
@@ -69,9 +75,24 @@ pub fn safe_relative(path: &str) -> Result<PathBuf> {
     match first {
         Some(dir) if has_name && MANAGED_DIRS.contains(&dir.as_str()) => Ok(out),
         _ => fail(format!(
-            "шлях поза дозволеними папками (mods, config, resourcepacks, shaderpacks): {path}"
+            "шлях поза дозволеними папками (mods, config, resourcepacks, shaderpacks, saves): {path}"
         )),
     }
+}
+
+/// Файл стартового світу (`saves/<світ>/...`): прогрес гравця, який лаунчер не перезаписує.
+pub fn is_world_path(path: &str) -> bool {
+    path.starts_with("saves/")
+}
+
+/// `session.lock` / `level.dat_old` усередині `saves/` — службові файли, їх не публікуємо й не розпаковуємо.
+pub fn is_world_junk(path: &str) -> bool {
+    is_world_path(path)
+        && path
+            .rsplit('/')
+            .next()
+            .map(|name| WORLD_JUNK.iter().any(|junk| junk.eq_ignore_ascii_case(name)))
+            .unwrap_or(false)
 }
 
 fn validate(manifest: &Manifest) -> Result<()> {
@@ -137,4 +158,43 @@ pub async fn save_cache(path: &Path, manifest: &Manifest) -> Result<()> {
     let text = serde_json::to_string_pretty(manifest)?;
     tokio::fs::write(path, text).await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saves_are_allowed_but_traversal_is_not() {
+        for path in [
+            "saves/HW25/level.dat",
+            "saves/WINTER DebtHunt v0.5/region/r.0.0.mca",
+            "mods/a.jar",
+            "servers.dat",
+        ] {
+            assert!(safe_relative(path).is_ok(), "{path}");
+        }
+        for path in [
+            "saves",
+            "saves/../mods/x.jar",
+            "saves/../../evil.exe",
+            "../saves/w/level.dat",
+            "/saves/w/level.dat",
+            "C:/saves/w/level.dat",
+            "options.txt",
+            "screenshots/a.png",
+        ] {
+            assert!(safe_relative(path).is_err(), "{path}");
+        }
+    }
+
+    #[test]
+    fn world_junk_is_detected() {
+        assert!(is_world_path("saves/w/level.dat"));
+        assert!(!is_world_path("config/saves/x.cfg"));
+        assert!(is_world_junk("saves/w/session.lock"));
+        assert!(is_world_junk("saves/w/level.dat_old"));
+        assert!(!is_world_junk("saves/w/level.dat"));
+        assert!(!is_world_junk("config/session.lock"));
+    }
 }

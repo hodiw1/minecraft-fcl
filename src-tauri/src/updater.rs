@@ -264,11 +264,12 @@ fn parse_release(text: &str) -> std::result::Result<ReleaseInfo, String> {
 }
 
 /// Остання версія лаунчера: перше джерело з UPDATE_MIRRORS, що відповіло коректно.
-pub async fn fetch_latest(client: &Client) -> Result<ReleaseInfo> {
+/// `fresh = true` (кнопка «Синхронізувати») додає `?t=<час>`, щоб обійти кеш CDN дзеркал.
+pub async fn fetch_latest(client: &Client, fresh: bool) -> Result<ReleaseInfo> {
     let urls = mirrors::update_candidates();
     let request = Request {
         timeout: Duration::from_secs(15),
-        bust: false,
+        bust: fresh,
         accept: Some("application/vnd.github+json"),
     };
     match mirrors::fetch_list(client, &urls, &request, parse_release).await {
