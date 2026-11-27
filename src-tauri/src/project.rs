@@ -68,6 +68,77 @@ pub struct InstanceEntry {
     pub minecraft_version: String,
     #[serde(default)]
     pub loader: String,
+    /// Фони збірки (імена файлів у її папці), якщо список файлів папки відомий із GitHub API:
+    /// нумерована серія `1.png..N.png` для слайд-шоу або один запасний фон (`bg.png`, …).
+    /// `None` — список невідомий, інтерфейс перевіряє `1.png`, `2.png`, … сам (до першого 404).
+    #[serde(default)]
+    pub backgrounds: Option<Vec<String>>,
+}
+
+/// Одиночні фони збірки в порядку пріоритету — після нумерованої серії `1.png..N.png`.
+/// Той самий список використовує інтерфейс (`instanceBackgrounds` в `ui/app.js`).
+pub const FALLBACK_BACKGROUNDS: [&str; 7] = [
+    "bg.png",
+    "bg.jpg",
+    "background.png",
+    "background.jpg",
+    "background.webp",
+    "banner.png",
+    "banner.jpg",
+];
+
+/// Номер кадру слайд-шоу з імені `<N>.png` (`^[1-9]\d*\.png$`): `1.png` → 1, `10.png` → 10.
+/// `0.png`, `01.png`, `1.PNG`, `bg.png` та шляхи з `/` — не кадри.
+fn frame_number(name: &str) -> Option<&str> {
+    let digits = name.strip_suffix(".png")?;
+    let mut chars = digits.chars();
+    match chars.next() {
+        Some('1'..='9') if chars.all(|c| c.is_ascii_digit()) => Some(digits),
+        _ => None,
+    }
+}
+
+/// Нумерована серія фонів, відсортована за числом (`1.png`, `2.png`, …, `10.png`).
+/// Порівнюємо довжину, потім цифри — без переповнення навіть для дуже довгих номерів.
+pub fn numbered_backgrounds<'a>(names: impl IntoIterator<Item = &'a str>) -> Vec<String> {
+    let mut frames: Vec<&str> = names.into_iter().filter(|name| frame_number(name).is_some()).collect();
+    frames.sort_by(|a, b| {
+        let (a, b) = (frame_number(a).unwrap_or(""), frame_number(b).unwrap_or(""));
+        a.len().cmp(&b.len()).then_with(|| a.cmp(b))
+    });
+    frames.dedup();
+    frames.into_iter().map(str::to_string).collect()
+}
+
+/// Серія діє, лише якщо в ній є `1.png` — так само, як під час послідовної перевірки
+/// `1.png`, `2.png`, … через raw/дзеркала (404 на `1.png` — серії немає).
+fn series_or_none(numbered: Vec<String>) -> Option<Vec<String>> {
+    (numbered.first().map(String::as_str) == Some("1.png")).then_some(numbered)
+}
+
+/// Фони збірки за повним списком файлів її папки: спершу серія `1.png..N.png`
+/// (тоді `bg.png` та інші запасні ігноруються), інакше — перший наявний із [`FALLBACK_BACKGROUNDS`].
+pub fn pick_backgrounds<'a>(names: impl IntoIterator<Item = &'a str> + Clone) -> Vec<String> {
+    if let Some(series) = series_or_none(numbered_backgrounds(names.clone())) {
+        return series;
+    }
+    let present: HashSet<&str> = names.into_iter().collect();
+    FALLBACK_BACKGROUNDS
+        .iter()
+        .find(|name| present.contains(**name))
+        .map(|name| vec![name.to_string()])
+        .unwrap_or_default()
+}
+
+/// Список фонів з індексу/кешу: лише безпечні імена файлів (без шляхів), серія — у числовому порядку.
+fn sanitize_backgrounds(list: &[String]) -> Vec<String> {
+    if let Some(series) = series_or_none(numbered_backgrounds(list.iter().map(String::as_str))) {
+        return series;
+    }
+    list.iter()
+        .find(|name| FALLBACK_BACKGROUNDS.contains(&name.as_str()))
+        .map(|name| vec![name.clone()])
+        .unwrap_or_default()
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -620,6 +691,7 @@ fn legacy_index(binding: &ProjectBinding, url: &str, manifest: &Manifest) -> Pro
             recommended_ram_mb: manifest.recommended_ram_mb,
             minecraft_version: manifest.minecraft_version.clone(),
             loader: manifest.loader.kind.clone(),
+            backgrounds: None,
         }],
     }
 }
@@ -668,6 +740,9 @@ fn normalize(
             .collect();
         if !manifest::is_safe_token(entry.minecraft_version.trim()) {
             entry.minecraft_version.clear();
+        }
+        if let Some(list) = entry.backgrounds.as_mut() {
+            *list = sanitize_backgrounds(list);
         }
         instances.push(entry);
     }
@@ -740,7 +815,9 @@ async fn discover_instances(
     let tree: TreeResponse = response.json().await.map_err(classify)?;
 
     let mut seen = HashSet::new();
-    let mut found: Vec<(String, String)> = Vec::new();
+    let mut found: Vec<(String, String, String)> = Vec::new();
+    // Файли безпосередньо в папці кожної збірки (без підпапок) — для вибору фонів.
+    let mut folder_files: HashMap<String, Vec<String>> = HashMap::new();
     for node in tree.tree {
         if node.kind != "blob" {
             continue;
@@ -751,20 +828,29 @@ async fn discover_instances(
         let Some((folder, file)) = rest.split_once('/') else {
             continue;
         };
+        if !file.contains('/') {
+            folder_files
+                .entry(folder.to_string())
+                .or_default()
+                .push(file.to_string());
+        }
         let id = folder.to_lowercase();
         if file != "manifest.json" || !is_safe_id(&id) || !seen.insert(id.clone()) {
             continue;
         }
-        found.push((id, node.path.clone()));
+        found.push((id, folder.to_string(), node.path.clone()));
     }
     found.sort();
 
-    let entries = join_all(found.into_iter().map(|(id, path)| {
+    let entries = join_all(found.into_iter().map(|(id, folder, path)| {
         let client = client.clone();
         let manifest_url = raw_url(owner, repo, branch, &path);
+        let files = folder_files.remove(&folder).unwrap_or_default();
         async move {
             let manifest = get_json::<Manifest>(&client, &manifest_url).await.ok();
-            instance_from_manifest(id, manifest_url, manifest)
+            let mut entry = instance_from_manifest(id, manifest_url, manifest);
+            entry.backgrounds = Some(pick_backgrounds(files.iter().map(String::as_str)));
+            entry
         }
     }))
     .await;
@@ -967,6 +1053,48 @@ mod tests {
         assert_eq!(done.name, "MyTeam");
         let custom = complete(binding("CODE", "Partner Server"), &index("Something else"));
         assert_eq!(custom.name, "Partner Server");
+    }
+
+    #[test]
+    fn numbered_backgrounds_sort_by_number() {
+        let names = ["10.png", "2.png", "bg.png", "1.png", "3.png", "manifest.json", "11.png", "9.png"];
+        assert_eq!(
+            numbered_backgrounds(names),
+            vec!["1.png", "2.png", "3.png", "9.png", "10.png", "11.png"]
+        );
+        // Не кадри: нуль на початку, інше розширення чи регістр, префікси, підпапки.
+        let junk = ["0.png", "01.png", "1.PNG", "1.jpg", "a1.png", "1a.png", ".png", "1.png.bak", "pack/1.png"];
+        assert!(numbered_backgrounds(junk).is_empty());
+        // Дуже довгий номер не ламає сортування.
+        assert_eq!(
+            numbered_backgrounds(["123456789012345678901234567890.png", "5.png"]),
+            vec!["5.png", "123456789012345678901234567890.png"]
+        );
+    }
+
+    #[test]
+    fn numbered_series_has_priority_over_bg() {
+        let names = ["manifest.json", "icon.png", "bg.png", "banner.jpg", "10.png", "2.png", "1.png"];
+        assert_eq!(pick_backgrounds(names), vec!["1.png", "2.png", "10.png"]);
+        // Без 1.png..N.png — перший наявний запасний фон у порядку пріоритету.
+        assert_eq!(pick_backgrounds(["banner.jpg", "bg.jpg", "icon.png"]), vec!["bg.jpg"]);
+        assert_eq!(pick_backgrounds(["icon.png", "background.webp"]), vec!["background.webp"]);
+        assert!(pick_backgrounds(["icon.png", "manifest.json"]).is_empty());
+        // Без 1.png серії немає (як і при перевірці через HTTP) — береться bg.png.
+        assert_eq!(pick_backgrounds(["3.png", "bg.png", "2.png"]), vec!["bg.png"]);
+        // Пропуски в нумерації допустимі: усі кадри за числом.
+        assert_eq!(pick_backgrounds(["1.png", "5.png", "bg.png"]), vec!["1.png", "5.png"]);
+    }
+
+    #[test]
+    fn backgrounds_from_index_are_sanitized() {
+        let list = |items: &[&str]| items.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            sanitize_backgrounds(&list(&["2.png", "../x.png", "1.png", "bg.png"])),
+            vec!["1.png", "2.png"]
+        );
+        assert_eq!(sanitize_backgrounds(&list(&["../bg.png", "bg.png"])), vec!["bg.png"]);
+        assert!(sanitize_backgrounds(&list(&["https://evil/x.png"])).is_empty());
     }
 
     #[test]

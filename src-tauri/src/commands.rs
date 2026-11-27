@@ -211,8 +211,11 @@ pub struct InstanceView {
     pub description: String,
     pub server: String,
     pub image: String,
-    /// Папка збірки в репозиторії: звідси беруться icon.png і background.png.
+    /// Папка збірки в репозиторії: звідси беруться icon.png і фони (1.png..N.png, bg.png).
     pub asset_base: String,
+    /// Готовий список фонів (імена файлів у `asset_base`), якщо папку збірки видно в GitHub API:
+    /// серія `1.png..N.png` для слайд-шоу або один запасний фон. `None` — інтерфейс перевіряє сам.
+    pub backgrounds: Option<Vec<String>>,
     pub minecraft_version: String,
     pub loader: String,
     pub loader_version: String,
@@ -326,6 +329,7 @@ async fn build_view(
         server: entry.server.clone(),
         image: entry.image.clone(),
         asset_base: project::instance_asset_base(entry),
+        backgrounds: entry.backgrounds.clone(),
         minecraft_version: if entry.minecraft_version.is_empty() {
             mc
         } else {
@@ -358,6 +362,7 @@ async fn custom_view(paths: &Paths, id: &str, spec: &CustomSpec) -> InstanceView
         server: String::new(),
         image: String::new(),
         asset_base: String::new(),
+        backgrounds: None,
         minecraft_version: spec.minecraft_version.clone(),
         loader: spec.loader.clone(),
         loader_version: spec.loader_version.clone(),

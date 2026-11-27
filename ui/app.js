@@ -1215,6 +1215,8 @@ function idleIsland() {
 
 function updateCalm() {
   document.body.classList.toggle("calm", Boolean(S.running) || document.hidden);
+  // Слайд-шоу фону: пауза у згорнутому вікні та під час гри, відновлення після повернення.
+  syncSlideshow();
 }
 
 /* ═══════════════════════════ КАРТИНКИ З РЕПОЗИТОРІЮ ═══════════════════════════ */
@@ -1322,10 +1324,93 @@ function resolveAsset(candidates) {
   return job;
 }
 
+/** Одиночні фони (пріоритет №2): `image` з instances.json, далі bg.png, bg.jpg, … — як FALLBACK_BACKGROUNDS у project.rs. */
+const FALLBACK_BACKGROUNDS = ["bg.png", "bg.jpg", "background.png", "background.jpg", "background.webp", "banner.png", "banner.jpg"];
+/** Кадр слайд-шоу (пріоритет №1): `1.png`, `2.png`, …, `10.png`. */
+const FRAME_RE = /^[1-9]\d*\.png$/;
+
 function instanceBackgrounds(inst) {
   const base = inst?.asset_base || "";
-  const files = ["bg.png", "bg.jpg", "background.png", "background.jpg", "background.webp", "banner.png", "banner.jpg"];
-  return [inst?.image, ...(base ? files.map((name) => base + name) : [])];
+  return [inst?.image, ...(base ? FALLBACK_BACKGROUNDS.map((name) => base + name) : [])];
+}
+
+/* ── фони збірки: серія 1.png..N.png або один фон ── */
+
+// Серії кешуються в пам'яті (між перемиканнями вкладок і збірок) і в localStorage (між запусками):
+// знайдена серія — 6 годин, «серії немає» — 30 хвилин. Окремі кадри (і їхні 404) додатково
+// кешує resolveAsset, тож повторні перевірки не ходять у мережу.
+const bgSeries = new Map();
+
+function backgroundKey(inst) {
+  const listed = Array.isArray(inst?.backgrounds) ? inst.backgrounds.join(",") : "?";
+  return [inst?.asset_base || "", inst?.image || "", listed].join("|");
+}
+
+/**
+ * Опис фонів збірки. `frames` — адреси кадрів 1.png..N.png (raw; дзеркала підставляє resolveAsset),
+ * `complete` — серію вже повністю знайдено (список із GitHub API, кеш або 404 на наступному номері),
+ * `fallback` — кандидати одиночного фону, якщо серії немає.
+ */
+function seriesFor(inst) {
+  const key = backgroundKey(inst);
+  let series = bgSeries.get(key);
+  if (series) return series;
+  const base = inst?.asset_base || "";
+  const listed = Array.isArray(inst?.backgrounds) ? inst.backgrounds : null;
+  series = { key, base, frames: [], complete: true, probe: false, fallback: instanceBackgrounds(inst), first: null, firstUrl: undefined, probing: null };
+  if (base && listed) {
+    // Папку збірки видно в GitHub API — бекенд уже обрав фони, нічого не перевіряємо навмання.
+    if (listed[0] === "1.png") series.frames = listed.filter((name) => FRAME_RE.test(name)).map((name) => base + name);
+    else series.fallback = [inst.image, ...listed.map((name) => base + name)];
+  } else if (base) {
+    // Список файлів невідомий: 1.png, 2.png, … перевіряються по черзі до першого 404.
+    series.probe = true;
+    const saved = storageGet("bgset:" + key);
+    const fresh = saved && Array.isArray(saved.frames) && Date.now() - saved.at < (saved.frames.length ? ASSET_TTL : ASSET_MISS_TTL);
+    if (fresh) series.frames = saved.frames.filter((url) => typeof url === "string" && url.startsWith(base));
+    else series.complete = false;
+  }
+  bgSeries.set(key, series);
+  return series;
+}
+
+function saveSeries(series) {
+  if (series.probe && series.complete) storageSet("bgset:" + series.key, { frames: series.frames, at: Date.now() });
+}
+
+/** Перевіряє наступний номер серії (N+1).png; 404 — серія закінчилась. */
+function discoverNext(series) {
+  if (series.complete) return Promise.resolve();
+  if (series.probing) return series.probing;
+  series.probing = (async () => {
+    const raw = series.base + (series.frames.length + 1) + ".png";
+    if (await resolveAsset([raw])) series.frames.push(raw);
+    else {
+      series.complete = true;
+      saveSeries(series);
+    }
+    series.probing = null;
+  })();
+  return series.probing;
+}
+
+/** Перший кадр (1.png) або одиночний фон; `null` — фону немає. Результат кешується в series. */
+function firstBackground(series) {
+  if (!series.first) {
+    series.first = (async () => {
+      if (!series.frames.length && !series.complete) await discoverNext(series);
+      if (series.frames.length) {
+        const url = await resolveAsset([series.frames[0]]);
+        if (url) return url;
+        // 1.png зник із репозиторію — серії більше немає.
+        series.frames = [];
+        series.complete = true;
+        saveSeries(series);
+      }
+      return resolveAsset(series.fallback);
+    })().then((url) => (series.firstUrl = url || null));
+  }
+  return series.first;
 }
 
 function instanceIcons(inst) {
@@ -1382,15 +1467,15 @@ function paintAvatar(node, letter, candidates) {
 /** Приглушена мініатюра фону збірки в картці списку. */
 function paintArt(node, inst) {
   if (!node) return;
-  const candidates = instanceBackgrounds(inst);
   const apply = (url) => {
     if (!url || !node.isConnected) return;
     node.style.backgroundImage = 'url("' + url.replace(/["\\\n]/g, "") + '")';
     node.classList.add("ready");
   };
-  const key = assetKey(candidates);
-  if (assetResolved.has(key)) apply(assetResolved.get(key));
-  else resolveAsset(candidates).then(apply);
+  // У картці — лише перший кадр серії (1.png) або одиночний фон, без слайд-шоу.
+  const series = seriesFor(inst);
+  if (series.firstUrl !== undefined) apply(series.firstUrl);
+  else firstBackground(series).then(apply);
 }
 
 function initial(text) {
@@ -1402,19 +1487,28 @@ function prefetchAssets() {
   resolveAsset(projectIcons());
   for (const inst of S.view?.instances || []) {
     resolveAsset(instanceIcons(inst));
-    resolveAsset(instanceBackgrounds(inst));
+    // Лише перший кадр: решту серії слайд-шоу довантажує поступово, для активної збірки.
+    firstBackground(seriesFor(inst));
   }
 }
 
-/* фон Hero: два шари, перехід лише через opacity */
+/* фон Hero: два шари (подвійний буфер), перехід лише через opacity/transform */
 let heroLayer = 0;
 let heroUrl = null;
+let heroHideTimer = 0;
+/** Скільки триває кросфейд кадру (має збігатися з .hero-media.is-slideshow .hero-bg у style.css) + запас. */
+const HERO_FADE_MS = 1300;
 
+/**
+ * Справжній кросфейд: новий кадр проявляється ПОВЕРХ старого, а старий шар ховається лише після
+ * завершення переходу — без «провалу» в темряву посередині. Картинка до цього вже декодована (loadImage).
+ */
 function showHeroImage(url) {
   if (url === heroUrl) return;
   heroUrl = url;
   const layers = el.heroMedia.children;
   const previous = layers[heroLayer];
+  clearTimeout(heroHideTimer);
   if (!url) {
     previous.classList.remove("ready");
     el.hero.classList.remove("has-image");
@@ -1422,24 +1516,117 @@ function showHeroImage(url) {
   }
   heroLayer ^= 1;
   const next = layers[heroLayer];
-  next.classList.remove("ready");
+  // Шар, що повертається з-під низу, миттєво скидаємо в opacity: 0 — без зворотного переходу.
+  next.classList.add("instant");
+  next.classList.remove("ready", "front");
   next.style.backgroundImage = 'url("' + url.replace(/["\\\n]/g, "") + '")';
   void next.offsetWidth;
-  next.classList.add("ready");
-  previous.classList.remove("ready");
+  next.classList.remove("instant");
+  next.classList.add("front", "ready");
+  previous.classList.remove("front");
+  heroHideTimer = setTimeout(() => {
+    if (layers[heroLayer] === next) previous.classList.remove("ready");
+  }, HERO_FADE_MS);
   el.hero.classList.add("has-image");
 }
 
-function paintHeroImage(inst) {
-  if (!inst) return showHeroImage(null);
-  const candidates = instanceBackgrounds(inst);
-  const key = assetKey(candidates);
-  if (assetResolved.has(key)) return showHeroImage(assetResolved.get(key));
-  // Попередній фон лишається, доки новий не готовий: кросфейд без «провалу» в темряву.
-  resolveAsset(candidates).then((url) => {
-    if (current()?.id === inst.id) showHeroImage(url);
-  });
+/* ── слайд-шоу з 1.png..N.png ── */
+
+const SLIDE_MS = 7000;
+const SLIDE_RETRY_MS = 2500;
+const slide = { series: null, index: 0, timer: 0, token: 0, busy: false };
+
+/** Таймер працює лише у видимому вікні, без запущеної гри і без prefers-reduced-motion. */
+function slideshowAllowed() {
+  return !document.hidden && !S.running && !reduceMotion.matches;
 }
+
+function stopSlideshow() {
+  clearTimeout(slide.timer);
+  slide.timer = 0;
+}
+
+function scheduleSlide(delay = SLIDE_MS) {
+  stopSlideshow();
+  const series = slide.series;
+  if (!series || series.frames.length < 2 || !slideshowAllowed()) return;
+  slide.timer = setTimeout(nextSlide, delay);
+}
+
+/** Пауза/відновлення: виклик із updateCalm (згортання вікна, гра) і зміни prefers-reduced-motion. */
+function syncSlideshow() {
+  el.heroMedia.classList.toggle("is-slideshow", (slide.series?.frames.length || 0) >= 2);
+  if (!slideshowAllowed()) stopSlideshow();
+  else if (!slide.timer && !slide.busy) scheduleSlide();
+}
+
+/** Індекс наступного кадру; за потреби спершу перевіряє, чи існує (N+1).png. */
+async function nextIndex(series, from) {
+  const next = from + 1;
+  if (next >= series.frames.length && !series.complete) await discoverNext(series);
+  return next < series.frames.length ? next : 0;
+}
+
+/** Попереднє завантаження наступного кадру у фоні, поки показується поточний. */
+async function preloadAhead(series, token) {
+  const next = await nextIndex(series, slide.index);
+  if (slide.token === token && series.frames[next]) resolveAsset([series.frames[next]]);
+  if (slide.token === token) syncSlideshow();
+}
+
+async function nextSlide() {
+  slide.timer = 0;
+  const { series, token } = slide;
+  if (!series || slide.busy || !slideshowAllowed()) return;
+  slide.busy = true;
+  try {
+    const next = await nextIndex(series, slide.index);
+    // Перехід стартує лише тоді, коли кадр уже завантажено й декодовано (new Image() у loadImage).
+    const url = await resolveAsset([series.frames[next]]);
+    if (slide.token !== token) return;
+    slide.index = next;
+    if (!url) {
+      scheduleSlide(SLIDE_RETRY_MS);
+      return;
+    }
+    if (!slideshowAllowed()) return;
+    showHeroImage(url);
+    preloadAhead(series, token);
+    scheduleSlide();
+  } finally {
+    if (slide.token === token) slide.busy = false;
+  }
+}
+
+function paintHeroImage(inst) {
+  if (!inst) {
+    stopSlideshow();
+    slide.series = null;
+    slide.token++;
+    slide.busy = false;
+    syncSlideshow();
+    return showHeroImage(null);
+  }
+  const series = seriesFor(inst);
+  // Та сама збірка (перемальовування картки, оновлення стану) — слайд-шоу не перезапускаємо.
+  if (slide.series === series) return syncSlideshow();
+  stopSlideshow();
+  slide.series = series;
+  slide.index = 0;
+  slide.busy = false;
+  const token = ++slide.token;
+  syncSlideshow();
+  const show = (url) => {
+    if (slide.token !== token) return;
+    showHeroImage(url);
+    if (series.frames.length) preloadAhead(series, token);
+  };
+  // Попередній фон лишається, доки новий не готовий: кросфейд без «провалу» в темряву.
+  if (series.firstUrl !== undefined) show(series.firstUrl);
+  else firstBackground(series).then(show);
+}
+
+reduceMotion.addEventListener?.("change", syncSlideshow);
 
 /* ═══════════════════════════ ЛЮДСЬКІ ПОМИЛКИ ═══════════════════════════ */
 
@@ -4460,6 +4647,7 @@ async function onLeave() {
     await invoke("leave_project");
     S.binding = null;
     S.view = null;
+    paintHeroImage(null);
     showOnboarding();
   } catch (error) {
     showError(error);
