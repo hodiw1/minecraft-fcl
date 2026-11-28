@@ -2,17 +2,17 @@
 
 # 🏛️ TERRAPOLIS
 
-**Легкий і швидкий самостійний Minecraft-лаунчер: запускай гру, збирай власні збірки та підключайся до проєктів спільноти**
+**Легкий і швидкий самостійний Майнкрафт-лаунчер: запускай гру, збирай власні збірки та підключайся до проєктів спільноти**
 
 <p>
-  <img src="https://img.shields.io/badge/Version-0.4.0-f59e0b?style=for-the-badge&logo=github&logoColor=white" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-0.4.1-f59e0b?style=for-the-badge&logo=github&logoColor=white" alt="Version" />
   <img src="https://img.shields.io/badge/Core-Rust-dea584?style=for-the-badge&logo=rust&logoColor=black" alt="Rust" />
   <img src="https://img.shields.io/badge/Engine-Tauri_v2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri v2" />
   <img src="https://img.shields.io/badge/UI-WebView2-0078D7?style=for-the-badge&logo=microsoftedge&logoColor=white" alt="WebView2" />
   <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows" />
 </p>
 
-> ⚠️ **Увага:** Це тестова версія лаунчера (`v0.4.0`). Функціонал активно тестується та доповнюється перед релізом `1.0.0`.
+> ⚠️ **Увага:** Це тестова версія лаунчера (`v0.4.1`). Функціонал активно тестується та доповнюється перед релізом `1.0.0`.
 
 </div>
 
