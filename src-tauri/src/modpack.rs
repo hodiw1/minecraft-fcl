@@ -30,6 +30,7 @@ use crate::paths::Paths;
 use crate::t;
 use crate::util::{download_file, noop, Checksum};
 use crate::curseforge;
+use crate::share::{ShareManifest, SHARE_FORMAT, SHARE_MANIFEST};
 
 /// Скільки байт може займати індекс збірки (`modrinth.index.json` / `manifest.json`).
 const MAX_INDEX_BYTES: u64 = 16 * 1024 * 1024;
@@ -278,8 +279,38 @@ fn read_json<T: DeserializeOwned>(archive: &Path, name: &str) -> Result<T> {
         .map_err(|error| AppError(t!("{} пошкоджений: {}", "{} is invalid: {}", name, error)))
 }
 
+/// Обмеження розпакування overrides/: розмір файлу, сумарний обсяг (за ФАКТИЧНО розпакованими
+/// байтами — заголовки zip можуть брехати) і, для збірок друзів, білий список тек верхнього рівня.
+#[derive(Clone, Copy, Debug)]
+struct ExtractLimits {
+    entry: u64,
+    total: u64,
+    files: usize,
+    top: Option<&'static [&'static str]>,
+}
+
+const MODPACK_LIMITS: ExtractLimits = ExtractLimits {
+    entry: MAX_ENTRY_BYTES,
+    total: MAX_TOTAL_BYTES,
+    files: 100_000,
+    top: None,
+};
+
+/// Пакет друга: архів до 45 МБ, тож розпакованих даних не може бути гігабайти (zip-bomb),
+/// а писати можна лише в налаштування й теки контенту — не в saves/, screenshots/, logs/ тощо.
+const SHARED_TOP: [&str; 12] = [
+    "config", "defaultconfigs", "kubejs", "scripts", "global_packs", "openloader",
+    "patchouli_books", "mods", "resourcepacks", "shaderpacks", "servers.dat", "icon.png",
+];
+const SHARED_LIMITS: ExtractLimits = ExtractLimits {
+    entry: 256 * 1024 * 1024,
+    total: 1024 * 1024 * 1024,
+    files: 6_000,
+    top: Some(&SHARED_TOP),
+};
+
 /// Розпаковує `prefixes` (по черзі, пізніші перекривають ранні) у `dest`. Повертає кількість файлів.
-fn extract_overrides(archive: &Path, prefixes: &[String], dest: &Path) -> Result<(usize, usize)> {
+fn extract_overrides(archive: &Path, prefixes: &[String], dest: &Path, limits: ExtractLimits) -> Result<(usize, usize)> {
     let mut zip = open_zip(archive)?;
     let mut written = 0usize;
     let mut skipped = 0usize;
@@ -300,12 +331,18 @@ fn extract_overrides(archive: &Path, prefixes: &[String], dest: &Path) -> Result
                 skipped += 1;
                 continue;
             };
-            if entry.size() > MAX_ENTRY_BYTES {
+            let top = relative.split('/').next().unwrap_or("");
+            if let Some(allowed) = limits.top {
+                if !allowed.iter().any(|dir| dir.eq_ignore_ascii_case(top)) {
+                    skipped += 1;
+                    continue;
+                }
+            }
+            if entry.size() > limits.entry {
                 return fail(t!("Файл у збірці завеликий: {}", "A file in the modpack is too large: {}", relative));
             }
-            total += entry.size();
-            if total > MAX_TOTAL_BYTES {
-                return fail(tr("Збірка завелика", "The modpack is too large"));
+            if written >= limits.files {
+                return fail(tr("У збірці забагато файлів", "The modpack has too many files"));
             }
             let target = dest.join(&safe);
             if target.is_dir() {
@@ -326,10 +363,11 @@ fn extract_overrides(archive: &Path, prefixes: &[String], dest: &Path) -> Result
                     break;
                 }
                 copied += read as u64;
-                if copied > MAX_ENTRY_BYTES {
+                total += read as u64;
+                if copied > limits.entry || total > limits.total {
                     drop(out);
                     let _ = std::fs::remove_file(&temp);
-                    return fail(tr("Архів збірки пошкоджений", "The modpack archive is damaged"));
+                    return fail(tr("Архів збірки пошкоджений або завеликий", "The modpack archive is damaged or too large"));
                 }
                 out.write_all(&buffer[..read])?;
             }
@@ -385,6 +423,7 @@ struct Plan {
     overrides: Vec<String>,
     missing: Vec<String>,
     skipped: usize,
+    limits: ExtractLimits,
 }
 
 fn plan_mrpack(index: MrIndex, file: &ResolvedFile) -> Result<Plan> {
@@ -455,12 +494,14 @@ fn plan_mrpack(index: MrIndex, file: &ResolvedFile) -> Result<Plan> {
             loader_version,
             created: 0,
             origin: format!("Modrinth · {version}"),
+            ..CustomSpec::default()
         },
         jobs,
         total,
         overrides: vec!["overrides/".to_string(), "client-overrides/".to_string()],
         missing: Vec::new(),
         skipped,
+        limits: MODPACK_LIMITS,
     })
 }
 
@@ -541,12 +582,14 @@ async fn plan_curseforge(api: &Api<'_>, manifest: CfManifest, file: &ResolvedFil
             loader_version,
             created: 0,
             origin: format!("CurseForge · {version}"),
+            ..CustomSpec::default()
         },
         jobs,
         total,
         overrides,
         missing,
         skipped,
+        limits: MODPACK_LIMITS,
     })
 }
 
@@ -613,7 +656,12 @@ async fn install_archive(
             plan_curseforge(api, manifest, file).await?
         }
     };
+    run_plan(app, api.client, paths, archive, plan).await
+}
 
+/// Спільний хвіст встановлення: нова власна збірка, файли з CDN, overrides/ з архіву.
+/// Будь-яка помилка прибирає напівстворену збірку.
+async fn run_plan(app: &AppHandle, client: &Client, paths: &Paths, archive: &Path, plan: Plan) -> Result<ModpackReport> {
     let Plan {
         spec,
         jobs,
@@ -621,6 +669,7 @@ async fn install_archive(
         overrides,
         missing,
         skipped,
+        limits,
     } = plan;
     let mut report = ModpackReport {
         name: spec.name.clone(),
@@ -646,11 +695,11 @@ async fn install_archive(
                 jobs.len()
             ),
         );
-        report.files = download_all(app, api.client, &dir, jobs, total).await?;
+        report.files = download_all(app, client, &dir, jobs, total).await?;
         status(app, tr("Розпаковування overrides…", "Extracting overrides…"));
         let (source, target) = (archive.to_path_buf(), dir.clone());
         let (written, skipped) =
-            tokio::task::spawn_blocking(move || extract_overrides(&source, &overrides, &target)).await??;
+            tokio::task::spawn_blocking(move || extract_overrides(&source, &overrides, &target, limits)).await??;
         report.overrides = written;
         report.skipped += skipped;
         Ok(())
@@ -672,9 +721,243 @@ async fn install_archive(
     Ok(report)
 }
 
+// ───────────────────────────── збірка друга (Terrapolis) ─────────────────────────────
+
+/// Хости, з яких пакет друга може качати файли: CDN Modrinth і CurseForge.
+/// Лише CDN Modrinth і CurseForge: жодних github.com/довільних хостів, file://, localhost.
+const SHARE_HOSTS: [&str; 3] = ["cdn.modrinth.com", "edge.forgecdn.net", "mediafilez.forgecdn.net"];
+
+pub(crate) fn allowed_share_url(url: &str) -> bool {
+    let Some(rest) = url.strip_prefix("https://") else {
+        return false;
+    };
+    let host = rest.split(['/', '?', '#']).next().unwrap_or("");
+    !host.contains('@') && SHARE_HOSTS.iter().any(|allowed| host.eq_ignore_ascii_case(allowed))
+}
+
+fn is_hex(value: &str, len: usize) -> bool {
+    value.len() == len && value.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+fn plan_shared(manifest: &ShareManifest, origin: String, shared_from: String) -> Result<Plan> {
+    if manifest.format != SHARE_FORMAT {
+        return fail(tr(
+            "Збірку друга створено новішою версією лаунчера — онови Terrapolis",
+            "Your friend's modpack was made by a newer launcher — update Terrapolis",
+        ));
+    }
+    if manifest.files.len() > MAX_FILES {
+        return fail(tr("У збірці забагато файлів", "The modpack has too many files"));
+    }
+    let kind = LoaderKind::parse(&manifest.loader)?;
+    let mc = manifest.minecraft_version.trim().to_string();
+    let loader_version = manifest.loader_version.trim().to_string();
+    if !is_safe_token(&mc) || (kind != LoaderKind::Vanilla && !is_safe_token(&loader_version)) {
+        return fail(tr("Некоректна версія гри у збірці", "Invalid game version in the modpack"));
+    }
+    let mut jobs = Vec::new();
+    let mut seen = HashSet::new();
+    let mut total = 0u64;
+    for file in &manifest.files {
+        let relative = safe_pack_path(&file.path).ok_or_else(|| {
+            AppError(t!("Небезпечний шлях у збірці: {}", "Unsafe path in the modpack: {}", file.path))
+        })?;
+        let top = file.path.split('/').next().unwrap_or("");
+        if !matches!(top, "mods" | "resourcepacks" | "shaderpacks") {
+            return fail(t!("Небезпечний шлях у збірці: {}", "Unsafe path in the modpack: {}", file.path));
+        }
+        if !seen.insert(file.path.to_ascii_lowercase()) {
+            continue;
+        }
+        if !allowed_share_url(&file.url) {
+            return fail(t!(
+                "Файл «{}» не має дозволеного джерела завантаження",
+                "File \"{}\" has no allowed download source",
+                file.path
+            ));
+        }
+        let checksum = if is_hex(&file.sha512, 128) {
+            Checksum::Sha512(file.sha512.clone())
+        } else if is_hex(&file.sha1, 40) {
+            Checksum::Sha1(file.sha1.clone())
+        } else {
+            return fail(t!("Для файлу «{}» немає контрольної суми", "File \"{}\" has no checksum", file.path));
+        };
+        total += file.size.min(MAX_ENTRY_BYTES);
+        jobs.push(Job {
+            relative,
+            urls: vec![file.url.clone()],
+            checksum,
+            label: file.path.rsplit('/').next().unwrap_or(&file.path).to_string(),
+        });
+    }
+    let name: String = manifest.name.trim().chars().filter(|c| !c.is_control()).take(40).collect();
+    Ok(Plan {
+        spec: CustomSpec {
+            name: if name.is_empty() { "Terrapolis".to_string() } else { name },
+            minecraft_version: mc,
+            loader: kind.id().to_string(),
+            loader_version,
+            origin,
+            shared_from,
+            ..CustomSpec::default()
+        },
+        jobs,
+        total,
+        overrides: vec!["overrides/".to_string()],
+        missing: Vec::new(),
+        skipped: 0,
+        limits: SHARED_LIMITS,
+    })
+}
+
+/// Встановлює збірку друга (пакет Terrapolis) як нову власну збірку й відновлює записи
+/// менеджера контенту (назви, іконки, версії модів).
+pub async fn install_shared(
+    app: &AppHandle,
+    client: &Client,
+    paths: &Paths,
+    archive: &Path,
+    origin: String,
+    shared_from: String,
+) -> Result<ModpackReport> {
+    status(app, tr("Перевірка вмісту збірки…", "Checking the modpack contents…"));
+    let path = archive.to_path_buf();
+    let mut manifest: ShareManifest = tokio::task::spawn_blocking(move || read_json(&path, SHARE_MANIFEST)).await??;
+    let plan = plan_shared(&manifest, origin, shared_from)?;
+    let report = run_plan(app, client, paths, archive, plan).await?;
+    // Іконка друга: лише справжній PNG, і лише в .launcher/icon.png (не в корені гри).
+    let dropped = paths.instance_dir(&report.instance_id).join(custom::ICON_FILE);
+    if let Ok(bytes) = tokio::fs::read(&dropped).await {
+        let _ = tokio::fs::remove_file(&dropped).await;
+        if custom::check_icon(&bytes).is_ok() {
+            let _ = custom::save_icon(paths, &report.instance_id, Some(&bytes)).await;
+        }
+    }
+    for kind in [mods::ContentKind::Mod, mods::ContentKind::ResourcePack, mods::ContentKind::Shader] {
+        let dir = mods::content_dir(paths, &report.instance_id, kind);
+        let records: Vec<mods::ModRecord> = std::mem::take(manifest.records_mut(kind))
+            .into_iter()
+            .filter(|r| {
+                safe_pack_path(&r.filename).is_some_and(|p| p.components().count() == 1)
+                    && dir.join(&r.filename).is_file()
+            })
+            .collect();
+        if !records.is_empty() {
+            let _ = mods::save_records(paths, &report.instance_id, kind, &records).await;
+        }
+    }
+    Ok(report)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn zip_with(path: &Path, files: &[(&str, &[u8])]) {
+        use zip::write::SimpleFileOptions;
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(path).unwrap());
+        for (name, bytes) in files {
+            zip.start_file(*name, SimpleFileOptions::default()).unwrap();
+            zip.write_all(bytes).unwrap();
+        }
+        zip.finish().unwrap();
+    }
+
+    #[test]
+    fn shared_overrides_never_touch_personal_folders() {
+        let base = std::env::temp_dir().join(format!("tp-extract-{}", crate::config::new_id()));
+        std::fs::create_dir_all(&base).unwrap();
+        let archive = base.join("pack.zip");
+        zip_with(
+            &archive,
+            &[
+                ("overrides/config/sodium.json", b"{}"),
+                ("overrides/servers.dat", b"nbt"),
+                ("overrides/saves/World/level.dat", b"evil"),
+                ("overrides/screenshots/x.png", b"evil"),
+                ("overrides/options.txt", b"evil"),
+                ("overrides/.launcher/custom.json", b"evil"),
+                ("overrides/../escape.txt", b"evil"),
+            ],
+        );
+        let dest = base.join("instance");
+        std::fs::create_dir_all(&dest).unwrap();
+        let (written, skipped) = extract_overrides(&archive, &["overrides/".to_string()], &dest, SHARED_LIMITS).unwrap();
+        assert_eq!(written, 2);
+        assert_eq!(skipped, 5);
+        assert!(dest.join("config/sodium.json").is_file());
+        assert!(dest.join("servers.dat").is_file());
+        assert!(!dest.join("saves").exists());
+        assert!(!dest.join("screenshots").exists());
+        assert!(!dest.join("options.txt").exists());
+        assert!(!dest.join(".launcher").exists());
+        assert!(!base.join("escape.txt").exists());
+
+        // Сумарний ліміт рахується за фактично розпакованими байтами.
+        let tiny = ExtractLimits { entry: 1024, total: 15, files: 100, top: None };
+        let bomb = base.join("bomb.zip");
+        zip_with(&bomb, &[("overrides/a.txt", &[b'x'; 10]), ("overrides/b.txt", &[b'y'; 10])]);
+        assert!(extract_overrides(&bomb, &["overrides/".to_string()], &base.join("bomb"), tiny).is_err());
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn shared_urls_are_limited_to_mod_cdns() {
+        assert!(allowed_share_url("https://cdn.modrinth.com/data/x/versions/y/a.jar"));
+        assert!(allowed_share_url("https://edge.forgecdn.net/files/1/2/a.jar"));
+        for bad in [
+            "file:///C:/Windows/System32/evil.jar",
+            "http://cdn.modrinth.com/a.jar",
+            "https://127.0.0.1/a.jar",
+            "https://localhost/a.jar",
+            "https://github.com/evil/repo/releases/download/v1/a.jar",
+            "https://cdn.modrinth.com.evil.com/a.jar",
+            "https://user@cdn.modrinth.com/a.jar",
+        ] {
+            assert!(!allowed_share_url(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn shared_plan_validates_paths_hosts_and_hashes() {
+        let sha1 = "b".repeat(40);
+        let good = ShareManifest {
+            format: SHARE_FORMAT,
+            name: "Friends SMP".into(),
+            minecraft_version: "1.21.1".into(),
+            loader: "fabric".into(),
+            loader_version: "0.16.5".into(),
+            files: vec![crate::share::ShareFile {
+                path: "mods/sodium.jar".into(),
+                url: "https://cdn.modrinth.com/data/AANobbMI/versions/x/sodium.jar".into(),
+                sha1: sha1.clone(),
+                sha512: String::new(),
+                size: 10,
+            }],
+            ..ShareManifest::default()
+        };
+        let plan = plan_shared(&good, "@friend · Terrapolis".into(), String::new()).unwrap();
+        assert_eq!(plan.jobs.len(), 1);
+        assert_eq!(plan.spec.loader, "fabric");
+        assert_eq!(plan.overrides, ["overrides/"]);
+
+        let mut evil = good.clone();
+        evil.files[0].path = "../../evil.jar".into();
+        assert!(plan_shared(&evil, String::new(), String::new()).is_err());
+        let mut evil = good.clone();
+        evil.files[0].path = "config/evil.jar".into();
+        assert!(plan_shared(&evil, String::new(), String::new()).is_err());
+        let mut evil = good.clone();
+        evil.files[0].url = "https://evil.example.com/x.jar".into();
+        assert!(plan_shared(&evil, String::new(), String::new()).is_err());
+        let mut evil = good.clone();
+        evil.files[0].sha1 = String::new();
+        assert!(plan_shared(&evil, String::new(), String::new()).is_err());
+        let mut newer = good;
+        newer.format = 99;
+        assert!(plan_shared(&newer, String::new(), String::new()).is_err());
+    }
 
     #[test]
     fn pack_paths_never_escape_the_instance() {

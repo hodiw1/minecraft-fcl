@@ -27,6 +27,8 @@ mod pack_debugger;
 mod paths;
 mod project;
 mod server_status;
+mod share;
+mod social;
 mod state;
 mod sync;
 mod system;
@@ -49,11 +51,25 @@ fn main() {
                     mirrors::refresh(&client, &root).await;
                 });
             }
+            // Акаунт і Rich Presence: heartbeat у фоні (без інтернету — тихо чекає мережу).
+            social::start(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_init_info,
-            commands::onboarding_profile,
+            social::account_info,
+            social::onboarding_account,
+            social::claim_username,
+            social::logout_account,
+            social::social_snapshot,
+            social::search_users,
+            social::send_friend_request,
+            social::respond_friend_request,
+            social::remove_friend,
+            social::request_pack_access,
+            social::respond_pack_request,
+            share::set_pack_visibility,
+            share::download_friend_pack,
             commands::finish_onboarding,
             commands::check_launcher_update,
             commands::sync_all,
@@ -94,6 +110,8 @@ fn main() {
             commands::minecraft_versions,
             commands::loader_versions,
             commands::create_custom_instance,
+            commands::pick_pack_icon,
+            commands::set_custom_icon,
             commands::mod_sources,
             commands::mod_categories,
             commands::search_mods,
@@ -111,6 +129,14 @@ fn main() {
             commands::reset_launcher_data,
             commands::uninstall_launcher
         ])
-        .run(tauri::generate_context!())
-        .expect("помилка запуску лаунчера");
+        .build(tauri::generate_context!())
+        .expect("помилка запуску лаунчера")
+        .run(|handle, event| {
+            // Лаунчер закривається: друзі бачать «Офлайн» одразу, а не через 150 с.
+            if let tauri::RunEvent::Exit = event {
+                if !handle.state::<state::AppState>().is_shutting_down() {
+                    social::shutdown(handle);
+                }
+            }
+        });
 }

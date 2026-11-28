@@ -4591,26 +4591,25 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   font-size: 0.9rem;
 }
 
+/* Дві незалежні колонки: ліва (версія, назва, видимість, іконка) задає висоту, права
+   (завантажувач + завжди присутня «Версія завантажувача») розтягується на всю висоту.
+   Жоден блок не з'являється й не зникає з потоку — модалка не «стрибає». */
 .create-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-areas:
-    "mc loader"
-    "name loader";
-  align-items: start;
+  align-items: stretch;
   gap: 0.6rem;
 }
 
-.cs-mc {
-  grid-area: mc;
+.create-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
 }
 
-.cs-loader {
-  grid-area: loader;
-}
-
-.cs-name {
-  grid-area: name;
+.create-col > .cs-loader {
+  flex: 1;
 }
 
 .create-sub {
@@ -4626,7 +4625,6 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 @media (max-width: 760px) {
   .create-grid {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "mc" "loader" "name";
   }
 }
 
@@ -4652,37 +4650,6 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 
 .modal[data-kind="create"] .hint {
   font-size: 0.8rem;
-}
-
-/* Плавне розгортання блоку «Версія завантажувача»: висота — через grid-template-rows
-   (0fr → 1fr), поява — через opacity/transform, без стрибка сусідів. */
-.collapse {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transform: translate3d(0, -6px, 0);
-  transition:
-    grid-template-rows var(--mid) var(--ease),
-    opacity var(--mid) var(--ease),
-    transform var(--mid) var(--ease);
-}
-
-.collapse.open {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  transform: none;
-}
-
-.collapse-inner {
-  min-height: 0;
-  overflow: hidden;
-  /* запас під кільце фокуса, яке інакше обрізав би overflow */
-  margin: 0 -3px;
-  padding: 0 3px;
-}
-
-.collapse-inner > .field {
-  padding: 0.5rem 0 3px;
 }
 
 /* ───────── «багатий» випадний список: іконка + назва + опис ───────── */
@@ -5201,4 +5168,1103 @@ body.calm .tp-bar i {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   v0.4.1 — акаунт @username, друзі, Rich Presence, видимість збірок
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ───────── поле з префіксом @ ───────── */
+
+.at-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.at-input > span {
+  position: absolute;
+  left: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+  pointer-events: none;
+}
+
+.at-input input[type="text"] {
+  padding-left: 1.85rem;
+}
+
+.at-input-lg input[type="text"] {
+  height: 3.25rem;
+  font-size: 1.1rem;
+}
+
+.at-input-lg > span {
+  font-size: 1.1rem;
+}
+
+/* ───────── онбординг і вікно оновлення ───────── */
+
+.ob-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.ob-pair .hint {
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+  .ob-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mig-badge {
+  align-self: flex-start;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+
+.mig-keep {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+}
+
+.mig-keep li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--r-sm);
+  font-size: 0.83rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.mig-keep li::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.7rem;
+  margin: -0.2rem 0.05rem 0 0.05rem;
+  border: solid var(--accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* ───────── стан хмари ───────── */
+
+.cloud-dot {
+  flex: none;
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.cloud-dot[data-state="online"] {
+  background: var(--accent);
+}
+
+.cloud-dot[data-state="offline"],
+.cloud-dot[data-state="pending"] {
+  background: var(--warn);
+}
+
+.cloud-dot[data-state="conflict"] {
+  background: var(--danger);
+}
+
+.cloud-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+/* ───────── бейдж заявок і присутність ───────── */
+
+.nav-badge {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.55rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent-ink);
+  background: var(--accent);
+  box-shadow: 0 0 0 2px #0a0c0f;
+}
+
+.nav-badge.bump {
+  animation: badge-bump 420ms var(--ease);
+}
+
+@keyframes badge-bump {
+  40% {
+    transform: scale(1.3);
+  }
+}
+
+.top-profile {
+  position: relative;
+}
+
+.top-presence {
+  position: absolute;
+  left: 2.05rem;
+  top: 2.05rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--faint);
+  box-shadow: 0 0 0 2px var(--surface);
+  transition: background-color var(--mid) linear;
+}
+
+.top-presence[data-state="online"],
+.top-presence[data-state="playing"] {
+  background: var(--accent);
+}
+
+.top-presence[data-state="playing"] {
+  animation: presence-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes presence-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.top-profile-text small {
+  max-width: 10rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ───────── поповер міні-картки профілю ───────── */
+
+.account-pop {
+  width: 17rem;
+}
+
+.ap-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.55rem 0.6rem;
+}
+
+.ap-head .head {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.ap-id {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ap-id b {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ap-id small,
+.ac-info small {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ap-label {
+  padding: 0.35rem 0.75rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.ap-nicks {
+  display: flex;
+  flex-direction: column;
+  max-height: 12.5rem;
+  overflow-y: auto;
+}
+
+.menu .ap-nick {
+  gap: 0.55rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.ap-nick .head {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 4px;
+}
+
+.ap-nick span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ap-nick i {
+  display: grid;
+}
+
+.menu .ap-nick i svg {
+  color: var(--accent);
+}
+
+.menu .ap-nick.on {
+  background: var(--accent-faint);
+}
+
+.menu .ap-add,
+.menu .ap-add svg {
+  color: var(--muted);
+}
+
+/* ───────── картка акаунта ───────── */
+
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  max-width: 70rem;
+  margin-bottom: 1.1rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.ac-avatar {
+  flex: none;
+  width: 2.8rem;
+  height: 2.8rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+
+.ac-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ac-info b {
+  font-size: 1.15rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.account-card .btn svg,
+.fr-act svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ───────── вкладка «Друзі» ───────── */
+
+.view-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 70rem;
+}
+
+.friends-grid {
+  display: grid;
+  grid-template-columns: clamp(17rem, 24vw, 22rem) minmax(0, 1fr);
+  gap: 1.1rem;
+  align-items: start;
+  max-width: 70rem;
+}
+
+@media (max-width: 1040px) {
+  .friends-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.friends-side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.friends-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.friends-main .panel-head h3 {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* підказки пошуку за @username */
+.friend-search {
+  position: absolute;
+  z-index: 5;
+  top: 4.1rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.3rem;
+  border-radius: var(--r);
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  animation: menu-in var(--mid) var(--ease) both;
+  transform-origin: top center;
+}
+
+.fs-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--r-sm);
+  text-align: left;
+  transition: background-color var(--fast) linear;
+}
+
+.fs-item:hover:not(:disabled),
+.fs-item:focus-visible {
+  background: var(--surface-3);
+  outline: none;
+}
+
+.fs-item:disabled {
+  cursor: default;
+}
+
+.fs-item .head {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 5px;
+}
+
+.fs-item b {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-add {
+  display: grid;
+  color: var(--accent);
+}
+
+.fs-add svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.fs-empty {
+  padding: 0.6rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.fr-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.4rem;
+}
+
+.fr-block h4 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fr-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fr-req {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  grid-template-areas:
+    "head text"
+    "acts acts";
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  animation: card-in var(--mid) var(--ease) both;
+}
+
+.fr-req .head {
+  grid-area: head;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+}
+
+.fr-req-text {
+  grid-area: text;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fr-req-text b {
+  font-size: 0.95rem;
+}
+
+.fr-req-text small {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.fr-req .row-actions {
+  grid-area: acts;
+  justify-content: flex-end;
+}
+
+.fr-req .btn-sm,
+.fr-act {
+  height: 2.1rem;
+  padding: 0 0.75rem;
+  font-size: 0.86rem;
+}
+
+.fr-act .btn-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* рядок друга */
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  transition: opacity var(--mid) linear;
+}
+
+/* Хмара недоступна — показано останній відомий стан */
+.friend-list.stale {
+  opacity: 0.6;
+}
+
+.friend-row {
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition: background-color var(--fast) linear;
+}
+
+.friend-row:hover {
+  background: var(--surface-2);
+}
+
+.friend-row.enter {
+  animation: card-in var(--slow) var(--ease) both;
+}
+
+.friend-row.st-playing {
+  border-color: var(--accent-line);
+  background: linear-gradient(90deg, var(--accent-soft), var(--accent-faint) 70%), var(--surface);
+}
+
+.fr-avatar {
+  position: relative;
+  width: 2.6rem;
+  height: 2.6rem;
+}
+
+.fr-avatar .head {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 8px;
+}
+
+.friend-row.st-offline .fr-avatar .head {
+  opacity: 0.55;
+}
+
+.fr-dot {
+  position: absolute;
+  right: -0.15rem;
+  bottom: -0.15rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--faint);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.st-online .fr-dot,
+.st-playing .fr-dot {
+  background: var(--accent);
+}
+
+.st-playing .fr-dot {
+  animation: presence-pulse 1.8s ease-in-out infinite;
+}
+
+body.calm .fr-dot,
+body.calm .top-presence {
+  animation-play-state: paused;
+}
+
+.fr-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.fr-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.fr-name b {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fr-pill {
+  flex: none;
+  padding: 0.05rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-3);
+}
+
+.st-online .fr-pill {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.st-playing .fr-pill {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.fr-line {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.st-playing .fr-line {
+  color: var(--text);
+}
+
+.fr-as {
+  color: var(--muted);
+}
+
+.fr-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+
+.fr-timer i {
+  display: grid;
+}
+
+.fr-timer svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.fr-timer b {
+  font-weight: 600;
+}
+
+.fr-timer .mono {
+  padding: 0 0.35rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: var(--surface-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.friend-row .row-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.fr-packs {
+  position: relative;
+}
+
+.fr-packs b {
+  position: absolute;
+  right: 0.1rem;
+  bottom: 0.05rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.fr-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 2.2rem 1.5rem;
+  border-radius: var(--r-lg);
+  text-align: center;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--line-2);
+  animation: card-in var(--slow) var(--ease) both;
+}
+
+.fr-empty > svg {
+  width: 2.2rem;
+  height: 2.2rem;
+  color: var(--faint);
+}
+
+.fr-empty p {
+  max-width: 28rem;
+  font-size: 0.92rem;
+}
+
+.fr-loading .spinner {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+/* збірки друга (модальне вікно) */
+.fp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+  text-align: left;
+}
+
+.fp-row {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.fp-ico {
+  width: 2.2rem;
+  height: 2.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.fp-ico svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.fp-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fp-text b,
+.fp-text small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fp-text small {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ───────── видимість власної збірки ───────── */
+
+/* Сегменти: акцентна підкладка («повзунок») їде під обрану кнопку лише через transform. */
+.vis-seg {
+  --pad: 0.25rem;
+  --gap: 0.3rem;
+  --seg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap);
+  padding: var(--pad);
+  border-radius: var(--r);
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+}
+
+.vis-thumb {
+  position: absolute;
+  z-index: 0;
+  top: var(--pad);
+  bottom: var(--pad);
+  left: var(--pad);
+  width: calc((100% - 2 * var(--pad) - 2 * var(--gap)) / 3);
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  transform: translate3d(calc(var(--i, 0) * (100% + var(--gap))), 0, 0);
+  transition: transform 180ms var(--seg-ease);
+  will-change: transform;
+  pointer-events: none;
+}
+
+.vis-seg button {
+  position: relative;
+  z-index: 1;
+}
+
+.vis-seg button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.45rem 0.3rem;
+  border-radius: var(--r-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--muted);
+  transition: background-color 180ms linear, color 180ms linear, transform 180ms var(--seg-ease);
+}
+
+.vis-seg button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.vis-seg button svg {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.vis-seg button:hover:not(.on) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.vis-seg button:active {
+  transform: scale(0.97);
+}
+
+.vis-seg button.on {
+  color: var(--accent-ink);
+  background: transparent;
+}
+
+/* Три підказки в одній клітинці сітки: висота = найдовша з них (але не менше 2.6em),
+   активна проявляється через opacity/transform — нижня межа картки не рухається. */
+.vis-hints,
+.swap-hints {
+  display: grid;
+  min-height: 2.6em;
+}
+
+.vis-hints > *,
+.swap-hints > * {
+  grid-area: 1 / 1;
+  margin: 0;
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vis-hint {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.vis-hint:not(.on) {
+  opacity: 0;
+  transform: translate3d(0, 3px, 0);
+  pointer-events: none;
+}
+
+.vis-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  text-align: left;
+}
+
+.modal[data-kind="visibility"] .vis-seg button {
+  padding-block: 0.65rem;
+  font-size: 0.9rem;
+}
+
+
+/* ───────── v0.4.1: стабільна модалка створення + іконка збірки ───────── */
+
+/* «Версія завантажувача» завжди в потоці: для Vanilla — приглушена й неактивна. */
+.lv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+  transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lv-field .lv-dd {
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lv-field.is-off {
+  opacity: 0.5;
+}
+
+.lv-field.is-off .lv-dd {
+  transform: translate3d(0, 2px, 0) scale(0.99);
+}
+
+.lv-field.is-off .dd-trigger:disabled {
+  opacity: 1;
+}
+
+.swap-hints > .hint {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.lv-field.is-off [data-when="on"],
+.lv-field:not(.is-off) [data-when="off"] {
+  opacity: 0;
+  transform: translate3d(0, 3px, 0);
+  pointer-events: none;
+}
+
+/* вибір іконки: прев'ю 42×42 ліворуч; праворуч підпис, під ним «Обрати файл…» · формати · ✕ */
+.pi {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.pi-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.pi-hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+}
+
+.pi-thumb {
+  position: relative;
+  flex: none;
+  display: block;
+}
+
+.pi-preview {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft, var(--surface-2));
+  border: 1px solid var(--accent-line, var(--line-2));
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.pi-preview img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pi.has-img .pi-preview img {
+  opacity: 1;
+  transform: none;
+}
+
+.pi.has-img .pi-preview {
+  background: var(--surface-2);
+  border-color: var(--line-2);
+}
+
+.pi-acts {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.pi-pick {
+  flex: none;
+  gap: 0.4rem;
+  height: 1.9rem;
+  padding-inline: 0.65rem;
+  white-space: nowrap;
+}
+
+/* «✕» — маленький значок на куті прев'ю: поза потоком, тож його поява нічого не зсуває. */
+.pi-clear {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--muted);
+  background: var(--surface-3);
+  border: 1px solid var(--line-2);
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 120ms linear,
+    border-color 120ms linear;
+}
+
+.pi-clear svg {
+  width: 11px;
+  height: 11px;
+}
+
+.pi.has-img .pi-clear {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.pi-clear:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.pi-box {
+  margin-top: 0.9rem;
+  padding: 0.85rem;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.modal[data-kind="create"] .cs-icon {
+  padding-block: 0.6rem;
 }

@@ -335,7 +335,7 @@ pub struct ModRecord {
 }
 
 impl ModRecord {
-    fn source_id(&self) -> &str {
+    pub fn source_id(&self) -> &str {
         if self.source.is_empty() {
             "modrinth"
         } else {
@@ -364,7 +364,7 @@ fn records_file(paths: &Paths, id: &str, kind: ContentKind) -> PathBuf {
     paths.instance_meta(id).join(kind.records_name())
 }
 
-fn content_dir(paths: &Paths, id: &str, kind: ContentKind) -> PathBuf {
+pub(crate) fn content_dir(paths: &Paths, id: &str, kind: ContentKind) -> PathBuf {
     paths.instance_dir(id).join(kind.folder())
 }
 
@@ -372,7 +372,7 @@ fn mods_dir(paths: &Paths, id: &str) -> PathBuf {
     content_dir(paths, id, ContentKind::Mod)
 }
 
-async fn load_records(paths: &Paths, id: &str, kind: ContentKind) -> Vec<ModRecord> {
+pub(crate) async fn load_records(paths: &Paths, id: &str, kind: ContentKind) -> Vec<ModRecord> {
     match tokio::fs::read_to_string(records_file(paths, id, kind)).await {
         // Пошкоджений файл записів не ламає список — моди просто покажуться як «додані вручну».
         Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
@@ -380,7 +380,7 @@ async fn load_records(paths: &Paths, id: &str, kind: ContentKind) -> Vec<ModReco
     }
 }
 
-async fn save_records(paths: &Paths, id: &str, kind: ContentKind, records: &[ModRecord]) -> Result<()> {
+pub(crate) async fn save_records(paths: &Paths, id: &str, kind: ContentKind, records: &[ModRecord]) -> Result<()> {
     tokio::fs::create_dir_all(paths.instance_meta(id)).await?;
     let target = records_file(paths, id, kind);
     let mut temp = target.clone().into_os_string();

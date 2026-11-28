@@ -5,6 +5,8 @@ const invoke = tauri.core.invoke;
 const listen = tauri.event.listen;
 
 const NICK_RE = /^[A-Za-z0-9_]{3,16}$/;
+/** @username акаунта Terrapolis (збігається з `config::validate_username`). */
+const USER_RE = /^[A-Za-z0-9_]{3,20}$/;
 const MB = 1024 * 1024;
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 /** CurseForge у каталозі контенту (потрібен API-ключ гравця). Має збігатися з
@@ -41,7 +43,7 @@ const DICT = {
     "boot.loading": "Завантаження…",
     "boot.updating": "Оновлення лаунчера…",
     "ob.title": "Ласкаво просимо!",
-    "ob.sub1": "Terrapolis — легкий і швидкий лаунчер Minecraft. Вкажи нік і обери, яким буде лаунчер.",
+    "ob.sub1": "Terrapolis — легкий і швидкий лаунчер Minecraft. Створи акаунт і обери, яким буде лаунчер.",
     "ob.next": "Далі",
     "ob.title2": "Проєкти спільноти",
     "ob.sub2": "Підключись до проєкту — і його збірки з'являться в лаунчері. Або пропусти цей крок: власні збірки можна створювати й запускати одразу.",
@@ -52,9 +54,9 @@ const DICT = {
     "ob.noProjects": "Публічних проєктів поки не знайдено. Якщо маєш код — введи його нижче.",
     "ob.code": "Або введи код проєкту чи owner/repo",
     "ob.codePh": "Код проєкту або owner/repo",
-    "ob.nick": "Твій ігровий нік",
+    "ob.nick": "Перший ігровий нік",
     "ob.nickPh": "Введіть ігровий нікнейм",
-    "ob.nickHint": "Під цим ім'ям тебе бачитимуть у грі. 3–16 символів: латиниця, цифри, _",
+    "ob.nickHint": "Під цим ім'ям тебе бачитимуть у грі (за замовчуванням — як @username). 3–16 символів",
     "ob.submit": "Підключитися",
     "ob.checking": "Підключаємося…",
     "ob.needCode": "Обери проєкт або введи код — чи натисни «Пропустити»",
@@ -115,14 +117,14 @@ const DICT = {
     "mp.latest": "Найновіша версія",
     "danger.title": "Danger Zone",
     "danger.resetTitle": "Видалити все, окрім акаунту та проєктів",
-    "danger.resetSub": "Збірки, Java, бібліотеки й ресурси гри, кеш завантажень і технічні налаштування. Нікнейми, скіни та проєкти залишаться.",
+    "danger.resetSub": "Збірки, Java, бібліотеки й ресурси гри, кеш завантажень і технічні налаштування. Акаунт @username, ігрові ніки, скіни та проєкти залишаться.",
     "danger.resetGo": "Очистити…",
     "danger.resetConfirmTitle": "Очистити дані лаунчера?",
     "danger.resetConfirmText": "<p>Буде видалено: <b>усі збірки</b> разом зі світами та скріншотами, Java, бібліотеки й ресурси гри, кеш завантажень. Технічні налаштування (ОЗУ, графіка, мова гри, папка даних, ключ CurseForge) повернуться до стандартних.</p><p><b>Залишаться:</b> нікнейми, скіни, підключений проєкт, мова інтерфейсу та палітра.</p>",
     "danger.resetting": "Очищення даних лаунчера…",
     "danger.resetDone": "Дані лаунчера очищено",
     "danger.uninstallTitle": "Видалити лаунчер повністю",
-    "danger.uninstallSub": "Усі збірки, профілі, налаштування, кеш WebView2 і сам лаунчер. Після цього програма закриється.",
+    "danger.uninstallSub": "Усі збірки, ігрові ніки, налаштування, кеш WebView2 і сам лаунчер. Після цього програма закриється. Збірки, якими ти поділився з друзями, залишаться в хмарі — спершу зроби їх приватними.",
     "danger.uninstallGo": "Видалити лаунчер…",
     "danger.uninstallConfirmTitle": "Видалити Terrapolis повністю?",
     "danger.uninstallConfirmText": "<p>Буде безповоротно видалено <b>усе</b>: збірки, світи, скріншоти, профілі, скіни, налаштування, кеш WebView2 і сам лаунчер. Скасувати це не можна.</p><p>Після видалення програма закриється.</p>",
@@ -131,14 +133,14 @@ const DICT = {
     "danger.typeHint": "Щоб підтвердити, введи <b>{word}</b>",
     "danger.word": "ВИДАЛИТИ",
     "nav.home": "Збірки",
-    "nav.profiles": "Профілі",
+    "nav.profiles": "Акаунт",
     "nav.project": "Проєкт",
     "nav.changelog": "Changelog",
     "cl.read": "Читати повністю",
     "cl.github": "Читати на GitHub",
     "cl.noBody": "Опису немає.",
     "nav.settings": "Налаштування",
-    "top.changeProfile": "Змінити профіль",
+    "top.changeProfile": "Акаунт та ігрові ніки",
     "top.sync": "Синхронізувати: перевірити оновлення лаунчера та збірок",
     "sync.title": "Синхронізація",
     "sync.running": "Синхронізація: перевірка оновлень лаунчера та збірок…",
@@ -225,7 +227,7 @@ const DICT = {
     "home.notInstalledMeta": "Ще не встановлено",
     "home.updateMeta": "Є оновлення: {from} → {to}",
     "home.playingAs": "Ти граєш як <b>{nick}</b> · <button type=\"button\" class=\"link\" data-goto=\"profiles\">змінити</button>",
-    "home.noNick": "Нікнейм не вибрано — <button type=\"button\" class=\"link\" data-goto=\"profiles\">додай його у «Профілях»</button>",
+    "home.noNick": "Ігровий нік не вибрано — <button type=\"button\" class=\"link\" data-goto=\"profiles\">додай його у вкладці «Акаунт»</button>",
     "home.empty": "Обери збірку праворуч",
     "list.error": "Не вдалося завантажити список збірок.",
     "list.retry": "Спробувати ще",
@@ -328,8 +330,8 @@ const DICT = {
     "status.restarting": "Перезапуск лаунчера…",
     "status.offlinePlay": "Офлайн-режим: гру запущено з локального кешу без перевірки оновлень",
     "status.installed": "Збірку встановлено — гра запускається",
-    "profiles.title": "Профілі",
-    "profiles.sub": "Нікнейми, під якими ти заходиш у гру. Кнопка «Грати» використовує активний профіль.",
+    "profiles.title": "Акаунт",
+    "profiles.sub": "Один акаунт Terrapolis — кілька ігрових ніків. Кнопка «Грати» використовує активний нік.",
     "profiles.upload": "Завантажити скін",
     "profiles.reset": "Стандартний",
     "profiles.skinFormat": "Файл .png 64×64 — такий, як на сайтах зі скінами.",
@@ -344,13 +346,13 @@ const DICT = {
     "profiles.defaultSkin": "Стандартний скін",
     "profiles.skinFor": "Змінити скін",
     "profiles.remove": "Видалити профіль",
-    "profiles.removeTitle": "Видалити профіль «{nick}»?",
-    "profiles.removeText": "Нік і скін зникнуть зі списку лаунчера. Світи, предмети й прогрес на сервері не зміняться — профіль можна додати знову.",
+    "profiles.removeTitle": "Видалити нік «{nick}»?",
+    "profiles.removeText": "Нік і скін зникнуть з акаунта. Світи, предмети й прогрес на сервері не зміняться — нік можна додати знову.",
     "profiles.added": "Профіль «{nick}» додано й обрано",
     "profiles.skinSaved": "Скін збережено",
     "profiles.skinBig": "Файл завеликий — скін має важити до 1 МБ",
     "profiles.skinBad": "Це не схоже на скін Minecraft: потрібен .png розміром 64×64 (або 64×32)",
-    "profiles.lastOne": "Має залишитися хоча б один профіль",
+    "profiles.lastOne": "В акаунті має залишитися хоча б один ігровий нік",
     "project.title": "Проєкт",
     "project.sub": "Проєкт — це сервер чи спільнота зі своїми збірками. Підключення необов'язкове: без проєкту лаунчер працює з власними збірками.",
     "project.code": "Код:",
@@ -553,13 +555,152 @@ const DICT = {
     "mods.managed": "Частина збірки",
     "mods.managedMissing": "Відсутній — дебагер докачає перед запуском",
     "mods.extra": "Сторонній — дебагер прибере перед запуском",
-    "loader.quilt": "Форк Fabric: запускає більшість модів Fabric"
+    "loader.quilt": "Форк Fabric: запускає більшість модів Fabric",
+    "ob.user": "Унікальний @username",
+    "ob.userPh": "username",
+    "ob.userHint": "Логін акаунта — за ним тебе знайдуть друзі. 3–20 символів: латиниця, цифри, _",
+    "ob.userBad": "@username: 3–20 символів — латиниця, цифри та _",
+    "ob.offlineCreated": "Акаунт @{user} створено офлайн — його буде зареєстровано, щойно з'явиться інтернет",
+    "ob.restored": "З поверненням, @{user}! Ніки та скіни акаунта відновлено",
+    "mig.badge": "Оновлення Terrapolis v0.4.1",
+    "mig.title": "Обери свій унікальний @username",
+    "mig.sub": "Тепер у Terrapolis один акаунт із кількома ігровими ніками, друзі та спільні збірки. За @username тебе знайдуть друзі.",
+    "mig.hint": "3–20 символів: латиниця, цифри, _. Підставили твій основний нік — можна змінити.",
+    "mig.keepNicks": "Ігрові ніки та скіни",
+    "mig.keepTheme": "Палітра й налаштування",
+    "mig.keepPacks": "Збірки та проєкти",
+    "mig.go": "Продовжити",
+    "mig.conflictBadge": "Потрібне інше ім'я",
+    "mig.conflictTitle": "@{user} уже зайнятий",
+    "mig.conflictSub": "Поки лаунчер працював офлайн, це ім'я зайняв інший гравець. Обери інше — ніки, збірки та налаштування лишаються на місці.",
+    "mig.done": "Готово! Тепер ти @{user}",
+    "account.logout": "Вийти з акаунта",
+    "account.logoutTitle": "Вийти з акаунта @{user}?",
+    "account.logoutText": "Лаунчер повернеться до екрана першого запуску. Збірки, проєкт і налаштування залишаться на цьому комп'ютері, а якщо знову увійти з тим самим @username — повернуться й ігрові ніки та скіни.",
+    "account.loggedOut": "Вихід з акаунта виконано",
+    "account.synced": "Синхронізовано з хмарою Terrapolis",
+    "account.pending": "Очікує синхронізації — немає зв'язку з хмарою",
+    "account.conflict": "Ім'я зайняте — обери інше",
+    "ap.nicks": "Ігрові ніки",
+    "ap.manage": "Керувати акаунтом",
+    "ap.addNick": "Додати нік…",
+    "cloud.online": "Хмара: онлайн",
+    "cloud.offline": "Хмара недоступна",
+    "cloud.pending": "Акаунт не синхронізовано",
+    "nav.friends": "Друзі",
+    "friends.title": "Друзі",
+    "friends.sub": "Бачиш, хто з друзів у грі й у яку збірку, — і можеш приєднатися: увійти в той самий проєкт чи завантажити їхню збірку.",
+    "friends.addPh": "username друга",
+    "friends.add": "Додати",
+    "friends.addHint": "Введи @username друга — йому прийде заявка в друзі.",
+    "friends.incoming": "Заявки в друзі",
+    "friends.access": "Запити на доступ до збірок",
+    "friends.outgoing": "Надіслані заявки",
+    "friends.list": "Список друзів",
+    "friends.empty": "Поки що друзів немає. Додай друга за його @username — і бачитимеш, у що грають друзі.",
+    "friends.offlineState": "Немає зв'язку з хмарою Terrapolis. Гра та власні збірки працюють як завжди — друзі з'являться, щойно повернеться інтернет.",
+    "friends.pendingState": "Акаунт @{user} ще не синхронізовано з хмарою. Щойно з'явиться інтернет, тут з'являться друзі.",
+    "friends.retry": "Спробувати ще",
+    "friends.loading": "Завантаження друзів…",
+    "friends.accept": "Прийняти",
+    "friends.decline": "Відхилити",
+    "friends.allow": "Дозволити",
+    "friends.deny": "Відхилити",
+    "friends.cancel": "Скасувати",
+    "friends.wantsAccess": "просить доступ до «{pack}»",
+    "friends.wantsFriend": "хоче додати тебе в друзі",
+    "friends.waiting": "очікує відповіді",
+    "st.playing": "У грі",
+    "st.online": "В мережі",
+    "st.offline": "Офлайн",
+    "friends.playingPack": "Грає у «{pack}»",
+    "friends.playingProject": "«{pack}» · проєкт {project}",
+    "friends.playingPrivate": "Грає у власну збірку",
+    "friends.playingAs": "як {nick}",
+    "friends.timer": "Грає {time}",
+    "friends.lastSeen": "востаннє в мережі {ago}",
+    "time.justNow": "щойно",
+    "time.minAgo": "{n} хв тому",
+    "time.hourAgo": "{n} год тому",
+    "time.dayAgo": "{n} дн тому",
+    "time.hm": "{h} год {m} хв",
+    "time.m": "{m} хв",
+    "time.s": "{s} с",
+    "friends.openPack": "Відкрити збірку",
+    "friends.joinProject": "Увійти в проєкт",
+    "friends.download": "Завантажити збірку",
+    "friends.requestAccess": "Запросити доступ",
+    "friends.requestSent": "Запит надіслано…",
+    "friends.denied": "Доступ відхилено — запитати ще раз",
+    "friends.packs": "Збірки ({n})",
+    "friends.packsTitle": "Збірки @{user}",
+    "friends.packsLead": "Спільні збірки друга. Публічні можна завантажити одразу, «За проханням» — після схвалення.",
+    "friends.remove": "Видалити з друзів",
+    "friends.removeTitle": "Видалити @{user} з друзів?",
+    "friends.removeText": "Ви більше не бачитимете статусів одне одного, а доступи до збірок буде скасовано. Додати друга знову можна будь-коли.",
+    "friends.sent": "Заявку надіслано @{user}",
+    "friends.accepted": "Тепер ви друзі з @{user}",
+    "friends.already": "@{user} уже у твоїх друзях",
+    "friends.alreadySent": "Заявку @{user} уже надіслано",
+    "friends.removed": "@{user} видалено з друзів",
+    "friends.declined": "Заявку відхилено",
+    "friends.accessAsked": "Запит на доступ до «{pack}» надіслано",
+    "friends.accessGranted": "@{user} тепер може завантажити «{pack}»",
+    "friends.accessDenied": "Запит @{user} відхилено",
+    "friends.noResults": "Нікого не знайдено",
+    "rel.friend": "Друг",
+    "rel.outgoing": "Заявку надіслано",
+    "rel.incoming": "Хоче дружити",
+    "friends.joinTitle": "Увійти в проєкт «{name}»?",
+    "friends.joinText": "@{user} грає у збірку «{pack}» проєкту «{name}» (код <b>{code}</b>). Лаунчер підключить проєкт і відкриє цю збірку — і ви зможете грати разом.",
+    "friends.joinReplace": "Поточний проєкт «{cur}» буде замінено. Встановлені збірки залишаться на диску.",
+    "friends.joinGo": "Увійти в проєкт",
+    "friends.joined": "Проєкт «{name}» підключено",
+    "friends.downloading": "Завантаження збірки «{name}»…",
+    "friends.downloaded": "Збірку «{name}» від @{user} встановлено",
+    "friends.packMissing": "Цієї збірки немає у твоєму списку — оновлюю проєкт",
+    "vis.label": "4. Хто з друзів бачить",
+    "vis.private": "Приватна",
+    "vis.public": "Публічна для друзів",
+    "vis.on_request": "За проханням",
+    "vis.privateHint": "Бачиш лише ти. Друзі бачать «Грає у власну збірку» без кнопки завантаження.",
+    "vis.publicHint": "Кожен друг може завантажити її в один клік.",
+    "vis.on_requestHint": "Друзі бачать назву й кнопку «Запросити доступ» — завантажать після твого схвалення.",
+    "vis.title": "Видимість «{name}»",
+    "vis.lead": "Хто з друзів бачить цю збірку й може її завантажити. Для публічної та «за проханням» лаунчер публікує в хмарі легку копію: список модів із CDN + config/, servers.dat (до 45 МБ).",
+    "vis.save": "Зберегти",
+    "vis.update": "Зберегти й оновити копію",
+    "vis.publishing": "Публікуємо «{name}» для друзів…",
+    "vis.published": "«{name}» доступна друзям · з CDN: {cdn}, в архіві: {bundled}",
+    "vis.privateDone": "«{name}» тепер приватна",
+    "vis.pending": "Видимість збережено — збірку опублікуємо, щойно з'явиться зв'язок з хмарою",
+    "vis.skipped": "Не вмістилося в 45 МБ, тож друзі цього не отримають: {files}",
+    "vis.publishedTag": "опубліковано",
+    "vis.failed": "Збірку не вдалося опублікувати",
+    "menu.visibility": "Видимість для друзів…",
+    "menu.icon": "Іконка збірки…",
+    "create.loaderVanilla": "Не потрібна для Vanilla",
+    "icon.step": "5. Іконка збірки (опціонально)",
+    "icon.label": "Іконка збірки",
+    "icon.hint": "PNG · JPG · WebP",
+    "icon.hintFull": "PNG, JPG або WebP — картинку буде обрізано до квадрата й зменшено до 128×128",
+    "icon.pick": "Обрати файл…",
+    "icon.clear": "Прибрати іконку",
+    "icon.bad": "Не вдалося прочитати картинку — спробуй інший файл",
+    "icon.title": "Іконка «{name}»",
+    "icon.lead": "Іконка показується у списку власних збірок, а також у друзів, яким ти передаєш цю збірку.",
+    "icon.save": "Зберегти",
+    "icon.saved": "Іконку «{name}» оновлено",
+    "account.closeGame": "Спершу закрий гру — під час гри вийти з акаунта не можна",
+    "friends.badProject": "Код проєкту друга некоректний — підключення скасовано",
+    "friends.trustTitle": "Завантажити «{name}» від @{user}?",
+    "friends.trustText": "Лаунчер створить нову окрему збірку: моди з Modrinth і CurseForge завантажаться з їхніх серверів, а налаштування й файли, додані вручну, — з архіву @{user}. Такі файли ніхто не перевіряє, тож завантажуй збірки лише від друзів, яким довіряєш. Твої світи та інші збірки не зміняться."
   },
   en: {
     "boot.loading": "Loading…",
     "boot.updating": "Updating the launcher…",
     "ob.title": "Welcome!",
-    "ob.sub1": "Terrapolis is a light and fast Minecraft launcher. Enter your nickname and choose how the launcher looks.",
+    "ob.sub1": "Terrapolis is a light and fast Minecraft launcher. Create your account and choose how the launcher looks.",
     "ob.next": "Next",
     "ob.title2": "Community projects",
     "ob.sub2": "Connect to a project and its modpacks will appear in the launcher. Or skip this step: you can create and play your own modpacks right away.",
@@ -570,9 +711,9 @@ const DICT = {
     "ob.noProjects": "No public projects found yet. If you have a code, enter it below.",
     "ob.code": "Or enter a project code or owner/repo",
     "ob.codePh": "Project code or owner/repo",
-    "ob.nick": "Your in-game nickname",
+    "ob.nick": "First in-game nickname",
     "ob.nickPh": "Enter your in-game nickname",
-    "ob.nickHint": "Other players will see you by this name. 3–16 chars: Latin letters, digits, _",
+    "ob.nickHint": "Other players see you by this name in-game (defaults to your @username). 3–16 chars",
     "ob.submit": "Connect",
     "ob.checking": "Connecting…",
     "ob.needCode": "Pick a project or enter a code — or press Skip",
@@ -633,14 +774,14 @@ const DICT = {
     "mp.latest": "Latest version",
     "danger.title": "Danger Zone",
     "danger.resetTitle": "Delete everything except account and projects",
-    "danger.resetSub": "Modpacks, Java, game libraries and assets, download cache and technical settings. Nicknames, skins and projects stay.",
+    "danger.resetSub": "Modpacks, Java, game libraries and assets, download cache and technical settings. Your @username account, game nicknames, skins and projects stay.",
     "danger.resetGo": "Clear…",
     "danger.resetConfirmTitle": "Clear launcher data?",
     "danger.resetConfirmText": "<p>This deletes <b>all modpacks</b> together with worlds and screenshots, Java, game libraries and assets, and the download cache. Technical settings (RAM, graphics, game language, data folder, CurseForge key) are reset to defaults.</p><p><b>Kept:</b> nicknames, skins, the connected project, interface language and palette.</p>",
     "danger.resetting": "Clearing launcher data…",
     "danger.resetDone": "Launcher data cleared",
     "danger.uninstallTitle": "Uninstall the launcher completely",
-    "danger.uninstallSub": "All modpacks, profiles, settings, the WebView2 cache and the launcher itself. The app closes afterwards.",
+    "danger.uninstallSub": "All modpacks, game nicknames, settings, the WebView2 cache and the launcher itself. The app closes afterwards. Modpacks you shared with friends stay in the cloud — make them private first.",
     "danger.uninstallGo": "Uninstall…",
     "danger.uninstallConfirmTitle": "Uninstall Terrapolis completely?",
     "danger.uninstallConfirmText": "<p><b>Everything</b> will be permanently deleted: modpacks, worlds, screenshots, profiles, skins, settings, the WebView2 cache and the launcher itself. This can't be undone.</p><p>The app closes when it's done.</p>",
@@ -649,14 +790,14 @@ const DICT = {
     "danger.typeHint": "To confirm, type <b>{word}</b>",
     "danger.word": "DELETE",
     "nav.home": "Modpacks",
-    "nav.profiles": "Profiles",
+    "nav.profiles": "Account",
     "nav.project": "Project",
     "nav.changelog": "Changelog",
     "cl.read": "Read in full",
     "cl.github": "Read on GitHub",
     "cl.noBody": "No description.",
     "nav.settings": "Settings",
-    "top.changeProfile": "Change profile",
+    "top.changeProfile": "Account and game nicknames",
     "top.sync": "Sync: check for launcher and modpack updates",
     "sync.title": "Sync",
     "sync.running": "Sync: checking for launcher and modpack updates…",
@@ -743,7 +884,7 @@ const DICT = {
     "home.notInstalledMeta": "Not installed yet",
     "home.updateMeta": "Update available: {from} → {to}",
     "home.playingAs": "You play as <b>{nick}</b> · <button type=\"button\" class=\"link\" data-goto=\"profiles\">change</button>",
-    "home.noNick": "No nickname selected — <button type=\"button\" class=\"link\" data-goto=\"profiles\">add one in Profiles</button>",
+    "home.noNick": "No game nickname selected — <button type=\"button\" class=\"link\" data-goto=\"profiles\">add one in the Account tab</button>",
     "home.empty": "Pick a modpack on the right",
     "list.error": "Couldn't load the modpack list.",
     "list.retry": "Try again",
@@ -846,8 +987,8 @@ const DICT = {
     "status.restarting": "Restarting launcher…",
     "status.offlinePlay": "Offline mode: the game started from the local cache without checking for updates",
     "status.installed": "Modpack installed — the game is starting",
-    "profiles.title": "Profiles",
-    "profiles.sub": "Nicknames you use to join the game. The Play button uses the active profile.",
+    "profiles.title": "Account",
+    "profiles.sub": "One Terrapolis account — several game nicknames. The Play button uses the active nickname.",
     "profiles.upload": "Upload skin",
     "profiles.reset": "Default",
     "profiles.skinFormat": "A 64×64 .png file — like the ones on skin websites.",
@@ -862,13 +1003,13 @@ const DICT = {
     "profiles.defaultSkin": "Default skin",
     "profiles.skinFor": "Change skin",
     "profiles.remove": "Delete profile",
-    "profiles.removeTitle": "Delete profile \"{nick}\"?",
-    "profiles.removeText": "The nickname and skin will be removed from the launcher. Worlds, items and server progress won't change — you can add the profile again.",
+    "profiles.removeTitle": "Delete nickname \"{nick}\"?",
+    "profiles.removeText": "The nickname and skin will be removed from your account. Worlds, items and server progress won't change — you can add it again.",
     "profiles.added": "Profile \"{nick}\" added and selected",
     "profiles.skinSaved": "Skin saved",
     "profiles.skinBig": "The file is too large — a skin must be under 1 MB",
     "profiles.skinBad": "This doesn't look like a Minecraft skin: a 64×64 (or 64×32) .png is required",
-    "profiles.lastOne": "At least one profile must remain",
+    "profiles.lastOne": "Your account needs at least one game nickname",
     "project.title": "Project",
     "project.sub": "A project is a server or community with its own modpacks. Connecting one is optional: without a project the launcher works with your own modpacks.",
     "project.code": "Code:",
@@ -1071,7 +1212,146 @@ const DICT = {
     "mods.managed": "Part of the modpack",
     "mods.managedMissing": "Missing — the debugger downloads it before launch",
     "mods.extra": "Foreign — the debugger removes it before launch",
-    "loader.quilt": "Fabric fork: runs most Fabric mods"
+    "loader.quilt": "Fabric fork: runs most Fabric mods",
+    "ob.user": "Unique @username",
+    "ob.userPh": "username",
+    "ob.userHint": "Your account login — friends find you by it. 3–20 chars: Latin letters, digits, _",
+    "ob.userBad": "@username: 3–20 characters — Latin letters, digits and _",
+    "ob.offlineCreated": "Account @{user} was created offline — it will be registered once you're online",
+    "ob.restored": "Welcome back, @{user}! Your account's nicknames and skins are restored",
+    "mig.badge": "Terrapolis v0.4.1 update",
+    "mig.title": "Choose your unique @username",
+    "mig.sub": "Terrapolis now has one account with several game nicknames, friends and shared modpacks. Friends will find you by your @username.",
+    "mig.hint": "3–20 chars: Latin letters, digits, _. We filled in your main nickname — feel free to change it.",
+    "mig.keepNicks": "Game nicknames and skins",
+    "mig.keepTheme": "Palette and settings",
+    "mig.keepPacks": "Modpacks and projects",
+    "mig.go": "Continue",
+    "mig.conflictBadge": "Another name needed",
+    "mig.conflictTitle": "@{user} is already taken",
+    "mig.conflictSub": "While the launcher was offline, another player took this name. Pick another one — your nicknames, modpacks and settings stay as they are.",
+    "mig.done": "Done! You are now @{user}",
+    "account.logout": "Sign out",
+    "account.logoutTitle": "Sign out of @{user}?",
+    "account.logoutText": "The launcher returns to the welcome screen. Modpacks, the project and settings stay on this computer, and signing in again with the same @username brings back your game nicknames and skins.",
+    "account.loggedOut": "Signed out",
+    "account.synced": "Synced with the Terrapolis cloud",
+    "account.pending": "Waiting to sync — the cloud is unreachable",
+    "account.conflict": "Name taken — choose another",
+    "ap.nicks": "Game nicknames",
+    "ap.manage": "Manage account",
+    "ap.addNick": "Add nickname…",
+    "cloud.online": "Cloud: online",
+    "cloud.offline": "Cloud unreachable",
+    "cloud.pending": "Account not synced",
+    "nav.friends": "Friends",
+    "friends.title": "Friends",
+    "friends.sub": "See which friends are in game and in which modpack — and join them: connect the same project or download their modpack.",
+    "friends.addPh": "friend's username",
+    "friends.add": "Add",
+    "friends.addHint": "Enter your friend's @username — they'll get a friend request.",
+    "friends.incoming": "Friend requests",
+    "friends.access": "Modpack access requests",
+    "friends.outgoing": "Sent requests",
+    "friends.list": "Friends list",
+    "friends.empty": "No friends yet. Add a friend by their @username to see what your friends are playing.",
+    "friends.offlineState": "Can't reach the Terrapolis cloud. The game and custom modpacks work as usual — friends will appear once you're back online.",
+    "friends.pendingState": "Account @{user} isn't synced with the cloud yet. Friends will appear here once you're online.",
+    "friends.retry": "Retry",
+    "friends.loading": "Loading friends…",
+    "friends.accept": "Accept",
+    "friends.decline": "Decline",
+    "friends.allow": "Allow",
+    "friends.deny": "Deny",
+    "friends.cancel": "Cancel",
+    "friends.wantsAccess": "asks for access to \"{pack}\"",
+    "friends.wantsFriend": "wants to be your friend",
+    "friends.waiting": "awaiting reply",
+    "st.playing": "In game",
+    "st.online": "Online",
+    "st.offline": "Offline",
+    "friends.playingPack": "Playing \"{pack}\"",
+    "friends.playingProject": "\"{pack}\" · project {project}",
+    "friends.playingPrivate": "Playing a custom modpack",
+    "friends.playingAs": "as {nick}",
+    "friends.timer": "Playing for {time}",
+    "friends.lastSeen": "last seen {ago}",
+    "time.justNow": "just now",
+    "time.minAgo": "{n} min ago",
+    "time.hourAgo": "{n} h ago",
+    "time.dayAgo": "{n} d ago",
+    "time.hm": "{h} h {m} min",
+    "time.m": "{m} min",
+    "time.s": "{s} s",
+    "friends.openPack": "Open modpack",
+    "friends.joinProject": "Join project",
+    "friends.download": "Download modpack",
+    "friends.requestAccess": "Request access",
+    "friends.requestSent": "Request sent…",
+    "friends.denied": "Access denied — ask again",
+    "friends.packs": "Modpacks ({n})",
+    "friends.packsTitle": "@{user}'s modpacks",
+    "friends.packsLead": "Your friend's shared modpacks. Public ones download right away; \"On request\" ones after approval.",
+    "friends.remove": "Remove friend",
+    "friends.removeTitle": "Remove @{user} from friends?",
+    "friends.removeText": "You'll stop seeing each other's status and modpack access will be revoked. You can add them again any time.",
+    "friends.sent": "Friend request sent to @{user}",
+    "friends.accepted": "You and @{user} are now friends",
+    "friends.already": "@{user} is already your friend",
+    "friends.alreadySent": "A request to @{user} was already sent",
+    "friends.removed": "@{user} removed from friends",
+    "friends.declined": "Request declined",
+    "friends.accessAsked": "Access request for \"{pack}\" sent",
+    "friends.accessGranted": "@{user} can now download \"{pack}\"",
+    "friends.accessDenied": "@{user}'s request was denied",
+    "friends.noResults": "No one found",
+    "rel.friend": "Friend",
+    "rel.outgoing": "Request sent",
+    "rel.incoming": "Wants to be friends",
+    "friends.joinTitle": "Join the \"{name}\" project?",
+    "friends.joinText": "@{user} is playing \"{pack}\" from the \"{name}\" project (code <b>{code}</b>). The launcher will connect the project and open this modpack so you can play together.",
+    "friends.joinReplace": "Your current project \"{cur}\" will be replaced. Installed modpacks stay on disk.",
+    "friends.joinGo": "Join project",
+    "friends.joined": "Project \"{name}\" connected",
+    "friends.downloading": "Downloading \"{name}\"…",
+    "friends.downloaded": "\"{name}\" from @{user} is installed",
+    "friends.packMissing": "This modpack isn't in your list yet — refreshing the project",
+    "vis.label": "4. Which friends see it",
+    "vis.private": "Private",
+    "vis.public": "Public to friends",
+    "vis.on_request": "On request",
+    "vis.privateHint": "Only you. Friends see \"Playing a custom modpack\" without a download button.",
+    "vis.publicHint": "Any friend can download it in one click.",
+    "vis.on_requestHint": "Friends see the name and a \"Request access\" button — they can download it after you approve.",
+    "vis.title": "Visibility of \"{name}\"",
+    "vis.lead": "Which friends can see and download this modpack. For public and on-request packs the launcher uploads a light copy to the cloud: the mod list from CDNs + config/, servers.dat (up to 45 MB).",
+    "vis.save": "Save",
+    "vis.update": "Save and refresh the copy",
+    "vis.publishing": "Publishing \"{name}\" for friends…",
+    "vis.published": "\"{name}\" is shared with friends · from CDN: {cdn}, in the archive: {bundled}",
+    "vis.privateDone": "\"{name}\" is now private",
+    "vis.pending": "Visibility saved — the modpack will be published once the cloud is reachable",
+    "vis.skipped": "Didn't fit into 45 MB, so friends won't get: {files}",
+    "vis.publishedTag": "published",
+    "vis.failed": "Couldn't publish the modpack",
+    "menu.visibility": "Visibility to friends…",
+    "menu.icon": "Modpack icon…",
+    "create.loaderVanilla": "Not required for Vanilla",
+    "icon.step": "5. Pack icon (optional)",
+    "icon.label": "Pack icon",
+    "icon.hint": "PNG · JPG · WebP",
+    "icon.hintFull": "PNG, JPG or WebP — the image is cropped to a square and scaled to 128×128",
+    "icon.pick": "Choose file…",
+    "icon.clear": "Remove icon",
+    "icon.bad": "Couldn't read the image — try another file",
+    "icon.title": "Icon for \"{name}\"",
+    "icon.lead": "The icon shows in your custom modpacks list and for friends you share this modpack with.",
+    "icon.save": "Save",
+    "icon.saved": "Icon for \"{name}\" updated",
+    "account.closeGame": "Close the game first — you can't sign out while playing",
+    "friends.badProject": "Your friend's project code is invalid — connection cancelled",
+    "friends.trustTitle": "Download \"{name}\" from @{user}?",
+    "friends.trustText": "The launcher will create a new separate modpack: Modrinth and CurseForge mods download from their servers, while settings and manually added files come from @{user}'s archive. Nobody checks those files, so only download modpacks from friends you trust. Your worlds and other modpacks won't change."
   }
 };
 
@@ -1252,7 +1532,45 @@ const el = {
   modalIcon: $("modalIcon"),
   modalTitle: $("modalTitle"),
   modalText: $("modalText"),
-  modalActions: $("modalActions")
+  modalActions: $("modalActions"),
+  obUser: $("obUser"),
+  obUserHint: $("obUserHint"),
+  obMigrate: $("obMigrate"),
+  migBadge: $("migBadge"),
+  migTitle: $("migTitle"),
+  migSub: $("migSub"),
+  migUser: $("migUser"),
+  migHint: $("migHint"),
+  migError: $("migError"),
+  migSubmit: $("migSubmit"),
+  topProfile: $("topProfile"),
+  topUser: $("topUser"),
+  topPresence: $("topPresence"),
+  accountPop: $("accountPop"),
+  apHead: $("apHead"),
+  apUser: $("apUser"),
+  apState: $("apState"),
+  apNicks: $("apNicks"),
+  acUser: $("acUser"),
+  acState: $("acState"),
+  logoutBtn: $("logoutBtn"),
+  friendsBadge: $("friendsBadge"),
+  cloudChip: $("cloudChip"),
+  friendForm: $("friendForm"),
+  friendQuery: $("friendQuery"),
+  friendAdd: $("friendAdd"),
+  friendSearch: $("friendSearch"),
+  friendHint: $("friendHint"),
+  incomingBlock: $("incomingBlock"),
+  incomingList: $("incomingList"),
+  incomingCount: $("incomingCount"),
+  accessBlock: $("accessBlock"),
+  accessList: $("accessList"),
+  accessCount: $("accessCount"),
+  outgoingBlock: $("outgoingBlock"),
+  outgoingList: $("outgoingList"),
+  friendList: $("friendList"),
+  friendsCount: $("friendsCount")
 };
 
 const ICONS = {
@@ -1278,7 +1596,15 @@ const ICONS = {
   layers: '<svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>',
   image: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg>',
   sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
-  link: '<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>'
+  link: '<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+  users: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8M18 14.4c2.1.8 3.5 2.8 3.5 5.6"/></svg>',
+  userPlus: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M19 8v6M16 11h6"/></svg>',
+  download: '<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>',
+  lock: '<svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>',
+  globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+  hand: '<svg viewBox="0 0 24 24"><path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V10M11 9.5v-6a1.5 1.5 0 0 1 3 0V10M14 10V5a1.5 1.5 0 0 1 3 0v7"/><path d="M17 9.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.6-2.8L3.6 15a1.5 1.5 0 0 1 2.3-1.9L8 15V11"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
 };
 
 /* ═══════════════════════════ ПАЛІТРИ ═══════════════════════════ */
@@ -1367,7 +1693,15 @@ const S = {
   /** Назва готової збірки, яка зараз встановлюється (для прогресу в «острові»). */
   modpackName: "",
   /** Відкрито системний діалог вибору файлу/папки (повторні кліки ігноруються). */
-  picking: false
+  picking: false,
+  /** Акаунт Terrapolis (AccountView з бекенда): @username, синхронізація, конфлікт імені. */
+  account: null,
+  /** Остання відповідь social_snapshot (друзі, заявки, запити доступу). */
+  social: null,
+  /** performance.now() у момент отримання social — для живих таймерів гри. */
+  socialAt: 0,
+  /** Хмара Terrapolis відповідає (null — ще невідомо). */
+  cloudOnline: null
 };
 
 function esc(value) {
@@ -2661,6 +2995,9 @@ async function renderHeads() {
   const skin = await loadSkin(profile);
   drawHead(el.topHead, skin, profile?.nickname, 32);
   el.topNick.textContent = profile ? profile.nickname : "—";
+  el.topUser.textContent = S.account?.username ? "@" + S.account.username : "@—";
+  renderPresenceDot();
+  if (!el.accountPop.hidden) renderAccountPop();
 }
 
 /* ═══════════════════════════ ВКЛАДКИ ═══════════════════════════ */
@@ -2678,6 +3015,7 @@ function moveNavIndicator(button, smooth) {
 
 function switchTab(name, smooth = true) {
   closeMenu();
+  closeAccountPop();
   Dropdown.closeAll();
   hideTip();
   S.tab = name;
@@ -2701,6 +3039,11 @@ function switchTab(name, smooth = true) {
   if (name === "project") renderProject();
   if (name === "changelog") loadChangelog();
   if (name === "home") scheduleServerPing(true);
+  if (name === "friends") {
+    renderFriends();
+    loadSocial({ quiet: Boolean(S.social) });
+  }
+  syncFriendTicker();
 }
 
 /* ═══════════════════════════ ЗБІРКИ ═══════════════════════════ */
@@ -3373,6 +3716,9 @@ function renderHero() {
   if (inst.custom) {
     meta.push(inst.origin || t("home.customMeta"), inst.installed ? t("inst.installed") : t("home.notInstalledMeta"));
     if (!vanilla) meta.push(plural(inst.mods_count || 0, "plural.mods"));
+    if (VISIBILITIES.includes(inst.visibility)) {
+      meta.push(t("vis." + inst.visibility) + (inst.visibility !== "private" && inst.published ? " (" + t("vis.publishedTag") + ")" : ""));
+    }
   }
   else if (inst.update_available) meta.push(t("home.updateMeta", { from: inst.local_version || "?", to: inst.remote_version }));
   else if (inst.installed) meta.push(t("home.installedMeta", { v: inst.local_version || "—" }));
@@ -3455,13 +3801,24 @@ function cardInner(inst) {
   // Назву завантажувача показує іконка (з підказкою), тож у тексті — лише версія та розмір.
   const details = [inst.minecraft_version, mods || formatSize(inst.size_bytes)].filter(Boolean).join(" · ");
   const icon = inst.custom
-    ? `<span class="inst-icon avatar avatar-loader">${loaderIcon(inst.loader)}</span>`
+    ? customIcon(inst)
     : `<span class="inst-icon avatar" data-icon="${esc(inst.id)}"></span>`;
   const more = `<button class="more" type="button" data-more="${esc(inst.id)}" aria-label="${esc(t("inst.more"))}" title="${esc(t("inst.more"))}">${ICONS.more}</button>`;
   return `<span class="inst-art" data-art="${esc(inst.id)}"></span>
       ${icon}
       <span class="inst-info"><b>${esc(inst.name)}</b><span class="inst-sub">${statusTag(inst)}${inst.loader ? loaderIcon(inst.loader) : ""}<small>${esc(details)}</small></span></span>
       <span class="inst-side">${more}</span>`;
+}
+
+/** Значок власної збірки: обрана гравцем іконка або значок завантажувача. */
+function customIcon(inst) {
+  return isIconUrl(inst.icon)
+    ? `<span class="inst-icon avatar has-img"><img class="ready" src="${esc(inst.icon)}" alt="" draggable="false"></span>`
+    : `<span class="inst-icon avatar avatar-loader">${loaderIcon(inst.loader)}</span>`;
+}
+
+function isIconUrl(url) {
+  return typeof url === "string" && url.startsWith("data:image/png;base64,");
 }
 
 function paintCard(node, inst) {
@@ -3528,8 +3885,13 @@ function scheduleServerPing(now) {
 
 let saveActiveTimer = 0;
 
+/** Номер останнього вибору збірки: відповідь instance_details для попереднього кліку
+ *  (повільна мережа) не перезапише заголовок, опис, кнопки й фон щойно обраної збірки. */
+let selectGeneration = 0;
+
 async function selectInstance(id, { save = true } = {}) {
   if (!S.view?.instances.some((i) => i.id === id)) return;
+  const gen = ++selectGeneration;
   const changed = S.activeId !== id;
   if (changed && !S.busy) hideProgress();
   S.activeId = id;
@@ -3543,6 +3905,7 @@ async function selectInstance(id, { save = true } = {}) {
   renderRamHint();
   try {
     const fresh = await invoke("instance_details", { instanceId: id });
+    if (gen !== selectGeneration || S.activeId !== id || fresh?.id !== id) return;
     mergeInstance(fresh);
   } catch {
     /* без мережі показуємо те, що є */
@@ -3975,7 +4338,7 @@ function loaderItems() {
 async function openCreateDialog() {
   if (!S.view || S.busy) return;
   // Vanilla за замовчуванням: найпростіший старт, завантажувач — лише якщо гравець його обрав.
-  const form = { loader: "vanilla", snapshots: false };
+  const form = { loader: "vanilla", snapshots: false, visibility: "private", icon: null };
   let created = null;
   let loaderSeq = 0;
   let mcSeq = 0;
@@ -3985,23 +4348,36 @@ async function openCreateDialog() {
   const html = `<p class="create-lead">${esc(t("create.lead"))}</p>
     <div class="create-form">
       <div class="create-grid">
+        <div class="create-col">
         <section class="create-step cs-mc">
           <span class="label">${esc(t("create.step1"))}</span>
           <div class="dd-mount" id="cMc"></div>
           <div class="create-row create-sub"><span class="hint">${esc(t("create.mcHint"))}</span>
           <label class="toggle-inline" for="cSnap"><span class="switch"><input type="checkbox" id="cSnap"><span></span></span><span>${esc(t("create.snapshots"))}</span></label></div>
         </section>
-        <section class="create-step cs-loader">
-          <span class="label">${esc(t("create.step2"))}</span>
-          <div class="dd-mount" id="cLoader"></div>
-          <div class="collapse" id="cLvWrap"><div class="collapse-inner" id="cLvInner" inert>
-            <div class="field"><span class="label">${esc(t("create.loaderVersion"))}</span><div class="dd-mount" id="cLv"></div><span class="hint">${esc(t("create.loaderHint"))}</span></div>
-          </div></div>
-        </section>
         <section class="create-step cs-name">
           <label class="label" for="cName">${esc(t("create.step3"))}</label>
           <input type="text" id="cName" maxlength="40" spellcheck="false" autocomplete="off" placeholder="${esc(t("create.namePh"))}">
         </section>
+        <section class="create-step cs-vis" id="cVis">
+          <span class="label">${esc(t("vis.label"))}</span>
+          ${visibilitySeg(form.visibility)}
+        </section>
+        <section class="create-step cs-icon">
+          ${packIconPicker("cIcon", "", "V", t("icon.step"))}
+        </section>
+        </div>
+        <div class="create-col">
+        <section class="create-step cs-loader">
+          <span class="label">${esc(t("create.step2"))}</span>
+          <div class="dd-mount" id="cLoader"></div>
+          <div class="lv-field is-off" id="cLvField">
+            <span class="label">${esc(t("create.loaderVersion"))}</span>
+            <div class="lv-dd" id="cLvInner" inert><div class="dd-mount" id="cLv"></div></div>
+            <div class="swap-hints"><span class="hint" data-when="on">${esc(t("create.loaderHint"))}</span><span class="hint" data-when="off">${esc(t("create.loaderVanilla"))}</span></div>
+          </div>
+        </section>
+        </div>
       </div>
       <p class="form-error" id="cError" hidden></p>
     </div>`;
@@ -4009,6 +4385,8 @@ async function openCreateDialog() {
     const mc = mcDd.value;
     const input = $("cName");
     if (input && mc) input.placeholder = `${loaderName(form.loader)} ${mc}`;
+    // Без обраної картинки прев'ю іконки показує першу літеру майбутньої назви.
+    if (input) setPackIconLetter($("cIcon"), initial(input.value.trim() || input.placeholder));
   };
 
   const showError = (text) => {
@@ -4017,18 +4395,23 @@ async function openCreateDialog() {
     node.textContent = text || "";
     node.hidden = !text;
   };
-  /** Блок «Версія завантажувача» плавно розгортається (grid-template-rows 0fr → 1fr) і згортається для Vanilla. */
-  const setLoaderVersionVisible = (on) => {
-    const wrap = $("cLvWrap");
-    if (!wrap) return;
-    wrap.classList.toggle("open", on);
+  /** «Версія завантажувача» завжди на своєму місці: для Vanilla — приглушена й неактивна,
+   *  для Fabric/Forge/NeoForge/Quilt — плавно активується (opacity/transform), висота модалки не змінюється. */
+  const setLoaderVersionActive = (on) => {
+    const field = $("cLvField");
+    if (!field) return;
+    field.classList.toggle("is-off", !on);
     $("cLvInner").inert = !on;
-    if (!on) lvDd.close();
+    lvDd.setDisabled(!on);
+    if (!on) {
+      lvDd.opts.empty = "—";
+      lvDd.setItems([], "");
+    } else lvDd.opts.empty = t("create.noLoader");
   };
   const loadLoaderVersions = async () => {
-    if (!$("cLvWrap")) return;
+    if (!$("cLvField")) return;
     const vanilla = form.loader === "vanilla";
-    setLoaderVersionVisible(!vanilla);
+    setLoaderVersionActive(!vanilla);
     updateNamePlaceholder();
     const mc = mcDd.value;
     const my = ++loaderSeq;
@@ -4096,7 +4479,8 @@ async function openCreateDialog() {
           button.disabled = true;
           try {
             created = await invoke("create_custom_instance", {
-              spec: { name, minecraft_version: mc, loader: form.loader, loader_version: loaderVersion }
+              spec: { name, minecraft_version: mc, loader: form.loader, loader_version: loaderVersion, visibility: form.visibility },
+              icon: form.icon ? Array.from(form.icon.bytes) : null
             });
           } catch (error) {
             showError(errHuman(error));
@@ -4111,6 +4495,15 @@ async function openCreateDialog() {
   mcDd.mount($("cMc"));
   loaderDd.mount($("cLoader"));
   lvDd.mount($("cLv"));
+  bindVisibilitySeg($("cVis"), (value) => (form.visibility = value));
+  bindPackIconPicker($("cIcon"), {
+    onChange: (icon) => {
+      form.icon = icon;
+      showError("");
+    },
+    onError: showError
+  });
+  $("cName")?.addEventListener("input", updateNamePlaceholder);
   $("cSnap")?.addEventListener("change", (event) => {
     form.snapshots = event.target.checked;
     loadMc();
@@ -4121,6 +4514,8 @@ async function openCreateDialog() {
   addCustomInstance(created);
   setIsland("ok", t("create.done", { name: created.name }));
   selectInstance(created.id, { save: false });
+  // Публічна / за проханням: одразу публікуємо легку копію для друзів (у фоні, гра не блокується).
+  if (form.visibility !== "private") applyVisibility(created.id, form.visibility);
 }
 
 /* каталог контенту (Modrinth / CurseForge) у стилі Prism Launcher: моди, ресурс-паки, шейдери, готові збірки */
@@ -4869,6 +5264,10 @@ function openMenu(button, id) {
   item("debug").hidden = Boolean(target?.custom);
   item("debug").disabled = Boolean(S.busy) || S.updating || S.running === id || !target?.installed;
   item("import").disabled = Boolean(S.busy) || S.updating || S.running === id;
+  // Видимість для друзів — лише для власних збірок.
+  item("visibility").hidden = !target?.custom;
+  item("visibility").disabled = Boolean(S.busy) || S.updating;
+  item("icon").hidden = !target?.custom;
   item("delete").disabled = Boolean(S.busy) || S.running === id || (!target?.installed && !target?.custom);
 
   el.instMenu.classList.remove("closing");
@@ -4899,6 +5298,7 @@ function applyProfiles(view) {
 }
 
 async function renderProfiles() {
+  renderAccountCard();
   const profile = activeProfile();
   el.stageNick.textContent = profile ? profile.nickname : "—";
   el.skinUpload.disabled = !profile;
@@ -5457,7 +5857,7 @@ async function onChangeDir() {
 /* ═══════════════════════════ ПЕРШИЙ ЗАПУСК ═══════════════════════════ */
 
 /** Майстер першого запуску: крок 1 — нік і палітра, крок 2 — проєкт (можна пропустити). */
-const OB = { step: 1, theme: "emerald", busy: false };
+const OB = { step: 1, theme: "emerald", busy: false, nickTouched: false };
 
 /** Списки проєктів: у майстрі та у вкладці «Проєкт», коли проєкт не підключено. */
 function projectPickers() {
@@ -5524,16 +5924,20 @@ function onProjectPick(event, input) {
   markPicked();
 }
 
+/** Кроки майстра: 1 — @username, нік і палітра; 2 — проєкт; 3 — вікно оновлення до v0.4.1
+ *  (лише @username для гравців, які вже користувалися лаунчером). */
 function setObStep(step, animate = true) {
-  const back = step < OB.step;
+  const back = step < OB.step && OB.step !== 3;
   OB.step = step;
   el.obStep1.hidden = step !== 1;
   el.obForm.hidden = step !== 2;
+  el.obMigrate.hidden = step !== 3;
+  el.obSteps.hidden = step === 3;
   el.obSteps.querySelectorAll("li").forEach((li, index) => {
     li.classList.toggle("on", index + 1 === step);
     li.classList.toggle("done", index + 1 < step);
   });
-  const shown = step === 1 ? el.obStep1 : el.obForm;
+  const shown = step === 1 ? el.obStep1 : step === 2 ? el.obForm : el.obMigrate;
   if (animate) {
     motion(
       shown,
@@ -5548,58 +5952,136 @@ function setObStep(step, animate = true) {
     el.obError.hidden = true;
     if (!S.projectList) loadProjectList();
     else renderProjectList();
-  } else requestAnimationFrame(() => el.obNick.focus());
+  } else if (step === 3) requestAnimationFrame(() => el.migUser.select());
+  else requestAnimationFrame(() => (el.obUser.value ? el.obNick : el.obUser).focus());
 }
 
-function showOnboarding() {
+function prepareOnboardingScreen() {
   closeMenu();
+  closeAccountPop();
   clearTimeout(islandTimer);
   clearInterval(serverTimer);
   el.app.hidden = true;
   el.onboarding.hidden = false;
-  OB.theme = THEMES[S.settings?.theme] ? S.settings.theme : "emerald";
+  stopSocial();
   OB.busy = false;
+  applyI18n();
+  el.boot.classList.add("gone");
+}
+
+function showOnboarding() {
+  prepareOnboardingScreen();
+  OB.theme = THEMES[S.settings?.theme] ? S.settings.theme : "emerald";
+  OB.nickTouched = false;
   applyTheme(OB.theme);
   renderThemeGrid(el.obThemes, OB.theme);
   const profile = activeProfile();
-  if (profile && !el.obNick.value) el.obNick.value = profile.nickname;
+  if (profile && !el.obNick.value) {
+    el.obNick.value = profile.nickname;
+    OB.nickTouched = true;
+  }
   el.obError1.hidden = true;
   el.obError.hidden = true;
   el.obCode.value = "";
-  applyI18n();
+  userState(el.obUser, el.obUserHint, "ob.userHint");
+  nickState(el.obNick, el.obNickHint, "ob.nickHint");
   setObStep(1, false);
-  el.boot.classList.add("gone");
+}
+
+/** Оновлення з v0.4.0 (або офлайн-ім'я виявилося зайнятим): фокусоване вікно вибору @username.
+ *  Ніки, скіни, палітра, збірки й проєкт уже на місці — після підтвердження одразу звичний інтерфейс. */
+function showMigration() {
+  prepareOnboardingScreen();
+  applyTheme(S.settings?.theme);
+  const conflict = Boolean(S.account?.conflict);
+  el.migUser.value = conflict ? "" : S.account?.suggested || activeProfile()?.nickname || "";
+  el.migError.hidden = true;
+  paintMigration();
+  setObStep(3, false);
+}
+
+/** Тексти вікна оновлення: звичайне оновлення до v0.4.1 або «ім'я вже зайняте». */
+function paintMigration() {
+  const conflict = Boolean(S.account?.conflict);
+  el.migBadge.textContent = conflict ? t("mig.conflictBadge") : t("mig.badge");
+  el.migTitle.textContent = conflict ? t("mig.conflictTitle", { user: S.account?.username || "" }) : t("mig.title");
+  el.migSub.textContent = conflict ? t("mig.conflictSub") : t("mig.sub");
+  userState(el.migUser, el.migHint, "mig.hint");
 }
 
 function setObBusy(on, button) {
   OB.busy = on;
   if (button) setLoading(button, on);
-  for (const node of [el.obBack, el.obSkip, el.obNext, el.obSubmit]) if (node !== button) node.disabled = on;
+  for (const node of [el.obBack, el.obSkip, el.obNext, el.obSubmit, el.migSubmit]) if (node !== button) node.disabled = on;
 }
 
-/** Крок 1 → 2: нік (3–16 символів) і палітра зберігаються одразу — їх можна змінити пізніше. */
+/** Підсвічування поля @username (3–20 символів). */
+function userState(input, hint, defaultKey) {
+  const value = input.value.trim().replace(/^@/, "");
+  const invalid = value.length > 0 && !USER_RE.test(value);
+  input.classList.toggle("invalid", invalid);
+  hint.classList.toggle("error", invalid);
+  hint.textContent = invalid ? t("ob.userBad") : t(defaultKey);
+  return !invalid && value.length > 0;
+}
+
+function rejectField(input, hint, key) {
+  input.classList.add("invalid");
+  hint.classList.add("error");
+  hint.textContent = t(key);
+  input.focus();
+}
+
+/** Результат реєстрації @username (ClaimOutcome): акаунт, ніки, палітра. */
+function applyClaim(outcome) {
+  S.account = outcome.account;
+  applyProfiles(outcome.profiles);
+  if (S.settings && outcome.theme) S.settings.theme = outcome.theme;
+  const user = outcome.account.username;
+  if (outcome.restored) toast({ icon: "users", title: t("ob.restored", { user }), timeout: 6000 });
+  else if (outcome.offline) toast({ icon: "alert", tone: "warn", title: t("ob.offlineCreated", { user }), timeout: 9000 });
+}
+
+/** Крок 1 → 2: @username (перевірка унікальності — `register_account` у Supabase; без інтернету —
+ *  офлайн-створення з відкладеною синхронізацією), перший ігровий нік і палітра. */
 async function onObStep1(event) {
   event.preventDefault();
   if (OB.busy) return;
   el.obError1.hidden = true;
-  const nickname = el.obNick.value.trim();
-  if (!NICK_RE.test(nickname)) {
-    el.obNick.classList.add("invalid");
-    el.obNickHint.classList.add("error");
-    el.obNickHint.textContent = t("profiles.nickBad");
-    el.obNick.focus();
-    return;
-  }
+  const username = el.obUser.value.trim().replace(/^@/, "");
+  const nickname = el.obNick.value.trim() || username.slice(0, 16);
+  if (!USER_RE.test(username)) return rejectField(el.obUser, el.obUserHint, "ob.userBad");
+  if (!NICK_RE.test(nickname)) return rejectField(el.obNick, el.obNickHint, "profiles.nickBad");
   setObBusy(true, el.obNext);
   try {
-    applyProfiles(await invoke("onboarding_profile", { nickname, theme: OB.theme }));
-    if (S.settings) S.settings.theme = OB.theme;
+    applyClaim(await invoke("onboarding_account", { username, nickname, theme: OB.theme }));
+    el.obNick.value = nickname;
     setObStep(2);
   } catch (error) {
     el.obError1.textContent = errHuman(error);
     el.obError1.hidden = false;
   } finally {
     setObBusy(false, el.obNext);
+  }
+}
+
+/** Вікно оновлення: зареєструвати @username і повернутися до звичного інтерфейсу. */
+async function onMigrate(event) {
+  event.preventDefault();
+  if (OB.busy) return;
+  el.migError.hidden = true;
+  const username = el.migUser.value.trim().replace(/^@/, "");
+  if (!USER_RE.test(username)) return rejectField(el.migUser, el.migHint, "ob.userBad");
+  setObBusy(true, el.migSubmit);
+  try {
+    applyClaim(await invoke("claim_username", { username }));
+    showApp();
+    setIsland("ok", t("mig.done", { user: S.account.username }));
+  } catch (error) {
+    el.migError.textContent = errHuman(error);
+    el.migError.hidden = false;
+  } finally {
+    setObBusy(false, el.migSubmit);
   }
 }
 
@@ -5666,6 +6148,965 @@ function showApp() {
   renderNickNote();
   requestAnimationFrame(() => switchTab("home", false));
   loadProject();
+  // Друзі та бейдж заявок: перший знімок за мить, далі — фонове оновлення.
+  startSocial();
+}
+
+/* ═══════════════════════════ АКАУНТ ═══════════════════════════ */
+
+/** Стан хмари для акаунта: online | offline | pending (не синхронізовано) | conflict. */
+function cloudState() {
+  if (!S.account?.username) return "pending";
+  if (S.account.conflict) return "conflict";
+  if (!S.account.synced) return "pending";
+  return S.cloudOnline === false ? "offline" : "online";
+}
+
+/** Крапка + підпис стану хмари (картка акаунта, поповер). */
+function paintCloud(node) {
+  if (!node) return;
+  const state = cloudState();
+  const dot = node.querySelector(".cloud-dot");
+  const text = node.querySelector("span");
+  if (dot) dot.dataset.state = state;
+  if (text) {
+    text.textContent =
+      state === "online" ? t("account.synced") : state === "offline" ? t("cloud.offline") : state === "conflict" ? t("account.conflict") : t("account.pending");
+  }
+}
+
+function renderAccountCard() {
+  el.acUser.textContent = "@" + (S.account?.username || "—");
+  paintCloud(el.acState);
+  el.logoutBtn.disabled = Boolean(S.running);
+}
+
+function renderPresenceDot() {
+  const state = S.running ? "playing" : cloudState() === "online" ? "online" : "off";
+  el.topPresence.dataset.state = state;
+}
+
+function renderCloudChip() {
+  const state = cloudState();
+  el.cloudChip.querySelector(".cloud-dot").dataset.state = state;
+  el.cloudChip.querySelector("span").textContent = state === "online" ? t("cloud.online") : state === "offline" ? t("cloud.offline") : t("cloud.pending");
+}
+
+/* поповер міні-картки профілю */
+
+let popToken = 0;
+
+function renderAccountPop() {
+  el.apUser.textContent = "@" + (S.account?.username || "—");
+  paintCloud(el.apState);
+  const profile = activeProfile();
+  loadSkin(profile).then((img) => drawHead(el.apHead, img, profile?.nickname, 40));
+  el.apNicks.innerHTML =
+    S.profiles
+      .map((p) => {
+        const on = p.id === S.activeProfile;
+        return `<button type="button" role="menuitemradio" aria-checked="${on}" class="ap-nick${on ? " on" : ""}" data-nick="${esc(p.id)}"><canvas class="head" data-ap-head="${esc(p.id)}" width="24" height="24" aria-hidden="true"></canvas><span>${esc(p.nickname)}</span>${on ? `<i>${ICONS.check}</i>` : ""}</button>`;
+      })
+      .join("") + `<button type="button" class="ap-nick ap-add" data-act="add-nick">${ICONS.plus}<span>${esc(t("ap.addNick"))}</span></button>`;
+  for (const canvas of el.apNicks.querySelectorAll("canvas[data-ap-head]")) {
+    const p = S.profiles.find((x) => x.id === canvas.dataset.apHead);
+    loadSkin(p).then((img) => drawHead(canvas, img, p?.nickname, 24));
+  }
+  el.accountPop.querySelector('[data-act="logout"]').disabled = Boolean(S.running);
+}
+
+function openAccountPop() {
+  if (!el.accountPop.hidden && !el.accountPop.classList.contains("closing")) {
+    closeAccountPop();
+    return;
+  }
+  popToken++;
+  closeMenu();
+  hideTip();
+  Dropdown.closeAll();
+  renderAccountPop();
+  el.accountPop.classList.remove("closing");
+  el.accountPop.hidden = false;
+  el.accountPop.style.animation = "none";
+  void el.accountPop.offsetWidth;
+  el.accountPop.style.animation = "";
+  const rect = el.topProfile.getBoundingClientRect();
+  el.accountPop.style.top = rect.bottom + 6 + "px";
+  el.accountPop.style.left = Math.max(8, rect.right - el.accountPop.offsetWidth) + "px";
+  el.topProfile.setAttribute("aria-expanded", "true");
+  el.accountPop.querySelector(".ap-nick.on, button:not(:disabled)")?.focus();
+}
+
+function closeAccountPop() {
+  if (el.accountPop.hidden || el.accountPop.classList.contains("closing")) return;
+  const my = ++popToken;
+  el.topProfile.setAttribute("aria-expanded", "false");
+  leave(el.accountPop, "closing", 140, () => {
+    if (my !== popToken) return;
+    el.accountPop.hidden = true;
+    el.accountPop.classList.remove("closing");
+  });
+}
+
+async function onAccountPopClick(event) {
+  const nick = event.target.closest("[data-nick]");
+  if (nick) {
+    closeAccountPop();
+    if (nick.dataset.nick === S.activeProfile) return;
+    try {
+      applyProfiles(await invoke("set_active_profile", { profileId: nick.dataset.nick }));
+    } catch (error) {
+      setIsland("error", errHuman(error));
+    }
+    return;
+  }
+  const button = event.target.closest("[data-act]");
+  if (!button || button.disabled) return;
+  closeAccountPop();
+  const act = button.dataset.act;
+  if (act === "account") switchTab("profiles");
+  else if (act === "add-nick") {
+    switchTab("profiles");
+    requestAnimationFrame(() => el.newNick.focus());
+  } else if (act === "friends") switchTab("friends");
+  else if (act === "logout") onLogout();
+}
+
+/** «Вийти з акаунта»: статус offline на сервері, очищення акаунта й повернення до онбордингу. */
+let loggingOut = false;
+
+async function onLogout() {
+  if (loggingOut) return;
+  if (S.running) {
+    setIsland("warn", t("account.closeGame"));
+    return;
+  }
+  if (S.busy || S.updating) {
+    setIsland("warn", t("play.wait"));
+    return;
+  }
+  const user = S.account?.username || "";
+  const ok = await confirmDialog({
+    icon: "logout",
+    tone: "warn",
+    title: t("account.logoutTitle", { user }),
+    html: esc(t("account.logoutText")),
+    ok: t("account.logout"),
+    danger: true
+  });
+  if (!ok || loggingOut) return;
+  loggingOut = true;
+  try {
+    await invoke("logout_account");
+  } catch (error) {
+    showError(error);
+    return;
+  } finally {
+    loggingOut = false;
+  }
+  S.account = { account_id: "", username: "", synced: false, conflict: false, needs_username: false, suggested: "" };
+  S.profiles = [];
+  S.activeProfile = "";
+  S.skins.clear();
+  S.social = null;
+  S.cloudOnline = null;
+  renderFriendsBadge();
+  el.obUser.value = "";
+  el.obNick.value = "";
+  showOnboarding();
+  toast({ icon: "logout", title: t("account.loggedOut"), timeout: 4000 });
+}
+
+/* ═══════════════════════════ ДРУЗІ ═══════════════════════════ */
+
+let socialTimer = 0;
+let socialSeq = 0;
+let tickerTimer = 0;
+let friendsSig = "";
+let searchTimer = 0;
+let searchSeq = 0;
+
+/** Друзі оновлюються кожні 15 с у вкладці «Друзі» і раз на хвилину у фоні (бейдж заявок). */
+function socialDelay() {
+  return !el.app.hidden && S.tab === "friends" && !document.hidden ? 15000 : 60000;
+}
+
+function scheduleSocial(delay = socialDelay()) {
+  clearTimeout(socialTimer);
+  socialTimer = el.app.hidden ? 0 : setTimeout(() => loadSocial({ quiet: true }), delay);
+}
+
+function startSocial() {
+  scheduleSocial(1500);
+}
+
+function stopSocial() {
+  clearTimeout(socialTimer);
+  socialTimer = 0;
+  socialSeq++;
+  syncFriendTicker();
+}
+
+async function loadSocial({ quiet = false } = {}) {
+  if (el.app.hidden || !S.account?.username) return;
+  const my = ++socialSeq;
+  if (!quiet && S.tab === "friends") renderFriends();
+  let snap;
+  try {
+    snap = await invoke("social_snapshot");
+  } catch (error) {
+    snap = { online: false, pending: false, error: errHuman(error), data: null };
+  }
+  if (my !== socialSeq) return;
+  if (snap.online && snap.data) {
+    S.social = snap.data;
+    S.socialAt = performance.now();
+    S.cloudOnline = true;
+  } else if (!snap.pending) S.cloudOnline = false;
+  renderFriendsBadge();
+  renderPresenceDot();
+  if (S.tab === "friends") renderFriends();
+  if (S.tab === "profiles") renderAccountCard();
+  scheduleSocial();
+}
+
+function renderFriendsBadge() {
+  const count = (S.social?.incoming?.length || 0) + (S.social?.pack_requests?.length || 0);
+  const shown = !el.friendsBadge.hidden;
+  el.friendsBadge.hidden = !count;
+  el.friendsBadge.textContent = count > 9 ? "9+" : String(count);
+  if (count && !shown) {
+    el.friendsBadge.classList.remove("bump");
+    void el.friendsBadge.offsetWidth;
+    el.friendsBadge.classList.add("bump");
+  }
+}
+
+/* живий таймер гри */
+
+function syncFriendTicker() {
+  const on = S.tab === "friends" && !el.app.hidden && !document.hidden;
+  if (on && !tickerTimer) tickerTimer = setInterval(tickTimers, 1000);
+  else if (!on && tickerTimer) {
+    clearInterval(tickerTimer);
+    tickerTimer = 0;
+  }
+}
+
+/** Поточний час сервера: server_now зі знімка + скільки минуло локально (без розсинхрону годинників). */
+function serverNowMs() {
+  const base = Date.parse(S.social?.server_now || "");
+  return (Number.isNaN(base) ? Date.now() : base) + (performance.now() - S.socialAt);
+}
+
+function playTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h) return t("time.hm", { h, m });
+  if (m) return t("time.m", { m });
+  return t("time.s", { s: sec });
+}
+
+function stopwatch(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+  const s = String(sec % 60).padStart(2, "0");
+  return h ? `${h}:${m}:${s}` : `${m}:${s}`;
+}
+
+function agoText(iso) {
+  const at = Date.parse(iso || "");
+  if (Number.isNaN(at)) return "";
+  const min = Math.max(0, Math.floor((serverNowMs() - at) / 60000));
+  if (min < 1) return t("time.justNow");
+  if (min < 60) return t("time.minAgo", { n: min });
+  if (min < 1440) return t("time.hourAgo", { n: Math.floor(min / 60) });
+  return t("time.dayAgo", { n: Math.floor(min / 1440) });
+}
+
+function tickTimers() {
+  const now = serverNowMs();
+  for (const node of el.friendList.querySelectorAll("[data-since]")) {
+    const sec = Math.max(0, Math.floor((now - Number(node.dataset.since)) / 1000));
+    node.querySelector("[data-timer-text]").textContent = t("friends.timer", { time: playTime(sec) });
+    node.querySelector("[data-timer-clock]").textContent = stopwatch(sec);
+  }
+}
+
+/* дії зі збірками друзів */
+
+function localShared(packId) {
+  return S.view?.instances.find((i) => i.custom && i.shared_from === packId) || null;
+}
+
+function sameProject(code) {
+  return Boolean(S.binding && code && S.binding.code.toLowerCase() === String(code).toLowerCase());
+}
+
+/** Що можна зробити зі спільною збіркою друга (з урахуванням доступу та вже завантаженої копії). */
+function sharedAction(packId, access) {
+  const local = localShared(packId);
+  if (local) return { act: "open-local", local: local.id, label: t("friends.openPack"), icon: "play", primary: true };
+  if (access === "public" || access === "approved") return { act: "download", label: t("friends.download"), icon: "download", primary: true };
+  if (access === "pending") return { act: "pending", label: t("friends.requestSent"), icon: "clock", disabled: true };
+  if (access === "denied") return { act: "request", label: t("friends.denied"), icon: "hand" };
+  return { act: "request", label: t("friends.requestAccess"), icon: "hand" };
+}
+
+/** Кнопка під статусом друга, який зараз у грі. */
+function friendAction(f) {
+  if (f.status !== "playing") return null;
+  if (f.pack_type === "project") {
+    if (!f.project_code) return null;
+    if (sameProject(f.project_code)) return { act: "open-project", label: t("friends.openPack"), icon: "play", primary: true };
+    return { act: "join", label: t("friends.joinProject"), icon: "link", primary: true };
+  }
+  if (!f.shared_pack_id || f.pack_type === "custom_private") return null;
+  return sharedAction(f.shared_pack_id, f.access);
+}
+
+function actionButton(action) {
+  if (!action) return "";
+  const cls = action.primary ? "btn-primary" : "btn-ghost";
+  const local = action.local ? ` data-local="${esc(action.local)}"` : "";
+  return `<button class="btn ${cls} btn-sm fr-act" type="button" data-fact="${action.act}"${local}${action.disabled ? " disabled" : ""}><span class="btn-spin" aria-hidden="true"></span><span class="btn-text">${ICONS[action.icon] || ""}${esc(action.label)}</span></button>`;
+}
+
+function activityText(f) {
+  if (f.pack_type === "project") return t("friends.playingProject", { pack: f.pack_name || "—", project: f.project_name || f.project_code || "—" });
+  if (f.pack_type === "custom_private" || !f.pack_name) return t("friends.playingPrivate");
+  return t("friends.playingPack", { pack: f.pack_name });
+}
+
+function friendRow(f, index, animate) {
+  const status = ["playing", "online"].includes(f.status) ? f.status : "offline";
+  let line;
+  if (status === "playing") {
+    line = esc(activityText(f)) + (f.character ? ` <span class="fr-as">${esc(t("friends.playingAs", { nick: f.character }))}</span>` : "");
+  } else if (status === "online") line = esc(t("st.online"));
+  else line = esc(t("st.offline")) + (f.last_seen ? " · " + esc(t("friends.lastSeen", { ago: agoText(f.last_seen) })) : "");
+  const since = status === "playing" ? Date.parse(f.started_at || "") : NaN;
+  const timer = Number.isNaN(since)
+    ? ""
+    : `<span class="fr-timer" data-since="${since}"><i aria-hidden="true">${ICONS.clock}</i><b data-timer-text></b><span class="mono" data-timer-clock></span></span>`;
+  const packs = f.packs || [];
+  const packsBtn = packs.length
+    ? `<button class="icon-sm fr-packs" type="button" data-fact="packs" title="${esc(t("friends.packs", { n: packs.length }))}" aria-label="${esc(t("friends.packs", { n: packs.length }))}">${ICONS.layers}<b>${packs.length}</b></button>`
+    : "";
+  return `<div class="friend-row st-${status}${animate ? " enter" : ""}" data-friend="${esc(f.user_id)}" style="animation-delay:${Math.min(index, 8) * 30}ms">
+    <span class="fr-avatar"><canvas class="head" data-fhead="${esc(f.username)}" width="40" height="40" aria-hidden="true"></canvas><i class="fr-dot" aria-hidden="true"></i></span>
+    <span class="fr-body">
+      <span class="fr-name"><b>@${esc(f.username)}</b><span class="fr-pill">${esc(t("st." + status))}</span></span>
+      <small class="fr-line">${line}</small>
+      ${timer}
+    </span>
+    <span class="row-actions">${actionButton(friendAction(f))}${packsBtn}<button class="icon-sm danger" type="button" data-fact="remove" title="${esc(t("friends.remove"))}" aria-label="${esc(t("friends.remove"))}">${ICONS.trash}</button></span>
+  </div>`;
+}
+
+function personRow(attrs, username, sub, buttons) {
+  return `<div class="fr-req" ${attrs}><canvas class="head" data-fhead="${esc(username)}" width="32" height="32" aria-hidden="true"></canvas><span class="fr-req-text"><b>@${esc(username)}</b><small>${sub}</small></span><span class="row-actions">${buttons}</span></div>`;
+}
+
+function smallButton(attr, value, label, kind = "ghost") {
+  return `<button class="btn btn-${kind} btn-sm" type="button" ${attr}="${value}"><span class="btn-spin" aria-hidden="true"></span><span class="btn-text">${esc(label)}</span></button>`;
+}
+
+function paintHeads(root) {
+  for (const canvas of root.querySelectorAll("canvas[data-fhead]")) drawHead(canvas, null, canvas.dataset.fhead, canvas.width);
+}
+
+function friendsState(message, retry) {
+  return `<div class="fr-empty">${ICONS.users}<p>${esc(message)}</p>${retry ? `<button class="btn btn-ghost btn-sm" type="button" data-fact="retry">${esc(t("friends.retry"))}</button>` : ""}</div>`;
+}
+
+function renderFriends() {
+  renderCloudChip();
+  const data = S.social;
+  const synced = Boolean(S.account?.synced);
+  el.friendQuery.disabled = !synced;
+  el.friendAdd.disabled = !synced;
+  if (!data) {
+    for (const block of [el.incomingBlock, el.accessBlock, el.outgoingBlock]) block.hidden = true;
+    el.friendsCount.textContent = "0";
+    friendsSig = "";
+    el.friendList.innerHTML = !synced
+      ? friendsState(t("friends.pendingState", { user: S.account?.username || "—" }), false)
+      : S.cloudOnline === false
+        ? friendsState(t("friends.offlineState"), true)
+        : `<div class="fr-empty fr-loading"><span class="spinner"></span><p>${esc(t("friends.loading"))}</p></div>`;
+    return;
+  }
+  const incoming = data.incoming || [];
+  const access = data.pack_requests || [];
+  const outgoing = data.outgoing || [];
+  const friends = data.friends || [];
+
+  el.incomingBlock.hidden = !incoming.length;
+  el.incomingCount.textContent = String(incoming.length);
+  el.incomingList.innerHTML = incoming
+    .map((r) => personRow(`data-req="${esc(r.id)}"`, r.username, esc(t("friends.wantsFriend")), smallButton("data-ract", "accept", t("friends.accept"), "primary") + smallButton("data-ract", "decline", t("friends.decline"))))
+    .join("");
+  el.accessBlock.hidden = !access.length;
+  el.accessCount.textContent = String(access.length);
+  el.accessList.innerHTML = access
+    .map((r) => personRow(`data-preq="${esc(r.id)}" data-pack-name="${esc(r.pack_name)}" data-user="${esc(r.username)}"`, r.username, esc(t("friends.wantsAccess", { pack: r.pack_name })), smallButton("data-pact", "allow", t("friends.allow"), "primary") + smallButton("data-pact", "deny", t("friends.deny"))))
+    .join("");
+  el.outgoingBlock.hidden = !outgoing.length;
+  el.outgoingList.innerHTML = outgoing
+    .map((r) => personRow(`data-friend="${esc(r.user_id)}" data-user="${esc(r.username)}"`, r.username, esc(t("friends.waiting")), smallButton("data-fact", "cancel", t("friends.cancel"))))
+    .join("");
+  for (const list of [el.incomingList, el.accessList, el.outgoingList]) paintHeads(list);
+
+  el.friendsCount.textContent = String(friends.length);
+  // Перебудовуємо список лише коли щось змінилося (таймери тікають окремо, без перемальовування).
+  const local = (S.view?.instances || []).filter((i) => i.shared_from).map((i) => i.shared_from);
+  const sig = JSON.stringify([lang, S.binding?.code || "", local, friends.map((f) => [f.user_id, f.status, f.pack_name, f.pack_type, f.instance_id, f.project_code, f.shared_pack_id, f.started_at, f.access, f.character, (f.packs || []).map((p) => p.id + p.access), f.status === "offline" ? agoText(f.last_seen) : ""])]);
+  if (sig !== friendsSig) {
+    const animate = !friendsSig;
+    friendsSig = sig;
+    el.friendList.innerHTML = friends.length ? friends.map((f, i) => friendRow(f, i, animate)).join("") : friendsState(t("friends.empty"), false);
+    paintHeads(el.friendList);
+  }
+  el.friendList.classList.toggle("stale", S.cloudOnline === false);
+  tickTimers();
+}
+
+function friendById(id) {
+  return (S.social?.friends || []).find((f) => f.user_id === id) || null;
+}
+
+/** Друг грає у збірку проєкту, який уже підключено: відкрити саме її. */
+async function openFriendInstance(id) {
+  let found = id && S.view?.instances.some((i) => i.id === id);
+  if (id && !found) {
+    setIsland("busy", t("friends.packMissing"));
+    await loadProject({ quiet: true });
+    found = S.view?.instances.some((i) => i.id === id);
+  }
+  switchTab("home");
+  if (found) selectInstance(id);
+}
+
+/** «Увійти в проєкт»: підтвердження → connect_project(project_code) → відкрити збірку друга. */
+/** Код проєкту від друга — лише безпечні символи (сервер перевіряє те саме). */
+const PROJECT_CODE_RE = /^[A-Za-z0-9_./-]{1,120}$/;
+
+async function joinFriendProject(f) {
+  if (!PROJECT_CODE_RE.test(f.project_code || "")) {
+    setIsland("error", t("friends.badProject"));
+    return;
+  }
+  if (sameProject(f.project_code)) {
+    openFriendInstance(f.instance_id);
+    return;
+  }
+  const name = f.project_name || f.project_code;
+  const replace = S.binding && !sameProject(f.project_code) ? `<p>${esc(t("friends.joinReplace", { cur: S.binding.name || S.binding.code }))}</p>` : "";
+  const ok = await confirmDialog({
+    icon: "link",
+    title: t("friends.joinTitle", { name }),
+    html: `<p>${t("friends.joinText", { user: esc(f.username), pack: esc(f.pack_name || "—"), name: esc(name), code: esc(f.project_code) })}</p>${replace}`,
+    ok: t("friends.joinGo")
+  });
+  if (!ok) return;
+  setIsland("busy", t("ob.checking"));
+  try {
+    S.binding = await invoke("connect_project", { code: f.project_code });
+    S.changelog = null;
+    S.pickedProject = "";
+    await loadProject();
+    renderTop();
+    setIsland("ok", t("friends.joined", { name: S.binding.name || name }));
+    openFriendInstance(f.instance_id);
+  } catch (error) {
+    setIsland("error", errHuman(error));
+    showError(error);
+  }
+}
+
+/** «Завантажити збірку» друга: доступ перевіряє сервер, встановлення — як готової збірки. */
+async function downloadFriendPack(packId, name, owner, button) {
+  if (S.busy || S.updating) {
+    setIsland("warn", t("play.wait"));
+    return;
+  }
+  // Збірка друга може містити моди не з Modrinth/CurseForge (файли в архіві) — лише від тих, кому довіряєш.
+  S.busy = "confirm";
+  const ok = await confirmDialog({
+    icon: "download",
+    title: t("friends.trustTitle", { name: name || "…", user: owner }),
+    html: esc(t("friends.trustText", { user: owner })),
+    ok: t("friends.download")
+  });
+  S.busy = null;
+  if (!ok || S.busy || S.updating) return;
+  S.busy = "modpack";
+  S.modpackName = name || "…";
+  if (button) setLoading(button, true);
+  renderPlay();
+  setIsland("busy", t("friends.downloading", { name: S.modpackName }));
+  try {
+    const result = await invoke("download_friend_pack", { packId });
+    addCustomInstance(result.instance);
+    setIsland("ok", t("friends.downloaded", { name: result.report.name, user: owner }));
+    switchTab("home");
+    selectInstance(result.instance.id, { save: false });
+  } catch (error) {
+    setIsland("error", errHuman(error));
+    showError(error);
+  } finally {
+    S.busy = null;
+    S.modpackName = "";
+    if (button?.isConnected) setLoading(button, false);
+    renderList();
+    renderHero();
+    friendsSig = "";
+    if (S.tab === "friends") renderFriends();
+  }
+}
+
+async function requestPackAccess(packId, name, button) {
+  if (button) setLoading(button, true);
+  try {
+    await invoke("request_pack_access", { packId });
+    setIsland("ok", t("friends.accessAsked", { pack: name || "…" }));
+    await loadSocial({ quiet: true });
+  } catch (error) {
+    setIsland("error", errHuman(error));
+    if (button?.isConnected) setLoading(button, false);
+  }
+}
+
+/** Дія зі спільною збіркою (рядок друга або вікно «Збірки друга»). */
+function runPackAction(act, { packId, name, owner, local, button }) {
+  if (act === "open-local") {
+    switchTab("home");
+    selectInstance(local);
+  } else if (act === "download") downloadFriendPack(packId, name, owner, button);
+  else if (act === "request") requestPackAccess(packId, name, button);
+}
+
+function openFriendPacks(f) {
+  const rows = (f.packs || [])
+    .map((p) => {
+      const meta = [p.minecraft_version ? "Minecraft " + p.minecraft_version : "", loaderName(p.loader), t("vis." + p.visibility), p.size_bytes ? formatSize(p.size_bytes) : ""].filter(Boolean).join(" · ");
+      return `<div class="fp-row" data-pack="${esc(p.id)}" data-name="${esc(p.name)}"><span class="fp-ico">${ICONS[p.visibility === "public" ? "globe" : "hand"]}</span><span class="fp-text"><b>${esc(p.name)}</b><small>${esc(meta)}</small></span>${actionButton(sharedAction(p.id, p.access))}</div>`;
+    })
+    .join("");
+  openModal({
+    icon: "layers",
+    title: t("friends.packsTitle", { user: f.username }),
+    html: `<p>${esc(t("friends.packsLead"))}</p><div class="fp-list" id="fpList">${rows}</div>`,
+    wide: true,
+    buttons: [{ id: "close", label: t("common.close"), kind: "primary" }]
+  });
+  $("fpList")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-fact]");
+    const row = event.target.closest("[data-pack]");
+    if (!button || !row || button.disabled) return;
+    const act = button.dataset.fact;
+    const options = { packId: row.dataset.pack, name: row.dataset.name, owner: f.username, local: button.dataset.local, button };
+    if (act === "request") {
+      runPackAction(act, options);
+      button.disabled = true;
+      button.querySelector(".btn-text").textContent = t("friends.requestSent");
+      return;
+    }
+    closeModal("close");
+    setTimeout(() => runPackAction(act, { ...options, button: null }), 200);
+  });
+}
+
+async function onFriendsClick(event) {
+  const target = event.target;
+  if (target.closest('[data-fact="retry"]')) {
+    S.cloudOnline = null;
+    renderFriends();
+    loadSocial();
+    return;
+  }
+  // Заявки в друзі.
+  const req = target.closest("[data-req]");
+  const ract = target.closest("[data-ract]");
+  if (req && ract && !ract.disabled) {
+    for (const node of req.querySelectorAll("button")) node.disabled = true;
+    setLoading(ract, true);
+    const accept = ract.dataset.ract === "accept";
+    try {
+      await invoke("respond_friend_request", { requestId: req.dataset.req, accept });
+      const user = req.querySelector("b")?.textContent.replace(/^@/, "") || "";
+      setIsland("ok", accept ? t("friends.accepted", { user }) : t("friends.declined"));
+    } catch (error) {
+      setIsland("error", errHuman(error));
+    }
+    loadSocial({ quiet: true });
+    return;
+  }
+  // Запити на доступ до моїх збірок.
+  const preq = target.closest("[data-preq]");
+  const pact = target.closest("[data-pact]");
+  if (preq && pact && !pact.disabled) {
+    for (const node of preq.querySelectorAll("button")) node.disabled = true;
+    setLoading(pact, true);
+    const approve = pact.dataset.pact === "allow";
+    try {
+      await invoke("respond_pack_request", { requestId: preq.dataset.preq, approve });
+      setIsland("ok", approve ? t("friends.accessGranted", { user: preq.dataset.user, pack: preq.dataset.packName }) : t("friends.accessDenied", { user: preq.dataset.user }));
+    } catch (error) {
+      setIsland("error", errHuman(error));
+    }
+    loadSocial({ quiet: true });
+    return;
+  }
+  const button = target.closest("[data-fact]");
+  const row = target.closest("[data-friend]");
+  if (!button || !row || button.disabled) return;
+  const act = button.dataset.fact;
+  if (act === "cancel") {
+    setLoading(button, true);
+    try {
+      await invoke("remove_friend", { friendId: row.dataset.friend });
+    } catch (error) {
+      setIsland("error", errHuman(error));
+    }
+    loadSocial({ quiet: true });
+    return;
+  }
+  const f = friendById(row.dataset.friend);
+  if (!f) return;
+  if (act === "remove") {
+    const ok = await confirmDialog({ icon: "trash", tone: "danger", title: t("friends.removeTitle", { user: f.username }), html: esc(t("friends.removeText")), ok: t("friends.remove"), danger: true });
+    if (!ok) return;
+    try {
+      await invoke("remove_friend", { friendId: f.user_id });
+      setIsland("ok", t("friends.removed", { user: f.username }));
+    } catch (error) {
+      setIsland("error", errHuman(error));
+    }
+    loadSocial({ quiet: true });
+  } else if (act === "packs") openFriendPacks(f);
+  else if (act === "join") joinFriendProject(f);
+  else if (act === "open-project") openFriendInstance(f.instance_id);
+  else runPackAction(act, { packId: f.shared_pack_id, name: f.pack_name, owner: f.username, local: button.dataset.local, button });
+}
+
+/* пошук і додавання друзів */
+
+function hideFriendSearch() {
+  searchSeq++;
+  el.friendSearch.hidden = true;
+  el.friendSearch.innerHTML = "";
+}
+
+function cleanQuery(value) {
+  return String(value || "").trim().replace(/^@/, "");
+}
+
+function onFriendQueryInput() {
+  clearTimeout(searchTimer);
+  el.friendQuery.classList.remove("invalid");
+  el.friendHint.classList.remove("error");
+  el.friendHint.textContent = t("friends.addHint");
+  const query = cleanQuery(el.friendQuery.value);
+  if (query.length < 2 || !/^[A-Za-z0-9_]+$/.test(query)) {
+    hideFriendSearch();
+    return;
+  }
+  searchTimer = setTimeout(() => runFriendSearch(query), 280);
+}
+
+async function runFriendSearch(query) {
+  const my = ++searchSeq;
+  let list;
+  try {
+    list = await invoke("search_users", { query });
+  } catch {
+    list = null;
+  }
+  if (my !== searchSeq || cleanQuery(el.friendQuery.value) !== query) return;
+  if (!Array.isArray(list)) {
+    hideFriendSearch();
+    return;
+  }
+  el.friendSearch.innerHTML = list.length
+    ? list
+        .map((u) => {
+          const addable = u.relation === "none" || u.relation === "incoming";
+          const tag = u.relation === "none" ? `<i class="fs-add">${ICONS.userPlus}</i>` : `<span class="tag">${esc(t("rel." + u.relation))}</span>`;
+          return `<button type="button" class="fs-item" data-user="${esc(u.username)}"${addable ? "" : " disabled"}><canvas class="head" data-fhead="${esc(u.username)}" width="28" height="28" aria-hidden="true"></canvas><b>@${esc(u.username)}</b>${tag}</button>`;
+        })
+        .join("")
+    : `<div class="fs-empty">${esc(t("friends.noResults"))}</div>`;
+  paintHeads(el.friendSearch);
+  el.friendSearch.hidden = false;
+}
+
+let sendingFriend = false;
+
+async function sendFriend(username) {
+  // Enter у полі та клік по кнопці / підказці — лише один запит за раз.
+  if (sendingFriend) return;
+  if (!USER_RE.test(username)) {
+    el.friendQuery.classList.add("invalid");
+    el.friendHint.classList.add("error");
+    el.friendHint.textContent = t("ob.userBad");
+    el.friendQuery.focus();
+    return;
+  }
+  hideFriendSearch();
+  sendingFriend = true;
+  setLoading(el.friendAdd, true);
+  try {
+    const result = await invoke("send_friend_request", { username });
+    const key = { sent: "friends.sent", accepted: "friends.accepted", already_friends: "friends.already", already_sent: "friends.alreadySent" }[result?.status] || "friends.sent";
+    setIsland("ok", t(key, { user: username }));
+    el.friendQuery.value = "";
+    await loadSocial({ quiet: true });
+  } catch (error) {
+    el.friendQuery.classList.add("invalid");
+    el.friendHint.classList.add("error");
+    el.friendHint.textContent = errHuman(error);
+  } finally {
+    sendingFriend = false;
+    setLoading(el.friendAdd, false);
+    el.friendAdd.disabled = !S.account?.synced;
+  }
+}
+
+/* ═══════════════════════════ ВИДИМІСТЬ ВЛАСНИХ ЗБІРОК ═══════════════════════════ */
+
+const VISIBILITIES = ["private", "public", "on_request"];
+const VIS_ICON = { private: "lock", public: "globe", on_request: "hand" };
+
+/** Компактний перемикач «Приватна / Публічна для друзів / За проханням» + підказка. */
+/** Сегменти видимості: акцентний «повзунок» їде під обрану кнопку (transform), а три підказки
+ *  лежать в одній клітинці сітки — висота блоку дорівнює найдовшій, тож перемикання нічого не штовхає. */
+function visibilitySeg(current) {
+  const index = Math.max(0, VISIBILITIES.indexOf(current));
+  const buttons = VISIBILITIES.map((v) => {
+    const on = v === current;
+    return `<button type="button" role="radio" aria-checked="${on}" class="${on ? "on" : ""}" data-vis="${v}">${ICONS[VIS_ICON[v]]}<span>${esc(t("vis." + v))}</span></button>`;
+  }).join("");
+  const hints = VISIBILITIES.map((v) => `<p class="hint vis-hint${v === current ? " on" : ""}" data-hint="${v}"${v === current ? "" : ' aria-hidden="true"'}>${esc(t("vis." + v + "Hint"))}</p>`).join("");
+  return `<div class="vis-seg" role="radiogroup" style="--i:${index}"><span class="vis-thumb" aria-hidden="true"></span>${buttons}</div><div class="vis-hints">${hints}</div>`;
+}
+
+function bindVisibilitySeg(root, onChange) {
+  root?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-vis]");
+    if (!button) return;
+    for (const node of root.querySelectorAll("[data-vis]")) {
+      const on = node === button;
+      node.classList.toggle("on", on);
+      node.setAttribute("aria-checked", String(on));
+    }
+    const seg = root.querySelector(".vis-seg");
+    if (seg) seg.style.setProperty("--i", String(Math.max(0, VISIBILITIES.indexOf(button.dataset.vis))));
+    for (const hint of root.querySelectorAll(".vis-hint")) {
+      const on = hint.dataset.hint === button.dataset.vis;
+      hint.classList.toggle("on", on);
+      if (on) hint.removeAttribute("aria-hidden");
+      else hint.setAttribute("aria-hidden", "true");
+    }
+    onChange(button.dataset.vis);
+  });
+}
+
+/** Зберігає видимість; для спільних збірок — пакування й публікація копії для друзів. */
+async function applyVisibility(id, visibility) {
+  const name = S.view?.instances.find((i) => i.id === id)?.name || "";
+  if (visibility !== "private") setIsland("busy", t("vis.publishing", { name }));
+  try {
+    const outcome = await invoke("set_pack_visibility", { instanceId: id, visibility });
+    mergeInstance(outcome.instance);
+    if (outcome.error) {
+      setIsland("error", t("vis.failed"));
+      showError(outcome.error);
+    } else if (outcome.pending) setIsland("warn", t("vis.pending"));
+    else if (outcome.published) {
+      const report = outcome.report || { cdn: 0, bundled: 0, skipped: [] };
+      setIsland("ok", t("vis.published", { name, cdn: report.cdn, bundled: report.bundled }));
+      if (report.skipped?.length) {
+        const files = report.skipped.slice(0, 6).join(", ") + (report.skipped.length > 6 ? "…" : "");
+        toast({ icon: "alert", tone: "warn", title: t("vis.skipped", { files }), timeout: 12000 });
+      }
+    } else setIsland("ok", t("vis.privateDone", { name }));
+  } catch (error) {
+    setIsland("error", errHuman(error));
+  }
+}
+
+/* ── іконка власної збірки ── */
+
+const PACK_ICON_SIZE = 128;
+
+/** Обрізає картинку до квадрата по центру й зменшує до 128×128 PNG (піксель-арт — без розмиття). */
+async function makePackIcon(buffer) {
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(new Blob([buffer]));
+  } catch {
+    throw new Error(t("icon.bad"));
+  }
+  const side = Math.min(bitmap.width, bitmap.height);
+  if (!side) throw new Error(t("icon.bad"));
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = PACK_ICON_SIZE;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = side > 64;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, PACK_ICON_SIZE, PACK_ICON_SIZE);
+  bitmap.close?.();
+  const png = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!png) throw new Error(t("icon.bad"));
+  return { bytes: new Uint8Array(await png.arrayBuffer()), url: canvas.toDataURL("image/png") };
+}
+
+/** Рядок вибору іконки: прев'ю 42×42 (з «✕» на куті, коли картинку обрано), підпис і «Обрати файл…». */
+function packIconPicker(id, url, letter, label) {
+  const has = isIconUrl(url);
+  return `<div class="pi${has ? " has-img" : ""}" id="${id}">
+    <span class="pi-thumb">
+      <span class="pi-preview" aria-hidden="true"><span class="pi-letter">${esc(letter)}</span><img alt="" draggable="false"${has ? ` src="${esc(url)}"` : ""}></span>
+      <button type="button" class="pi-clear" data-pi="clear" aria-label="${esc(t("icon.clear"))}" title="${esc(t("icon.clear"))}"${has ? "" : ' tabindex="-1" aria-hidden="true"'}>${ICONS.close}</button>
+    </span>
+    <span class="pi-main">
+      <span class="label">${esc(label)}</span>
+      <span class="pi-acts">
+        <button type="button" class="btn btn-ghost btn-sm pi-pick" data-pi="pick" title="${esc(t("icon.hintFull"))}">${esc(t("icon.pick"))}</button>
+        <span class="hint pi-hint" title="${esc(t("icon.hintFull"))}">${esc(t("icon.hint"))}</span>
+      </span>
+    </span>
+  </div>`;
+}
+
+function setPackIconLetter(root, letter) {
+  const node = root?.querySelector(".pi-letter");
+  if (node && node.textContent !== letter) node.textContent = letter;
+}
+
+function bindPackIconPicker(root, { onChange, onError }) {
+  if (!root) return;
+  let picking = false;
+  const clear = root.querySelector('[data-pi="clear"]');
+  const show = (icon) => {
+    const img = root.querySelector(".pi-preview img");
+    if (icon) img.src = icon.url;
+    else img.removeAttribute("src");
+    root.classList.toggle("has-img", Boolean(icon));
+    if (icon) {
+      clear.removeAttribute("tabindex");
+      clear.removeAttribute("aria-hidden");
+    } else {
+      clear.setAttribute("tabindex", "-1");
+      clear.setAttribute("aria-hidden", "true");
+    }
+  };
+  root.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-pi]");
+    if (!button) return;
+    if (button.dataset.pi === "clear") {
+      if (!root.classList.contains("has-img")) return;
+      show(null);
+      onChange(null);
+      root.querySelector('[data-pi="pick"]')?.focus();
+      return;
+    }
+    if (picking) return;
+    picking = true;
+    button.disabled = true;
+    try {
+      const raw = await invoke("pick_pack_icon");
+      const buffer = raw instanceof ArrayBuffer ? raw : ArrayBuffer.isView(raw) ? raw.buffer : Array.isArray(raw) ? new Uint8Array(raw).buffer : null;
+      if (!buffer || !buffer.byteLength) return;
+      const icon = await makePackIcon(buffer);
+      show(icon);
+      onChange(icon);
+    } catch (error) {
+      onError?.(error instanceof Error ? error.message : errHuman(error));
+    } finally {
+      picking = false;
+      button.disabled = false;
+    }
+  });
+}
+
+/** Меню збірки → «Іконка збірки…»: змінити або прибрати іконку вже створеної власної збірки. */
+function openIconDialog(id) {
+  const inst = S.view?.instances.find((i) => i.id === id);
+  if (!inst?.custom) return;
+  let picked = undefined; // undefined — без змін, null — прибрати, {bytes,url} — нова
+  const showErr = (text) => {
+    const node = $("iconError");
+    if (!node) return;
+    node.textContent = text || "";
+    node.hidden = !text;
+  };
+  const choice = openModal({
+    icon: "image",
+    title: t("icon.title", { name: inst.name }),
+    html: `<p>${esc(t("icon.lead"))}</p><div class="pi-box">${packIconPicker("iconBox", inst.icon, initial(inst.name), t("icon.label"))}</div><p class="form-error" id="iconError" hidden></p>`,
+    kind: "icon",
+    buttons: [
+      { id: "cancel", label: t("common.cancel"), kind: "ghost" },
+      {
+        id: "ok",
+        label: t("icon.save"),
+        kind: "primary",
+        onClick: async (button) => {
+          if (picked === undefined) return;
+          button.disabled = true;
+          try {
+            mergeInstance(await invoke("set_custom_icon", { instanceId: id, bytes: picked ? Array.from(picked.bytes) : null }));
+          } catch (error) {
+            showErr(errHuman(error));
+            button.disabled = false;
+            return false;
+          }
+        }
+      }
+    ]
+  });
+  bindPackIconPicker($("iconBox"), {
+    onChange: (icon) => {
+      picked = icon;
+      showErr("");
+    },
+    onError: showErr
+  });
+  choice.then((result) => {
+    if (result === "ok" && picked !== undefined) setIsland("ok", t("icon.saved", { name: inst.name }));
+  });
+}
+
+/** Меню збірки → «Видимість для друзів…». */
+function openVisibilityDialog(id) {
+  const inst = S.view?.instances.find((i) => i.id === id);
+  if (!inst?.custom) return;
+  let picked = VISIBILITIES.includes(inst.visibility) ? inst.visibility : "private";
+  const saveLabel = () => (picked !== "private" && picked === inst.visibility && inst.published ? t("vis.update") : t("vis.save"));
+  const choice = openModal({
+    icon: "users",
+    title: t("vis.title", { name: inst.name }),
+    html: `<p>${esc(t("vis.lead"))}</p><div class="vis-box" id="visBox">${visibilitySeg(picked)}</div>`,
+    wide: true,
+    kind: "visibility",
+    buttons: [
+      { id: "cancel", label: t("common.cancel"), kind: "ghost" },
+      { id: "ok", label: saveLabel(), kind: "primary" }
+    ]
+  });
+  const okButton = el.modalActions.lastElementChild;
+  bindVisibilitySeg($("visBox"), (value) => {
+    picked = value;
+    okButton.textContent = saveLabel();
+  });
+  choice.then((result) => {
+    if (result !== "ok") return;
+    if (picked === inst.visibility && picked === "private") return;
+    applyVisibility(id, picked);
+  });
 }
 
 /* ═══════════════════════════ DANGER ZONE ═══════════════════════════ */
@@ -5802,6 +7243,7 @@ function setLang(next) {
   if (!el.onboarding.hidden) {
     renderProjectList();
     renderThemeGrid(el.obThemes, OB.theme);
+    if (OB.step === 3) paintMigration();
   }
   renderAll();
   invoke("save_settings", { patch: { ui_lang: next } }).catch(() => {});
@@ -5817,6 +7259,11 @@ function renderAll() {
   if (S.tab === "profiles") renderProfiles();
   if (S.tab === "project") renderProject();
   if (S.tab === "changelog") paintChangelog();
+  if (S.tab === "friends") {
+    friendsSig = "";
+    renderFriends();
+  }
+  renderHeads();
   renderSteps();
   renderRamNote();
   idleIsland();
@@ -5860,6 +7307,25 @@ async function registerListeners() {
     renderList();
     renderPlay();
     if (S.tab === "settings") renderDisk();
+    renderPresenceDot();
+    if (S.tab === "profiles") renderAccountCard();
+  });
+  // Акаунт змінився у фоні: офлайн-створений @username зареєстровано або він виявився зайнятим.
+  await listen("account-changed", (event) => {
+    S.account = event.payload;
+    renderHeads();
+    if (S.tab === "profiles") renderAccountCard();
+    if (S.account?.needs_username && !el.app.hidden) showMigration();
+    else if (!el.app.hidden) loadSocial({ quiet: true });
+  });
+  await listen("cloud-status", (event) => {
+    const online = Boolean(event.payload?.online);
+    const changed = S.cloudOnline !== online;
+    S.cloudOnline = online;
+    renderPresenceDot();
+    if (S.tab === "profiles") renderAccountCard();
+    if (S.tab === "friends") renderFriends();
+    if (changed && online && !el.app.hidden) loadSocial({ quiet: true });
   });
 }
 
@@ -5911,6 +7377,8 @@ function bindEvents() {
       return;
     }
     if (!el.instMenu.hidden && !event.target.closest("#instMenu") && !event.target.closest("[data-more]")) closeMenu();
+    if (!el.accountPop.hidden && !event.target.closest("#accountPop") && !event.target.closest("#topProfile")) closeAccountPop();
+    if (!el.friendSearch.hidden && !event.target.closest("#friendSearch") && !event.target.closest("#friendForm")) hideFriendSearch();
   });
 
   el.instList.addEventListener("click", (event) => {
@@ -5965,6 +7433,8 @@ function bindEvents() {
     else if (act === "repair") onRepair(id);
     else if (act === "debug") onDebug(id);
     else if (act === "import") onImport(id);
+    else if (act === "visibility") openVisibilityDialog(id);
+    else if (act === "icon") openIconDialog(id);
     else if (act === "delete") onDelete(id);
   });
 
@@ -6001,8 +7471,41 @@ function bindEvents() {
   });
   el.obNick.addEventListener("input", () => {
     el.obError1.hidden = true;
+    OB.nickTouched = el.obNick.value.trim().length > 0;
     nickState(el.obNick, el.obNickHint, "ob.nickHint");
   });
+  // Перший ігровий нік за замовчуванням збігається з @username (поки гравець не змінив його сам).
+  el.obUser.addEventListener("input", () => {
+    el.obError1.hidden = true;
+    userState(el.obUser, el.obUserHint, "ob.userHint");
+    if (!OB.nickTouched) {
+      el.obNick.value = el.obUser.value.trim().replace(/^@/, "").slice(0, 16);
+      nickState(el.obNick, el.obNickHint, "ob.nickHint");
+    }
+  });
+  el.obMigrate.addEventListener("submit", onMigrate);
+  el.migUser.addEventListener("input", () => {
+    el.migError.hidden = true;
+    userState(el.migUser, el.migHint, "mig.hint");
+  });
+
+  el.topProfile.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openAccountPop();
+  });
+  el.accountPop.addEventListener("click", onAccountPopClick);
+  el.logoutBtn.addEventListener("click", onLogout);
+  el.friendForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    sendFriend(cleanQuery(el.friendQuery.value));
+  });
+  el.friendQuery.addEventListener("input", onFriendQueryInput);
+  el.friendQuery.addEventListener("focus", onFriendQueryInput);
+  el.friendSearch.addEventListener("click", (event) => {
+    const item = event.target.closest("[data-user]");
+    if (item && !item.disabled) sendFriend(item.dataset.user);
+  });
+  document.querySelector('[data-view="friends"]').addEventListener("click", onFriendsClick);
   el.obLang.addEventListener("click", (event) => {
     const button = event.target.closest("[data-lang]");
     if (button) setLang(button.dataset.lang);
@@ -6153,10 +7656,15 @@ function bindEvents() {
     if (Dropdown.current) Dropdown.closeAll();
     else if (!el.modal.hidden) closeModal(null);
     else if (S.stopConfirm) onStopCancel();
+    else if (!el.accountPop.hidden) {
+      closeAccountPop();
+      el.topProfile.focus();
+    } else if (!el.friendSearch.hidden) hideFriendSearch();
     else closeMenu();
   });
   window.addEventListener("resize", () => {
     closeMenu();
+    closeAccountPop();
     Dropdown.closeAll();
     hideTip();
     const active = el.nav.querySelector(".nav-item.on");
@@ -6170,6 +7678,9 @@ function bindEvents() {
       hideTip();
     }
     if (!document.hidden && S.tab === "home") pingServer();
+    // Друзі: живий таймер — лише у видимому вікні; після повернення — свіжий знімок.
+    syncFriendTicker();
+    if (!document.hidden && S.tab === "friends") loadSocial({ quiet: true });
   });
 }
 
@@ -6439,6 +7950,7 @@ async function init() {
   S.binding = info.project;
   S.activeId = info.active_instance;
   S.running = info.game_running;
+  S.account = info.account;
   lang = info.settings.ui_lang === "en" ? "en" : "uk";
   applyTheme(info.settings.theme);
 
@@ -6455,8 +7967,10 @@ async function init() {
     })
     .catch(() => {});
 
-  // Проєкт необов'язковий: майстер показується лише до першого збереженого профілю.
+  // Новий гравець — повний майстер; гравець v0.4.0 (є ніки, немає @username) — лише вікно
+  // вибору @username, після якого одразу звичний інтерфейс з усіма збірками й ніками.
   if (!info.onboarded) showOnboarding();
+  else if (info.account?.needs_username) showMigration();
   else showApp();
   checkUpdate();
 }

@@ -29,15 +29,17 @@ use crate::server_status::{ping as ping_server, ServerStatus};
 use crate::state::AppState;
 use crate::sync::{self, SyncReport};
 use crate::system::{self, FileFilter};
+use crate::share;
+use crate::social::{self, AccountView, PlaySession};
 use crate::t;
 use crate::updater::{self, ReleaseInfo, UpdateOutcome};
 
-const MAX_PROFILES: usize = 20;
+pub(crate) const MAX_PROFILES: usize = 20;
 const MAX_SKIN_BYTES: usize = 1024 * 1024;
 
 // ───────────────────────────── допоміжне ─────────────────────────────
 
-async fn load_ctx(app: &AppHandle) -> Result<(Config, Paths)> {
+pub(crate) async fn load_ctx(app: &AppHandle) -> Result<(Config, Paths)> {
     let root = Paths::app_root(app)?;
     let config = config::load(&root).await;
     i18n::set_lang(&config.ui_lang);
@@ -46,7 +48,7 @@ async fn load_ctx(app: &AppHandle) -> Result<(Config, Paths)> {
 }
 
 /// Атомарно змінює config.json (без гонок між командами).
-async fn update_config<R>(
+pub(crate) async fn update_config<R>(
     app: &AppHandle,
     state: &AppState,
     change: impl FnOnce(&mut Config) -> Result<R>,
@@ -62,7 +64,7 @@ async fn update_config<R>(
     Ok(out)
 }
 
-fn busy_error() -> AppError {
+pub(crate) fn busy_error() -> AppError {
     AppError(
         tr(
             "Зачекай — лаунчер ще виконує попередню дію",
@@ -72,7 +74,7 @@ fn busy_error() -> AppError {
     )
 }
 
-fn running_error() -> AppError {
+pub(crate) fn running_error() -> AppError {
     AppError(
         tr(
             "Спершу закрий Minecraft — поки гра запущена, це зробити не можна",
@@ -195,8 +197,10 @@ pub struct InitInfo {
     pub project: Option<ProjectBinding>,
     pub active_instance: String,
     pub game_running: Option<String>,
-    /// Майстер першого запуску вже пройдено (нік + палітра).
+    /// Майстер першого запуску вже пройдено (@username + нік + палітра).
     pub onboarded: bool,
+    /// Акаунт Terrapolis (`@username`); `needs_username` — показати вікно оновлення до v0.4.1.
+    pub account: AccountView,
 }
 
 #[derive(Serialize)]
@@ -206,7 +210,7 @@ pub struct ProfilesView {
 }
 
 impl ProfilesView {
-    fn of(config: &Config) -> Self {
+    pub(crate) fn of(config: &Config) -> Self {
         Self {
             profiles: config.profiles.clone(),
             active_profile: config.active_profile.clone(),
@@ -241,6 +245,14 @@ pub struct InstanceView {
     pub mods_count: Option<usize>,
     /// Звідки власна збірка: «Modrinth · 6.1.0» (порожньо — створена вручну).
     pub origin: String,
+    /// Видимість власної збірки для друзів: private | public | on_request (порожньо — збірка проєкту).
+    pub visibility: String,
+    /// Спільну копію опубліковано в хмарі.
+    pub published: bool,
+    /// Збірку завантажено від друга: id його спільної копії.
+    pub shared_from: String,
+    /// Іконка власної збірки (data:image/png;base64,…); порожньо — показується значок завантажувача.
+    pub icon: String,
 }
 
 #[derive(Serialize)]
@@ -366,10 +378,14 @@ async fn build_view(
         custom: false,
         mods_count: None,
         origin: String::new(),
+        visibility: String::new(),
+        published: false,
+        shared_from: String::new(),
+        icon: String::new(),
     }
 }
 
-async fn custom_view(paths: &Paths, id: &str, spec: &CustomSpec) -> InstanceView {
+pub(crate) async fn custom_view(paths: &Paths, id: &str, spec: &CustomSpec) -> InstanceView {
     let state = instance::load_state(paths, id).await;
     let installed = state.installed && paths.instance_dir(id).is_dir();
     InstanceView {
@@ -392,6 +408,10 @@ async fn custom_view(paths: &Paths, id: &str, spec: &CustomSpec) -> InstanceView
         custom: true,
         mods_count: Some(mods::count_enabled(paths, id).await),
         origin: spec.origin.clone(),
+        visibility: spec.visibility.clone(),
+        published: !spec.shared_id.is_empty(),
+        shared_from: spec.shared_from.clone(),
+        icon: custom::icon_data_url(paths, id).await,
     }
 }
 
@@ -445,57 +465,21 @@ pub async fn get_init_info(app: AppHandle, state: State<'_, AppState>) -> Result
         active_instance: config.active_instance.clone(),
         game_running: state.running_game(),
         onboarded: config.onboarded && !config.profiles.is_empty(),
+        account: social::account_view(&config),
     })
 }
 
 // ───────────────────────────── перший запуск ─────────────────────────────
 
-/// Крок 1 майстра: нікнейм (новий або вже наявний у списку) і палітра інтерфейсу.
-#[tauri::command]
-pub async fn onboarding_profile(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    nickname: String,
-    theme: String,
-) -> Result<ProfilesView> {
-    load_ctx(&app).await?;
-    let nickname = nickname.trim().to_string();
-    validate_nickname(&nickname)?;
-    if !THEMES.contains(&theme.as_str()) {
-        return fail("unknown theme");
-    }
-    update_config(&app, &state, move |config| {
-        config.theme = theme;
-        if let Some(existing) = config
-            .profiles
-            .iter()
-            .find(|p| p.nickname.eq_ignore_ascii_case(&nickname))
-        {
-            config.active_profile = existing.id.clone();
-        } else {
-            if config.profiles.len() >= MAX_PROFILES {
-                return fail(tr(
-                    "Забагато профілів (максимум 20)",
-                    "Too many profiles (max 20)",
-                ));
-            }
-            let profile = Profile {
-                id: new_id(),
-                nickname,
-                has_skin: false,
-            };
-            config.active_profile = profile.id.clone();
-            config.profiles.push(profile);
-        }
-        Ok(ProfilesView::of(config))
-    })
-    .await
-}
+// Крок 1 майстра (@username, перший нік і палітра) — `social::onboarding_account`.
 
 /// Крок 2 майстра завершено: проєкт підключено або натиснуто «Пропустити».
 #[tauri::command]
 pub async fn finish_onboarding(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
     update_config(&app, &state, |config| {
+        if config.username.is_empty() {
+            return fail(tr("Спершу обери @username", "Choose an @username first"));
+        }
         if config.profiles.is_empty() {
             return fail(tr("Спершу вкажи нікнейм", "Enter a nickname first"));
         }
@@ -1236,7 +1220,7 @@ pub async fn set_active_profile(
     .await
 }
 
-fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
+pub(crate) fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
     const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
     if bytes.len() < 24 || bytes[..8] != SIGNATURE || &bytes[12..16] != b"IHDR" {
         return None;
@@ -1271,7 +1255,7 @@ pub async fn pick_skin(
         tr("Обери скін Minecraft (.png)", "Choose a Minecraft skin (.png)"),
         FileFilter {
             label: tr("Скін Minecraft", "Minecraft skin").to_string(),
-            extension: "png",
+            extensions: &["png"],
         },
     )
     .await?;
@@ -1457,8 +1441,8 @@ pub async fn play(
     }
     let (config, paths) = load_ctx(&app).await?;
     let profile = config.active_profile().cloned().ctx(tr(
-        "Спершу додай нікнейм у вкладці «Профілі»",
-        "Add a nickname in the Profiles tab first",
+        "Спершу додай ігровий нік у вкладці «Акаунт»",
+        "Add a game nickname in the Account tab first",
     ))?;
     validate_nickname(&profile.nickname)?;
     paths.ensure_shared_dirs().await?;
@@ -1475,7 +1459,12 @@ pub async fn play(
         manifest::save_cache(&instance::manifest_cache(&paths, &instance_id), &manifest).await?;
         // Дочекатися встановлення контенту, що вже йде, — гра не стартує з напівзавантаженим модом.
         drop(state.mods_lock.lock().await);
-        start_game(&app, &state, &paths, &config, &profile, &instance_id, &manifest).await?;
+        let session = PlaySession::for_custom(&instance_id, &spec, &profile.nickname);
+        start_game(&app, &state, &paths, &config, &profile, &instance_id, &manifest, session).await?;
+        // Спільна збірка: якщо вміст змінився з моменту публікації — друзі отримають свіжу копію.
+        if spec.is_shared() {
+            share::republish_in_background(app.clone(), instance_id.clone());
+        }
         let mut st = instance::load_state(&paths, &instance_id).await;
         if !st.installed {
             st.installed = true;
@@ -1541,7 +1530,9 @@ pub async fn play(
     let debug =
         pack_debugger::run(&app, &state.client, &paths, &instance_id, &manifest, offline).await?;
 
-    start_game(&app, &state, &paths, &config, &profile, &instance_id, &manifest).await?;
+    let pack_name = resolved.entry.as_ref().map(|e| e.name.clone()).unwrap_or_else(|| st.name.clone());
+    let session = PlaySession::for_project(&instance_id, &pack_name, &binding.code, &binding.name, &profile.nickname);
+    start_game(&app, &state, &paths, &config, &profile, &instance_id, &manifest, session).await?;
     Ok(PlayOutcome {
         offline,
         first_install,
@@ -1558,6 +1549,7 @@ async fn start_game(
     profile: &Profile,
     instance_id: &str,
     manifest: &Manifest,
+    session: PlaySession,
 ) -> Result<()> {
     let game_dir = paths.instance_dir(instance_id);
     // Пресет графіки й мову гри пишемо лише один раз — коли options.txt ще не існує.
@@ -1591,6 +1583,7 @@ async fn start_game(
             instance_id,
             nickname: &profile.nickname,
             ram_mb: ram,
+            presence: Some(session),
         },
     )
 }
@@ -1715,7 +1708,7 @@ pub async fn pick_zip(window: WebviewWindow) -> Result<Option<String>> {
         tr("Обери .zip архів збірки", "Choose the modpack .zip archive"),
         FileFilter {
             label: tr("Архів збірки", "Modpack archive").to_string(),
-            extension: "zip",
+            extensions: &["zip"],
         },
     )
     .await
@@ -1793,6 +1786,7 @@ pub async fn import_local_pack(
                 loader_version: manifest.loader.version.clone(),
                 created: 0,
                 origin: String::new(),
+                ..CustomSpec::default()
             };
             report.created = true;
             (custom::create(&paths, spec).await?, false)
@@ -1914,9 +1908,17 @@ pub async fn delete_instance(
     if state.running_game().as_deref() == Some(instance_id.as_str()) {
         return Err(running_error());
     }
+    let (config, paths) = load_ctx(&app).await?;
+    // Спільна копія видаленої збірки друзям більше не потрібна (без мережі — залишиться в хмарі).
+    // До mods_lock: публікація бере share_lock → mods_lock, тож тут порядок той самий.
+    let published = custom::load(&paths, &instance_id)
+        .await
+        .is_some_and(|spec| !spec.shared_id.is_empty());
+    if published && !keep_personal.unwrap_or(false) {
+        let _ = share::unpublish(&state, &config, &paths, &instance_id).await;
+    }
     // Встановлення мода в цю ж збірку, що вже йде, має завершитися до видалення папки.
     let _mods = state.mods_lock.lock().await;
-    let (_, paths) = load_ctx(&app).await?;
     if keep_personal.unwrap_or(false) {
         // Опис власної збірки зберігаємо, щоб світи не «осиротіли» і збірку можна було відновити.
         let spec = custom::load(&paths, &instance_id).await;
@@ -2356,10 +2358,18 @@ pub async fn create_custom_instance(
     app: AppHandle,
     state: State<'_, AppState>,
     spec: CustomSpec,
+    icon: Option<Vec<u8>>,
 ) -> Result<InstanceView> {
     let (_, paths) = load_ctx(&app).await?;
+    // Іконку перевіряємо до створення: погана картинка не лишає напівстворену збірку.
+    if let Some(bytes) = &icon {
+        custom::check_icon(bytes)?;
+    }
     paths.ensure_shared_dirs().await?;
     let id = custom::create(&paths, spec).await?;
+    if let Some(bytes) = &icon {
+        custom::save_icon(&paths, &id, Some(bytes)).await?;
+    }
     let chosen = id.clone();
     update_config(&app, &state, move |config| {
         config.active_instance = chosen;
@@ -2368,6 +2378,51 @@ pub async fn create_custom_instance(
     .await?;
     let spec = custom::load(&paths, &id).await.ctx("custom.json")?;
     Ok(custom_view(&paths, &id, &spec).await)
+}
+
+/// «Іконка збірки → Обрати файл…»: нативний діалог (.png / .jpg / .webp) і сирі байти файлу
+/// без JSON-масиву (`ipc::Response`). Інтерфейс сам обрізає й зменшує картинку до 128×128 PNG
+/// і передає результат у `create_custom_instance` / `set_custom_icon`. Порожня відповідь — діалог закрито.
+#[tauri::command]
+pub async fn pick_pack_icon(window: WebviewWindow) -> Result<tauri::ipc::Response> {
+    let picked = system::pick_file(
+        window_handle(&window),
+        tr("Обери іконку збірки", "Choose a modpack icon"),
+        FileFilter {
+            label: tr("Зображення", "Images").to_string(),
+            extensions: &["png", "jpg", "jpeg", "webp"],
+        },
+    )
+    .await?;
+    let Some(path) = picked else {
+        return Ok(tauri::ipc::Response::new(Vec::new()));
+    };
+    let path = PathBuf::from(path);
+    let extension = path
+        .extension()
+        .map(|ext| ext.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default();
+    if !matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp") {
+        return fail(tr("Підтримуються лише .png, .jpg і .webp", "Only .png, .jpg and .webp are supported"));
+    }
+    if tokio::fs::metadata(&path).await?.len() > MAX_ICON_SOURCE_BYTES {
+        return fail(tr("Картинка завелика (до 16 МБ)", "The image is too large (16 MB max)"));
+    }
+    Ok(tauri::ipc::Response::new(tokio::fs::read(&path).await?))
+}
+
+const MAX_ICON_SOURCE_BYTES: u64 = 16 * 1024 * 1024;
+
+/// Змінити або прибрати (`bytes: null`) іконку вже створеної власної збірки.
+#[tauri::command]
+pub async fn set_custom_icon(app: AppHandle, instance_id: String, bytes: Option<Vec<u8>>) -> Result<InstanceView> {
+    check_id(&instance_id)?;
+    let (_, paths) = load_ctx(&app).await?;
+    let Some(spec) = custom::load(&paths, &instance_id).await else {
+        return fail(tr("Це не власна збірка", "This is not a custom modpack"));
+    };
+    custom::save_icon(&paths, &instance_id, bytes.as_deref()).await?;
+    Ok(custom_view(&paths, &instance_id, &spec).await)
 }
 
 /// Скільки місця звільнить видалення і скільки займають світи/скріншоти.

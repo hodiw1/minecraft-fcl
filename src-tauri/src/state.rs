@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use reqwest::Client;
 
+use crate::social::SocialState;
 use crate::updater::ReleaseInfo;
 use crate::util::http_client;
 
@@ -24,6 +25,8 @@ pub struct AppState {
     pub update: Mutex<Option<ReleaseInfo>>,
     /// Лаунчер видаляє себе: жоден запис config.json не має відтворити вже видалену папку.
     pub shutting_down: AtomicBool,
+    /// Акаунт, друзі та Rich Presence (heartbeat у фоні).
+    pub social: SocialState,
 }
 
 impl AppState {
@@ -37,6 +40,7 @@ impl AppState {
             mods_lock: tokio::sync::Mutex::new(()),
             update: Mutex::new(None),
             shutting_down: AtomicBool::new(false),
+            social: SocialState::new(),
         }
     }
 

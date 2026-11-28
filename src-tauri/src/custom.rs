@@ -34,9 +34,41 @@ pub struct CustomSpec {
     /// Звідки збірка: «Modrinth · 6.1.0», «CurseForge · 2.4» (порожньо — створена вручну).
     #[serde(default)]
     pub origin: String,
+    /// Хто з друзів бачить збірку: `private` | `public` | `on_request` (див. [`VISIBILITIES`]).
+    #[serde(default = "default_visibility")]
+    pub visibility: String,
+    /// id опублікованої копії в `shared_packs` (порожньо — не опубліковано).
+    #[serde(default)]
+    pub shared_id: String,
+    /// Відбиток вмісту на момент публікації: якщо змінився — копія друзям оновлюється.
+    #[serde(default)]
+    pub shared_fingerprint: String,
+    /// Збірку завантажено від друга: id його спільної копії (кнопка «Відкрити збірку»).
+    #[serde(default)]
+    pub shared_from: String,
+}
+
+pub const VISIBILITIES: [&str; 3] = ["private", "public", "on_request"];
+
+fn default_visibility() -> String {
+    "private".to_string()
 }
 
 impl CustomSpec {
+    /// Збірку видно друзям (і її треба тримати опублікованою).
+    pub fn is_shared(&self) -> bool {
+        matches!(self.visibility.as_str(), "public" | "on_request")
+    }
+
+    /// Тип збірки для Rich Presence.
+    pub fn presence_type(&self) -> &'static str {
+        match self.visibility.as_str() {
+            "public" => "custom_public",
+            "on_request" => "custom_request",
+            _ => "custom_private",
+        }
+    }
+
     /// Синтетичний маніфест без файлів — далі працює звичайний шлях запуску.
     pub fn to_manifest(&self) -> Manifest {
         Manifest {
@@ -56,6 +88,78 @@ impl CustomSpec {
 
 fn spec_file(paths: &Paths, id: &str) -> std::path::PathBuf {
     paths.instance_meta(id).join("custom.json")
+}
+
+// ───────────────────────────── іконка збірки ─────────────────────────────
+
+/// Іконка власної збірки лежить поруч із custom.json: `instances/<id>/.launcher/icon.png`.
+/// Гра її не бачить, а «Видалити, залишивши світи» прибирає разом з описом збірки.
+pub const ICON_FILE: &str = "icon.png";
+/// Інтерфейс сам зменшує картинку до 128×128 PNG (зазвичай 5–40 КБ), тож це з запасом.
+pub const MAX_ICON_BYTES: usize = 256 * 1024;
+const MAX_ICON_SIDE: u32 = 512;
+
+pub fn icon_file(paths: &Paths, id: &str) -> std::path::PathBuf {
+    paths.instance_meta(id).join(ICON_FILE)
+}
+
+/// Іконка — справжній PNG розумного розміру (не довільний файл під виглядом картинки).
+pub fn check_icon(bytes: &[u8]) -> Result<()> {
+    if bytes.len() > MAX_ICON_BYTES {
+        return fail(tr("Іконка завелика", "The icon is too large"));
+    }
+    match crate::commands::png_size(bytes) {
+        Some((w, h)) if (16..=MAX_ICON_SIDE).contains(&w) && (16..=MAX_ICON_SIDE).contains(&h) => Ok(()),
+        _ => fail(tr(
+            "Іконка має бути PNG від 16×16 до 512×512",
+            "The icon must be a PNG from 16×16 to 512×512",
+        )),
+    }
+}
+
+/// Записує (`Some`) або прибирає (`None`) іконку власної збірки.
+pub async fn save_icon(paths: &Paths, id: &str, bytes: Option<&[u8]>) -> Result<()> {
+    let path = icon_file(paths, id);
+    match bytes {
+        Some(bytes) => {
+            check_icon(bytes)?;
+            tokio::fs::create_dir_all(paths.instance_meta(id)).await?;
+            // Через тимчасовий файл: обірваний запис не лишить «биту» іконку.
+            let temp = path.with_extension("png.part");
+            tokio::fs::write(&temp, bytes).await?;
+            tokio::fs::rename(&temp, &path).await?;
+        }
+        None => {
+            let _ = tokio::fs::remove_file(&path).await;
+        }
+    }
+    Ok(())
+}
+
+/// Іконка як data-URL для інтерфейсу (порожньо — іконки немає або файл пошкоджено).
+pub async fn icon_data_url(paths: &Paths, id: &str) -> String {
+    match tokio::fs::read(icon_file(paths, id)).await {
+        Ok(bytes) if check_icon(&bytes).is_ok() => format!("data:image/png;base64,{}", base64(&bytes)),
+        _ => String::new(),
+    }
+}
+
+fn base64(bytes: &[u8]) -> String {
+    const ABC: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = (u32::from(chunk[0]) << 16)
+            | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8)
+            | u32::from(*chunk.get(2).unwrap_or(&0));
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(ABC[(n >> (18 - 6 * i) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
 }
 
 pub async fn load(paths: &Paths, id: &str) -> Option<CustomSpec> {
@@ -105,6 +209,12 @@ fn validate(spec: &mut CustomSpec) -> Result<()> {
         .filter(|c| !c.is_control())
         .take(MAX_ORIGIN)
         .collect();
+    if !VISIBILITIES.contains(&spec.visibility.as_str()) {
+        spec.visibility = default_visibility();
+    }
+    if !is_uuid(&spec.shared_from) {
+        spec.shared_from.clear();
+    }
     spec.minecraft_version = spec.minecraft_version.trim().to_string();
     if !is_safe_token(&spec.minecraft_version) {
         return fail(tr("Обери версію Minecraft", "Choose a Minecraft version"));
@@ -123,8 +233,20 @@ fn validate(spec: &mut CustomSpec) -> Result<()> {
     Ok(())
 }
 
+/// UUID у канонічному вигляді (id спільних збірок і акаунтів у Supabase).
+pub fn is_uuid(value: &str) -> bool {
+    value.len() == 36
+        && value.char_indices().all(|(i, c)| match i {
+            8 | 13 | 18 | 23 => c == '-',
+            _ => c.is_ascii_hexdigit(),
+        })
+}
+
 pub async fn create(paths: &Paths, mut spec: CustomSpec) -> Result<String> {
     validate(&mut spec)?;
+    // Публікацію робить окрема команда — нова збірка ще не має спільної копії.
+    spec.shared_id.clear();
+    spec.shared_fingerprint.clear();
     spec.created = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -344,4 +466,40 @@ fn version_key(version: &str) -> Vec<u64> {
         .filter(|part| !part.is_empty())
         .map(|part| part.parse().unwrap_or(0))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn png(w: u32, h: u32) -> Vec<u8> {
+        let mut bytes = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13];
+        bytes.extend_from_slice(b"IHDR");
+        bytes.extend_from_slice(&w.to_be_bytes());
+        bytes.extend_from_slice(&h.to_be_bytes());
+        bytes.extend_from_slice(&[8, 6, 0, 0, 0]);
+        bytes
+    }
+
+    #[test]
+    fn base64_matches_rfc4648() {
+        assert_eq!(base64(b""), "");
+        assert_eq!(base64(b"f"), "Zg==");
+        assert_eq!(base64(b"fo"), "Zm8=");
+        assert_eq!(base64(b"foo"), "Zm9v");
+        assert_eq!(base64(b"foobar"), "Zm9vYmFy");
+        assert_eq!(base64(&[0xff, 0xfe, 0xfd, 0x00]), "//79AA==");
+    }
+
+    #[test]
+    fn icons_must_be_reasonable_pngs() {
+        assert!(check_icon(&png(128, 128)).is_ok());
+        assert!(check_icon(&png(16, 512)).is_ok());
+        assert!(check_icon(&png(8, 8)).is_err());
+        assert!(check_icon(&png(4096, 4096)).is_err());
+        assert!(check_icon(b"GIF89a not a png at all......").is_err());
+        let mut huge = png(128, 128);
+        huge.resize(MAX_ICON_BYTES + 1, 0);
+        assert!(check_icon(&huge).is_err());
+    }
 }

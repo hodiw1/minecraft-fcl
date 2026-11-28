@@ -115,10 +115,10 @@ pub fn open_github(repo: &str, kind: &str, tag: &str) -> Result<()> {
     open_url(&url)
 }
 
-/// Тип файлу для діалогу вибору: підпис фільтра й розширення (без крапки).
+/// Тип файлу для діалогу вибору: підпис фільтра й розширення (без крапки; перше — типове).
 pub struct FileFilter {
     pub label: String,
-    pub extension: &'static str,
+    pub extensions: &'static [&'static str],
 }
 
 /// Нативний діалог Windows (`IFileOpenDialog`) у власному STA-потоці.
@@ -169,15 +169,18 @@ mod native_dialog {
                 Kind::File(filter) => {
                     options |= FOS_FILEMUSTEXIST;
                     let label = filter.label.replace(['|', '\0'], "");
-                    let name = HSTRING::from(format!("{label} (*.{})", filter.extension));
-                    let spec = HSTRING::from(format!("*.{}", filter.extension));
+                    let patterns: Vec<String> = filter.extensions.iter().map(|ext| format!("*.{ext}")).collect();
+                    let name = HSTRING::from(format!("{label} ({})", patterns.join(", ")));
+                    let spec = HSTRING::from(patterns.join(";"));
                     let filters = [COMDLG_FILTERSPEC {
                         pszName: PCWSTR(name.as_ptr()),
                         pszSpec: PCWSTR(spec.as_ptr()),
                     }];
                     dialog.SetFileTypes(&filters)?;
                     dialog.SetFileTypeIndex(1)?;
-                    dialog.SetDefaultExtension(&HSTRING::from(filter.extension))?;
+                    if let Some(first) = filter.extensions.first() {
+                        dialog.SetDefaultExtension(&HSTRING::from(*first))?;
+                    }
                 }
             }
             dialog.SetOptions(options)?;

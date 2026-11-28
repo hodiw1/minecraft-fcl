@@ -19,6 +19,7 @@ use crate::loaders;
 use crate::manifest::Manifest;
 use crate::minecraft::{self, AssetsInfo};
 use crate::paths::Paths;
+use crate::social::{self, PlaySession};
 use crate::t;
 use crate::util::hide_window;
 use crate::version::{merge, rules_allow, ArgValue, Argument, VersionJson};
@@ -56,6 +57,8 @@ pub struct LaunchRequest<'a> {
     pub instance_id: &'a str,
     pub nickname: &'a str,
     pub ram_mb: u32,
+    /// Rich Presence: що бачать друзі, поки гра запущена (`None` — нічого не повідомляти).
+    pub presence: Option<PlaySession>,
 }
 
 pub fn offline_uuid(nickname: &str) -> String {
@@ -449,6 +452,10 @@ pub fn spawn(
         },
     );
     status(app, tr("Гра запущена", "Game is running"));
+    // Rich Presence: друзі одразу бачать збірку й живий таймер (heartbeat — позачергово).
+    if let Some(session) = request.presence.clone() {
+        social::game_started(app, session);
+    }
 
     let handle = app.clone();
     let meta_dir = paths.instance_meta(&instance_id);
@@ -496,6 +503,8 @@ pub fn spawn(
         if let Ok(mut running) = slot.lock() {
             *running = None;
         }
+        // Гру закрито: статус друзям — знову «В мережі».
+        social::game_finished(&handle);
         let _ = handle.emit(
             "game-state",
             GameState {

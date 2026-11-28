@@ -36,11 +36,18 @@
       <!-- Крок 1: профіль і палітра -->
       <form class="ob-step" id="obStep1" novalidate autocomplete="off">
         <h1 data-i18n="ob.title">Ласкаво просимо!</h1>
-        <p class="ob-sub" data-i18n="ob.sub1">Terrapolis — легкий і швидкий лаунчер Minecraft. Вкажи нік і обери, яким буде лаунчер.</p>
-        <div class="field">
-          <label for="obNick" data-i18n="ob.nick">Твій ігровий нік</label>
-          <input id="obNick" type="text" spellcheck="false" maxlength="16" data-i18n-ph="ob.nickPh" placeholder="Введіть ігровий нікнейм">
-          <span class="hint" id="obNickHint" data-i18n="ob.nickHint">Під цим ім'ям тебе бачитимуть у грі. 3–16 символів: латиниця, цифри, _</span>
+        <p class="ob-sub" data-i18n="ob.sub1">Terrapolis — легкий і швидкий лаунчер Minecraft. Створи акаунт і обери, яким буде лаунчер.</p>
+        <div class="ob-pair">
+          <div class="field">
+            <label for="obUser" data-i18n="ob.user">Унікальний @username</label>
+            <div class="at-input"><span aria-hidden="true">@</span><input id="obUser" type="text" spellcheck="false" maxlength="20" data-i18n-ph="ob.userPh" placeholder="username"></div>
+            <span class="hint" id="obUserHint" data-i18n="ob.userHint">Логін акаунта — за ним тебе знайдуть друзі. 3–20 символів: латиниця, цифри, _</span>
+          </div>
+          <div class="field">
+            <label for="obNick" data-i18n="ob.nick">Перший ігровий нік</label>
+            <input id="obNick" type="text" spellcheck="false" maxlength="16" data-i18n-ph="ob.nickPh" placeholder="Введіть ігровий нікнейм">
+            <span class="hint" id="obNickHint" data-i18n="ob.nickHint">Під цим ім'ям тебе бачитимуть у грі (за замовчуванням — як @username). 3–16 символів</span>
+          </div>
         </div>
         <div class="field">
           <span class="label" id="obThemeLabel" data-i18n="theme.title">Кольорова палітра</span>
@@ -81,6 +88,28 @@
           </button>
         </div>
       </form>
+
+      <!-- Оновлення до v0.4.1 (або зайняте ім'я): лише вибір @username — усе інше вже є -->
+      <form class="ob-step" id="obMigrate" novalidate autocomplete="off" hidden>
+        <span class="mig-badge" id="migBadge" data-i18n="mig.badge">Оновлення Terrapolis v0.4.1</span>
+        <h1 id="migTitle" data-i18n="mig.title">Обери свій унікальний @username</h1>
+        <p class="ob-sub" id="migSub" data-i18n="mig.sub">Тепер у Terrapolis один акаунт із кількома ігровими ніками, друзі та спільні збірки. За @username тебе знайдуть друзі.</p>
+        <div class="field">
+          <label for="migUser" data-i18n="ob.user">Унікальний @username</label>
+          <div class="at-input at-input-lg"><span aria-hidden="true">@</span><input id="migUser" type="text" spellcheck="false" maxlength="20" data-i18n-ph="ob.userPh" placeholder="username"></div>
+          <span class="hint" id="migHint" data-i18n="mig.hint">3–20 символів: латиниця, цифри, _. Підставили твій основний нік — можна змінити.</span>
+        </div>
+        <ul class="mig-keep">
+          <li data-i18n="mig.keepNicks">Ігрові ніки та скіни</li>
+          <li data-i18n="mig.keepTheme">Палітра й налаштування</li>
+          <li data-i18n="mig.keepPacks">Збірки та проєкти</li>
+        </ul>
+        <div class="form-error" id="migError" role="alert" hidden></div>
+        <button class="btn btn-primary btn-lg" id="migSubmit" type="submit">
+          <span class="btn-spin" aria-hidden="true"></span>
+          <span class="btn-text" data-i18n="mig.go">Продовжити</span>
+        </button>
+      </form>
     </div>
     <p class="legal ob-legal" data-i18n="legal.notice">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</p>
   </div>
@@ -100,7 +129,12 @@
       </button>
       <button class="nav-item" type="button" data-tab="profiles">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
-        <span data-i18n="nav.profiles">Профілі</span>
+        <span data-i18n="nav.profiles">Акаунт</span>
+      </button>
+      <button class="nav-item" type="button" data-tab="friends">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8M18 14.4c2.1.8 3.5 2.8 3.5 5.6"/></svg>
+        <span data-i18n="nav.friends">Друзі</span>
+        <span class="nav-badge" id="friendsBadge" hidden>0</span>
       </button>
       <button class="nav-item" type="button" data-tab="project">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
@@ -134,12 +168,13 @@
         <button class="top-sync" id="topSync" type="button" data-i18n-title="top.sync" title="Синхронізувати: перевірити оновлення лаунчера та збірок" data-i18n-aria="top.sync" aria-label="Синхронізувати: перевірити оновлення лаунчера та збірок">
           <svg class="top-sync-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 15.7"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8.3"/><path d="M21 3v5.3h-5.3M3 21v-5.3h5.3"/></svg>
         </button>
-        <button class="top-profile" type="button" data-goto="profiles" data-i18n-title="top.changeProfile" title="Змінити профіль">
+        <button class="top-profile" id="topProfile" type="button" aria-haspopup="menu" aria-expanded="false" data-i18n-title="top.changeProfile" title="Акаунт та ігрові ніки">
           <canvas class="head" id="topHead" width="32" height="32"></canvas>
           <span class="top-profile-text">
             <b id="topNick">—</b>
-            <small data-i18n="top.changeProfile">Змінити профіль</small>
+            <small id="topUser">@—</small>
           </span>
+          <i class="top-presence" id="topPresence" aria-hidden="true"></i>
         </button>
       </div>
     </header>
@@ -242,8 +277,19 @@
       <!-- ПРОФІЛІ -->
       <section class="view view-profiles" data-view="profiles">
         <div class="view-head">
-          <h2 data-i18n="profiles.title">Профілі</h2>
-          <p data-i18n="profiles.sub">Нікнейми, під якими ти заходиш у гру. Кнопка «Грати» використовує активний профіль.</p>
+          <h2 data-i18n="profiles.title">Акаунт</h2>
+          <p data-i18n="profiles.sub">Один акаунт Terrapolis — кілька ігрових ніків. Кнопка «Грати» використовує активний нік.</p>
+        </div>
+        <div class="account-card glass" id="accountCard">
+          <span class="ac-avatar" aria-hidden="true">@</span>
+          <div class="ac-info">
+            <b id="acUser">@—</b>
+            <small id="acState"><i class="cloud-dot"></i><span></span></small>
+          </div>
+          <button class="btn btn-danger btn-sm" id="logoutBtn" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+            <span data-i18n="account.logout">Вийти з акаунта</span>
+          </button>
         </div>
         <div class="profiles-grid">
           <div class="skin-stage glass">
@@ -264,6 +310,49 @@
             </form>
             <span class="hint" id="newNickHint" data-i18n="profiles.nickRule">3–16 символів: латиниця, цифри, _</span>
             <div class="profile-list" id="profileList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ДРУЗІ: заявки, запити доступу, Rich Presence з живим таймером гри -->
+      <section class="view view-friends" data-view="friends">
+        <div class="view-head view-head-row">
+          <div>
+            <h2 data-i18n="friends.title">Друзі</h2>
+            <p data-i18n="friends.sub">Бачиш, хто з друзів у грі й у яку збірку, — і можеш приєднатися: увійти в той самий проєкт чи завантажити їхню збірку.</p>
+          </div>
+          <span class="cloud-chip" id="cloudChip"><i class="cloud-dot"></i><span></span></span>
+        </div>
+        <div class="friends-grid">
+          <div class="friends-side">
+            <form class="add-row glass" id="friendForm" novalidate autocomplete="off">
+              <div class="at-input"><span aria-hidden="true">@</span><input id="friendQuery" type="text" spellcheck="false" maxlength="20" data-i18n-ph="friends.addPh" placeholder="username друга"></div>
+              <button class="btn btn-primary" id="friendAdd" type="submit">
+                <span class="btn-spin" aria-hidden="true"></span>
+                <span class="btn-text" data-i18n="friends.add">Додати</span>
+              </button>
+            </form>
+            <div class="friend-search" id="friendSearch" hidden></div>
+            <span class="hint" id="friendHint" data-i18n="friends.addHint">Введи @username друга — йому прийде заявка в друзі.</span>
+            <div class="fr-block" id="incomingBlock" hidden>
+              <h4><span data-i18n="friends.incoming">Заявки в друзі</span><span class="count" id="incomingCount">0</span></h4>
+              <div class="fr-rows" id="incomingList"></div>
+            </div>
+            <div class="fr-block" id="accessBlock" hidden>
+              <h4><span data-i18n="friends.access">Запити на доступ до збірок</span><span class="count" id="accessCount">0</span></h4>
+              <div class="fr-rows" id="accessList"></div>
+            </div>
+            <div class="fr-block" id="outgoingBlock" hidden>
+              <h4><span data-i18n="friends.outgoing">Надіслані заявки</span></h4>
+              <div class="fr-rows" id="outgoingList"></div>
+            </div>
+          </div>
+          <div class="friends-main">
+            <div class="panel-head">
+              <h3 data-i18n="friends.list">Список друзів</h3>
+              <span class="count" id="friendsCount">0</span>
+            </div>
+            <div class="friend-list" id="friendList"></div>
           </div>
         </div>
       </section>
@@ -452,14 +541,14 @@
             <div class="dz-row">
               <div>
                 <b data-i18n="danger.resetTitle">Видалити все, окрім акаунту та проєктів</b>
-                <small data-i18n="danger.resetSub">Збірки, Java, бібліотеки й ресурси гри, кеш завантажень і технічні налаштування. Нікнейми, скіни та проєкти залишаться.</small>
+                <small data-i18n="danger.resetSub">Збірки, Java, бібліотеки й ресурси гри, кеш завантажень і технічні налаштування. Акаунт @username, ігрові ніки, скіни та проєкти залишаться.</small>
               </div>
               <button class="btn btn-danger btn-sm" id="dzReset" type="button" data-i18n="danger.resetGo">Очистити…</button>
             </div>
             <div class="dz-row">
               <div>
                 <b data-i18n="danger.uninstallTitle">Видалити лаунчер повністю</b>
-                <small data-i18n="danger.uninstallSub">Усі збірки, профілі, налаштування, кеш WebView2 і сам лаунчер. Після цього програма закриється.</small>
+                <small data-i18n="danger.uninstallSub">Усі збірки, ігрові ніки, налаштування, кеш WebView2 і сам лаунчер. Після цього програма закриється.</small>
               </div>
               <button class="btn btn-danger-solid btn-sm" id="dzUninstall" type="button" data-i18n="danger.uninstallGo">Видалити лаунчер…</button>
             </div>
@@ -477,8 +566,25 @@
   <button type="button" role="menuitem" data-act="repair"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg><span data-i18n="menu.repair">Перевірити файли</span></button>
   <button type="button" role="menuitem" data-act="debug"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v4M14 3v4"/><rect x="6" y="7" width="12" height="13" rx="6"/><path d="M12 11v5M3 13h3M18 13h3M4 7l2.5 2M20 7l-2.5 2M4 20l2.5-2M20 20l-2.5-2"/></svg><span data-i18n="menu.debug">Перевірити збірку (Дебагер)</span></button>
   <button type="button" role="menuitem" data-act="import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v4H3z"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M12 11v6M9.5 14.5 12 17l2.5-2.5"/></svg><span data-i18n="menu.import">Імпортувати з .zip…</span></button>
+  <button type="button" role="menuitem" data-act="visibility"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8M18 14.4c2.1.8 3.5 2.8 3.5 5.6"/></svg><span data-i18n="menu.visibility">Видимість для друзів…</span></button>
+  <button type="button" role="menuitem" data-act="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg><span data-i18n="menu.icon">Іконка збірки…</span></button>
   <hr>
   <button type="button" role="menuitem" data-act="delete" class="danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg><span data-i18n="menu.delete">Видалити збірку…</span></button>
+</div>
+
+<!-- Поповер міні-картки профілю: @username, перемикання ігрових ніків, вихід з акаунта -->
+<div class="menu glass account-pop" id="accountPop" role="menu" hidden>
+  <div class="ap-head">
+    <canvas class="head" id="apHead" width="40" height="40" aria-hidden="true"></canvas>
+    <span class="ap-id"><b id="apUser">@—</b><small id="apState"><i class="cloud-dot"></i><span></span></small></span>
+  </div>
+  <span class="ap-label" data-i18n="ap.nicks">Ігрові ніки</span>
+  <div class="ap-nicks" id="apNicks"></div>
+  <hr>
+  <button type="button" role="menuitem" data-act="account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span data-i18n="ap.manage">Керувати акаунтом</span></button>
+  <button type="button" role="menuitem" data-act="friends"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8M18 14.4c2.1.8 3.5 2.8 3.5 5.6"/></svg><span data-i18n="nav.friends">Друзі</span></button>
+  <hr>
+  <button type="button" role="menuitem" data-act="logout" class="danger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span data-i18n="account.logout">Вийти з акаунта</span></button>
 </div>
 
 <!-- Модальне вікно -->

@@ -25,6 +25,22 @@ pub const DEFAULT_PRESET: &str = "medium";
 /// Щоб приховати платформу, досить змінити прапорець на `false` (і `ENABLE_CURSEFORGE` у `ui/app.js`).
 pub const ENABLE_CURSEFORGE: bool = true;
 
+// ───────────────────────────── хмара (Supabase) ─────────────────────────────
+//
+// Акаунти `@username`, друзі, Rich Presence і спільні збірки. Схема бази, RPC-функції та
+// політики Storage — у `docs/supabase_schema.sql`. Ключ — публічний (publishable / anon):
+// напряму таблиці недоступні (RLS), уся робота йде через RPC з перевіркою токена акаунта.
+// Якщо хмара недоступна, лаунчер працює повністю офлайн — гра й власні збірки не блокуються.
+
+pub const SUPABASE_URL: &str = "https://hpkaynziqnhshpqvjjde.supabase.co";
+pub const SUPABASE_ANON_KEY: &str = "sb_publishable_Sm5noZraiayaWIPTeH617g_REAi8azq";
+/// Публічний бакет Storage для архівів спільних збірок: `<user_id>/<object_key>.zip`.
+pub const SHARED_PACKS_BUCKET: &str = "shared-packs";
+/// Інтервал heartbeat присутності (сервер вважає гравця офлайн через 150 с тиші).
+pub const PRESENCE_HEARTBEAT_SECS: u64 = 45;
+/// Найбільший архів спільної збірки (ліміт бакета — 45 МБ).
+pub const MAX_SHARED_PACK_BYTES: u64 = 45 * 1024 * 1024;
+
 // ───────────────────────────── дзеркала ─────────────────────────────
 //
 // Шаблон дзеркала — https-адреса з плейсхолдерами:
